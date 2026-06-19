@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Random Notes planner icon" shape-rendering="crispEdges">
+  <rect width="64" height="64" fill="#0b73f6"/>
+  <rect x="6" y="6" width="52" height="52" fill="#d2d5dc"/>
+  <rect x="6" y="6" width="52" height="4" fill="#f8f9fb"/>
+  <rect x="6" y="6" width="4" height="52" fill="#f8f9fb"/>
+  <rect x="10" y="54" width="48" height="4" fill="#585f6b"/>
+  <rect x="54" y="10" width="4" height="48" fill="#585f6b"/>
+  <rect x="12" y="12" width="40" height="8" fill="#111b88"/>
+  <rect x="16" y="26" width="32" height="26" fill="#fff"/>
+  <rect x="16" y="26" width="32" height="3" fill="#f1f300"/>
+  <rect x="21" y="34" width="5" height="5" fill="#fff"/>
+  <rect x="21" y="34" width="5" height="5" fill="none" stroke="#111" stroke-width="2"/>
+  <rect x="30" y="35" width="12" height="2" fill="#111"/>
+  <rect x="21" y="43" width="5" height="5" fill="#fff"/>
+  <path d="M20 44h2v2h2v2h-4z" fill="#111"/>
+  <rect x="30" y="44" width="14" height="2" fill="#777"/>
+</svg>

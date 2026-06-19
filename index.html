@@ -1,0 +1,1238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Random Notes | Private Local Planner</title>
+<meta name="description" content="Plan tasks by today, week, and month, then capture loose notes privately in your browser.">
+<meta name="robots" content="index, follow">
+<meta name="theme-color" content="#b9c4cf">
+<meta name="application-name" content="Random Notes">
+<meta name="apple-mobile-web-app-title" content="Random Notes">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Random Notes">
+<meta property="og:title" content="Random Notes">
+<meta property="og:description" content="A private local planner for tasks and quick thoughts.">
+<meta property="og:image" content="bg-2.jpg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Random Notes">
+<meta name="twitter:description" content="A private local planner for tasks and quick thoughts.">
+<meta name="twitter:image" content="bg-2.jpg">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css?v=planner-filter-menu-20260617">
+</head>
+<body>
+<a href="#main-content" class="skip-link">Skip to main content</a>
+<div class="sr-only" aria-live="polite" aria-atomic="true" id="sr-status"></div>
+
+<main class="page" id="main-content">
+  <div class="desktop-title" aria-hidden="true">Random notes local planner.</div>
+  <div class="shell">
+    <div class="desktop-icons" aria-label="Desktop shortcuts">
+      <button class="desktop-icon planner-icon" type="button" data-open-window="planner" aria-label="Open Planner">
+        <img class="icon-art" src="assets/icons/planner.png" alt="" aria-hidden="true">
+        <span>Planner</span>
+      </button>
+      <button class="desktop-icon notes-icon" type="button" data-open-window="notes" aria-label="Open Notes">
+        <img class="icon-art" src="assets/icons/notes.png" alt="" aria-hidden="true">
+        <span>Notes</span>
+      </button>
+      <button class="desktop-icon readme-icon" type="button" data-open-window="readme" aria-label="Open README">
+        <img class="icon-art" src="assets/icons/readme.png" alt="" aria-hidden="true">
+        <span>README.txt</span>
+      </button>
+    </div>
+
+    <div class="surface-switch" role="tablist" aria-label="App sections">
+      <button class="surface-tab active" type="button" data-surface-target="planner" role="tab" aria-selected="true">Planner</button>
+      <button class="surface-tab" type="button" data-surface-target="notes" role="tab" aria-selected="false">Notes</button>
+      <button class="surface-tab" type="button" data-surface-target="readme" role="tab" aria-selected="false">README.txt</button>
+    </div>
+
+    <div class="desktop-grid">
+      <section class="app-window planner-window active-surface window-closed" data-surface="planner" aria-label="Planner app">
+        <div class="window-titlebar">
+          <span class="window-title"><span class="title-icon" aria-hidden="true"></span>Planner</span>
+          <div class="window-controls" aria-label="Planner window controls">
+            <button class="window-control minimize-control" type="button" data-window-action="minimize" data-window-target="planner" aria-label="Minimize Planner"></button>
+            <button class="window-control fullscreen-control" type="button" data-window-action="fullscreen" data-window-target="planner" aria-label="Full screen Planner"></button>
+            <button class="window-control close-control" type="button" data-window-action="close" data-window-target="planner" aria-label="Close Planner"></button>
+          </div>
+        </div>
+        <div class="window-body">
+          <aside class="sidebar daily-panel">
+            <div class="brand">
+              <h1>daily</h1>
+              <p>Plan dated work by today, week, and month.</p>
+            </div>
+
+            <form class="capture" id="task-form" aria-label="Add task">
+              <div>
+                <label class="field-label" for="task-title">Task</label>
+                <input class="text-input" id="task-title" type="text" maxlength="160" placeholder="Task to remember">
+              </div>
+              <div>
+                <label class="field-label" for="task-date">Date</label>
+                <input class="date-input" id="task-date" type="date">
+              </div>
+              <div>
+                <label class="field-label" for="task-body">Details</label>
+                <textarea class="body-input" id="task-body" maxlength="900" placeholder="Details for this task"></textarea>
+              </div>
+              <div class="form-actions">
+                <button class="add-btn" id="task-submit" type="submit">+ Add Task</button>
+                <button class="secondary-btn" id="task-cancel-edit" type="button" hidden>Cancel</button>
+              </div>
+            </form>
+          </aside>
+
+          <section class="content-panel todo-board" aria-live="polite">
+            <p class="todo-kicker">to do</p>
+            <div class="panel-head">
+              <div>
+                <h2 class="panel-title" id="view-title">Today</h2>
+                <p class="panel-sub" id="view-subtitle"></p>
+              </div>
+              <p class="count" id="task-count">0 tasks</p>
+            </div>
+            <div class="planner-controls">
+              <div class="mode-tabs" role="tablist" aria-label="Planner views">
+                <button class="mode-tab active" type="button" data-view="today" role="tab" aria-selected="true">Today</button>
+                <button class="mode-tab" type="button" data-view="week" role="tab" aria-selected="false">Week</button>
+                <button class="mode-tab" type="button" data-view="month" role="tab" aria-selected="false">Month</button>
+              </div>
+              <div class="task-filter-menu">
+                <button class="task-filter-toggle" id="task-filter-toggle" type="button" aria-label="Task status filter" aria-expanded="false" title="Task status filter">
+                  <span class="task-filter-icon all-icon" aria-hidden="true"></span>
+                </button>
+                <div class="task-filter-options" role="group" aria-label="Task status filter">
+                  <button class="task-filter active" type="button" data-task-filter="all" aria-pressed="true">All</button>
+                  <button class="task-filter" type="button" data-task-filter="open" aria-pressed="false">Open</button>
+                  <button class="task-filter" type="button" data-task-filter="done" aria-pressed="false">Done</button>
+                </div>
+              </div>
+            </div>
+            <section class="items-list" id="task-list" aria-label="Saved tasks"></section>
+          </section>
+        </div>
+      </section>
+
+      <section class="app-window notes-window window-closed" data-surface="notes" aria-label="Notes app">
+        <div class="window-titlebar">
+          <span class="window-title"><span class="title-icon" aria-hidden="true"></span>Notes</span>
+          <div class="window-controls" aria-label="Notes window controls">
+            <button class="window-control minimize-control" type="button" data-window-action="minimize" data-window-target="notes" aria-label="Minimize Notes"></button>
+            <button class="window-control fullscreen-control" type="button" data-window-action="fullscreen" data-window-target="notes" aria-label="Full screen Notes"></button>
+            <button class="window-control close-control" type="button" data-window-action="close" data-window-target="notes" aria-label="Close Notes"></button>
+          </div>
+        </div>
+        <div class="window-body">
+          <section class="content-panel" aria-live="polite">
+            <div class="brand">
+              <h1>notes</h1>
+              <p>Loose thoughts, scribbles, and ideas.</p>
+            </div>
+
+            <form class="capture notes-capture" id="note-form" aria-label="Add note">
+              <div>
+                <label class="field-label" for="note-body">body</label>
+                <textarea class="body-input" id="note-body" maxlength="1200" placeholder="Drop a thought, idea, reminder, or rough note"></textarea>
+              </div>
+              <button class="add-btn" type="submit">+ Add Note</button>
+            </form>
+
+            <section class="notes-archive" aria-label="Saved notes">
+              <div class="panel-head">
+                <div>
+                  <h2 class="panel-title">saved notes</h2>
+                  <p class="panel-sub">Not tied to a due date.</p>
+                </div>
+                <p class="count" id="note-count">0 notes</p>
+              </div>
+              <div class="note-tools" aria-label="Search and filter notes">
+                <label class="sr-only" for="note-search">Search notes</label>
+                <input class="text-input note-search" id="note-search" type="search" placeholder="Search notes">
+                <div class="note-filter-menu">
+                  <button class="note-filter-toggle" id="note-filter-toggle" type="button" aria-label="Filter notes by timeline" aria-expanded="false" aria-controls="note-filter-options">
+                    <span class="filter-icon" aria-hidden="true"></span>
+                    <span class="note-filter-label" id="note-filter-label">All</span>
+                  </button>
+                  <div class="note-filter-options" id="note-filter-options" role="menu" aria-label="Note timeline filters">
+                    <button class="note-filter active" type="button" data-note-filter="all" role="menuitemradio" aria-checked="true">All</button>
+                    <button class="note-filter" type="button" data-note-filter="today" role="menuitemradio" aria-checked="false">Today</button>
+                    <button class="note-filter" type="button" data-note-filter="week" role="menuitemradio" aria-checked="false">Week</button>
+                    <button class="note-filter" type="button" data-note-filter="month" role="menuitemradio" aria-checked="false">Month</button>
+                  </div>
+                </div>
+              </div>
+              <section class="items-list" id="note-list" aria-label="Saved notes"></section>
+            </section>
+          </section>
+        </div>
+      </section>
+
+      <section class="app-window readme-window window-closed" data-surface="readme" aria-label="README app">
+        <div class="window-titlebar">
+          <span class="window-title"><span class="title-icon" aria-hidden="true"></span>README.txt</span>
+          <div class="window-controls" aria-label="README window controls">
+            <button class="window-control minimize-control" type="button" data-window-action="minimize" data-window-target="readme" aria-label="Minimize README"></button>
+            <button class="window-control fullscreen-control" type="button" data-window-action="fullscreen" data-window-target="readme" aria-label="Full screen README"></button>
+            <button class="window-control close-control" type="button" data-window-action="close" data-window-target="readme" aria-label="Close README"></button>
+          </div>
+        </div>
+        <div class="window-body">
+          <section class="content-panel readme-panel" aria-live="polite">
+            <pre class="readme-text" id="readme-content"></pre>
+          </section>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<script>
+const STORAGE_KEY = "random_notes_v1";
+const WINDOW_POSITIONS_KEY = "random_notes_window_positions_v1";
+
+let items = [];
+let activeView = "today";
+let activeSurface = "planner";
+let noteQuery = "";
+let noteFilter = "all";
+let taskFilter = "all";
+let editingTaskId = null;
+let toastTimer = null;
+let windowPositions = {};
+let dragState = null;
+let windowZIndex = 10;
+const windowState = {
+  planner: { open: false, minimized: false, fullscreen: false },
+  notes: { open: false, minimized: false, fullscreen: false },
+  readme: { open: false, minimized: false, fullscreen: false }
+};
+
+const taskForm = document.getElementById("task-form");
+const taskTitleInput = document.getElementById("task-title");
+const taskBodyInput = document.getElementById("task-body");
+const taskDateInput = document.getElementById("task-date");
+const taskSubmitButton = document.getElementById("task-submit");
+const taskCancelEditButton = document.getElementById("task-cancel-edit");
+const taskFilterToggle = document.getElementById("task-filter-toggle");
+const noteForm = document.getElementById("note-form");
+const noteBodyInput = document.getElementById("note-body");
+const noteSearchInput = document.getElementById("note-search");
+const noteFilterToggle = document.getElementById("note-filter-toggle");
+const noteFilterLabel = document.getElementById("note-filter-label");
+const taskList = document.getElementById("task-list");
+const noteList = document.getElementById("note-list");
+const taskCountLabel = document.getElementById("task-count");
+const noteCountLabel = document.getElementById("note-count");
+const readmeContent = document.getElementById("readme-content");
+const viewTitle = document.getElementById("view-title");
+const viewSubtitle = document.getElementById("view-subtitle");
+const tabs = Array.from(document.querySelectorAll(".mode-tab"));
+const taskFilterButtons = Array.from(document.querySelectorAll(".task-filter"));
+const noteFilterButtons = Array.from(document.querySelectorAll(".note-filter"));
+const surfaceTabs = Array.from(document.querySelectorAll(".surface-tab"));
+const surfaces = Array.from(document.querySelectorAll("[data-surface]"));
+const desktopGrid = document.querySelector(".desktop-grid");
+const titlebars = Array.from(document.querySelectorAll(".window-titlebar"));
+const desktopIcons = Array.from(document.querySelectorAll("[data-open-window]"));
+const windowControls = Array.from(document.querySelectorAll("[data-window-action]"));
+
+loadItems();
+loadWindowPositions();
+taskDateInput.value = toDateInputValue(new Date());
+render();
+applyWindowPositions();
+setActiveSurface();
+setTaskFilter();
+
+taskForm.addEventListener("submit", event => {
+  event.preventDefault();
+  addTask();
+});
+
+taskCancelEditButton.addEventListener("click", () => {
+  clearTaskEditMode();
+  taskTitleInput.focus();
+});
+
+taskFilterToggle.addEventListener("click", () => {
+  const open = taskFilterToggle.getAttribute("aria-expanded") === "true";
+  setTaskFilterMenuOpen(!open);
+});
+
+noteForm.addEventListener("submit", event => {
+  event.preventDefault();
+  addNote();
+});
+
+noteSearchInput.addEventListener("input", () => {
+  noteQuery = noteSearchInput.value.trim().toLowerCase();
+  render();
+});
+
+noteFilterToggle.addEventListener("click", () => {
+  const open = noteFilterToggle.getAttribute("aria-expanded") === "true";
+  setNoteFilterMenuOpen(!open);
+});
+
+noteFilterButtons.forEach(button => {
+  button.addEventListener("click", () => {
+    noteFilter = button.dataset.noteFilter;
+    setNoteFilter();
+    setNoteFilterMenuOpen(false);
+    render();
+  });
+});
+
+document.addEventListener("click", event => {
+  if (event.target.closest(".task-filter-menu")) return;
+  if (event.target.closest(".note-filter-menu")) return;
+  setTaskFilterMenuOpen(false);
+  setNoteFilterMenuOpen(false);
+});
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape") {
+    setTaskFilterMenuOpen(false);
+    setNoteFilterMenuOpen(false);
+  }
+});
+
+tabs.forEach(button => {
+  button.addEventListener("click", () => {
+    activeView = button.dataset.view;
+    setActiveTab();
+    render();
+  });
+});
+
+taskFilterButtons.forEach(button => {
+  button.addEventListener("click", () => {
+    taskFilter = button.dataset.taskFilter;
+    setTaskFilter();
+    setTaskFilterMenuOpen(false);
+    render();
+  });
+});
+
+surfaceTabs.forEach(button => {
+  button.addEventListener("click", () => {
+    openWindow(button.dataset.surfaceTarget);
+  });
+});
+
+desktopIcons.forEach(button => {
+  button.addEventListener("click", () => {
+    openWindow(button.dataset.openWindow, true);
+  });
+});
+
+windowControls.forEach(button => {
+  button.addEventListener("click", () => {
+    handleWindowAction(button.dataset.windowTarget, button.dataset.windowAction);
+  });
+});
+
+titlebars.forEach(titlebar => {
+  titlebar.addEventListener("pointerdown", startWindowDrag);
+});
+
+surfaces.forEach(surface => {
+  surface.addEventListener("pointerdown", () => {
+    const name = surface.dataset.surface;
+    const state = windowState[name];
+    if (!state || !state.open || state.minimized) return;
+    activeSurface = name;
+    bringWindowForward(name);
+    setActiveSurface();
+  });
+});
+
+window.addEventListener("pointermove", moveWindowDrag);
+window.addEventListener("pointerup", endWindowDrag);
+window.addEventListener("pointercancel", endWindowDrag);
+window.addEventListener("resize", applyWindowPositions);
+
+function loadItems() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    items = Array.isArray(saved) ? saved.map(normalizeItem).filter(Boolean) : [];
+  } catch (error) {
+    items = [];
+    showToast("Could not read saved notes.");
+  }
+}
+
+function normalizeItem(item) {
+  if (!item || typeof item !== "object") return null;
+  const legacyTodo = "todo" in item || "note" in item;
+  if (legacyTodo) {
+    const hasTodo = Boolean(String(item.todo || "").trim());
+    return {
+      id: String(item.id || Date.now()),
+      type: hasTodo ? "task" : "note",
+      title: String((hasTodo ? item.todo : item.note) || "Untitled"),
+      body: hasTodo ? String(item.note || "") : "",
+      dueDate: hasTodo ? toDateInputValue(new Date(Number(item.ts) || Date.now())) : "",
+      done: Boolean(item.done),
+      createdAt: Number(item.ts) || Date.now(),
+      updatedAt: Number(item.ts) || Date.now()
+    };
+  }
+  return {
+    id: String(item.id || Date.now()),
+    type: item.type === "note" ? "note" : "task",
+    title: String(item.title || "Untitled"),
+    body: String(item.body || ""),
+    dueDate: item.type === "note" ? "" : String(item.dueDate || toDateInputValue(new Date())),
+    done: Boolean(item.done),
+    createdAt: Number(item.createdAt) || Date.now(),
+    updatedAt: Number(item.updatedAt) || Date.now()
+  };
+}
+
+function saveItems() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+}
+
+function loadWindowPositions() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(WINDOW_POSITIONS_KEY) || "{}");
+    windowPositions = saved && typeof saved === "object" ? saved : {};
+    windowZIndex = Object.values(windowPositions).reduce((highest, position) => {
+      const next = Number(position && position.zIndex) || 0;
+      return Math.max(highest, next);
+    }, windowZIndex);
+  } catch (error) {
+    windowPositions = {};
+  }
+}
+
+function saveWindowPositions() {
+  localStorage.setItem(WINDOW_POSITIONS_KEY, JSON.stringify(windowPositions));
+}
+
+function addTask() {
+  const title = taskTitleInput.value.trim();
+  const body = taskBodyInput.value.trim();
+
+  if (!title && !body) {
+    showToast("Write a task first.");
+    taskTitleInput.focus();
+    return;
+  }
+
+  if (editingTaskId) {
+    const targetId = editingTaskId;
+    items = items.map(item => item.id === targetId ? {
+      ...item,
+      title: title || body.split("\n")[0].slice(0, 80) || "Untitled",
+      body: title ? body : "",
+      dueDate: taskDateInput.value || toDateInputValue(new Date()),
+      updatedAt: Date.now()
+    } : item);
+  } else {
+    items.unshift({
+      id: String(Date.now()) + Math.random().toString(16).slice(2),
+      type: "task",
+      title: title || body.split("\n")[0].slice(0, 80) || "Untitled",
+      body: title ? body : "",
+      dueDate: taskDateInput.value || toDateInputValue(new Date()),
+      done: false,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    });
+  }
+
+  saveItems();
+  const wasEditing = Boolean(editingTaskId);
+  clearTaskEditMode();
+  render();
+  announce(wasEditing ? "Task updated." : "Task added.");
+  showToast(wasEditing ? "Task updated." : "Task added.");
+  taskTitleInput.focus();
+}
+
+function addNote() {
+  const body = noteBodyInput.value.trim();
+
+  if (!body) {
+    showToast("Write a note first.");
+    noteBodyInput.focus();
+    return;
+  }
+
+  items.unshift({
+    id: String(Date.now()) + Math.random().toString(16).slice(2),
+    type: "note",
+    title: makeNotePreview(body),
+    body,
+    dueDate: "",
+    done: false,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  });
+
+  saveItems();
+  noteBodyInput.value = "";
+  render();
+  announce("Note added.");
+  showToast("Note added.");
+  noteBodyInput.focus();
+}
+
+function render() {
+  const visibleTasks = getVisibleTasks();
+  const notes = items.filter(item => item.type === "note");
+  const visibleNotes = getVisibleNotes(notes);
+  taskList.innerHTML = "";
+  noteList.innerHTML = "";
+  viewTitle.textContent = getViewTitle();
+  viewSubtitle.textContent = getViewSubtitle();
+  taskCountLabel.textContent = getTaskCountText(visibleTasks);
+  noteCountLabel.textContent = getNoteCountText(visibleNotes.length, notes.length);
+  readmeContent.textContent = getReadmeText();
+
+  if (!visibleTasks.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.textContent = getEmptyText();
+    taskList.appendChild(empty);
+  } else if (activeView === "week" || activeView === "month") {
+    renderGroups(visibleTasks);
+  } else {
+    visibleTasks.forEach(item => taskList.appendChild(createCard(item)));
+  }
+
+  if (!notes.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.textContent = "No notes yet.";
+    noteList.appendChild(empty);
+    return;
+  }
+  if (!visibleNotes.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.textContent = "No notes match.";
+    noteList.appendChild(empty);
+    return;
+  }
+  visibleNotes.forEach(item => noteList.appendChild(createCard(item)));
+}
+
+function renderGroups(visible) {
+  const groups = new Map();
+  visible.forEach(item => {
+    const label = activeView === "week" ? formatWeekday(item.dueDate) : formatMonthDay(item.dueDate);
+    if (!groups.has(label)) groups.set(label, []);
+    groups.get(label).push(item);
+  });
+
+  groups.forEach((groupItems, label) => {
+    const group = document.createElement("div");
+    group.className = "group";
+    group.innerHTML = `<h3 class="group-title">${escapeHtml(label)} <span>${groupItems.length}</span></h3>`;
+    groupItems.forEach(item => group.appendChild(createCard(item)));
+    taskList.appendChild(group);
+  });
+}
+
+function createCard(item) {
+  const card = document.createElement("article");
+  card.className = `item-card ${item.done ? "done" : ""}`;
+  card.dataset.id = item.id;
+
+  if (item.type === "note") {
+    const noteText = item.body || item.title || "Untitled note";
+    const previewText = makeNotePreview(noteText);
+    const canExpandNote = isExpandableNote(noteText, previewText);
+    card.classList.add("note-card");
+    card.setAttribute("role", "group");
+    card.setAttribute("aria-label", "Note preview");
+    if (canExpandNote) {
+      card.tabIndex = 0;
+      card.setAttribute("aria-expanded", "false");
+    }
+    card.innerHTML = `
+      <div>
+        ${canExpandNote ? `<button class="note-collapse" type="button" aria-label="Close note preview" title="Close note preview"></button>` : ""}
+        <p class="note-preview">${escapeHtml(previewText)}</p>
+        ${canExpandNote ? `<p class="item-body note-text">${escapeHtml(noteText)}</p>` : ""}
+        <div class="item-meta note-meta">
+          <span>Note | ${escapeHtml(formatCreated(item.createdAt))} | </span>
+          ${canExpandNote ? `<button class="note-toggle" type="button" aria-label="Show full note" aria-expanded="false">Show more</button>` : `<span class="note-static">Full note shown</span>`}
+          <span class="actions note-actions">
+            <button class="icon-btn edit-btn" type="button" aria-label="Edit note" title="Edit note"><span class="action-icon edit-icon" aria-hidden="true"></span></button>
+            <button class="icon-btn delete-btn" type="button" aria-label="Delete note" title="Delete note"><span class="action-icon delete-icon" aria-hidden="true"></span></button>
+          </span>
+        </div>
+      </div>
+    `;
+
+    const togglePreview = () => {
+      const expanded = card.classList.toggle("expanded");
+      card.setAttribute("aria-expanded", String(expanded));
+      const toggleButton = card.querySelector(".note-toggle");
+      toggleButton.textContent = expanded ? "Show less" : "Show more";
+      toggleButton.setAttribute("aria-expanded", String(expanded));
+      toggleButton.setAttribute("aria-label", expanded ? "Hide full note" : "Show full note");
+      if (expanded) {
+        window.requestAnimationFrame(() => {
+          card.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        });
+      }
+    };
+    if (canExpandNote) {
+      card.addEventListener("click", event => {
+        if (event.target.closest("button")) return;
+        togglePreview();
+      });
+      card.addEventListener("keydown", event => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        if (event.target.closest("button")) return;
+        event.preventDefault();
+        togglePreview();
+      });
+      card.querySelector(".note-toggle").addEventListener("click", event => {
+        event.stopPropagation();
+        togglePreview();
+      });
+      card.querySelector(".note-collapse").addEventListener("click", event => {
+        event.stopPropagation();
+        if (card.classList.contains("expanded")) togglePreview();
+      });
+    }
+    card.querySelector(".edit-btn").addEventListener("click", () => editItem(item.id));
+    card.querySelector(".delete-btn").addEventListener("click", () => deleteItem(item.id));
+    return card;
+  }
+
+  card.classList.add("task-card");
+  if (item.body) {
+    card.tabIndex = 0;
+    card.setAttribute("role", "group");
+    card.setAttribute("aria-expanded", "false");
+    card.setAttribute("aria-label", `Task ${item.title}`);
+  }
+
+  const checkbox = `<input class="check" type="checkbox" ${item.done ? "checked" : ""} aria-label="Mark task as ${item.done ? "open" : "done"}">`;
+  const dateLabel = formatDateLabel(item.dueDate);
+
+  card.innerHTML = `
+    ${checkbox}
+    <div class="task-main">
+      <h3 class="item-title">${escapeHtml(item.title)}</h3>
+      ${item.body ? `<p class="item-body task-details">${escapeHtml(item.body)}</p>` : ""}
+      ${item.body ? `<button class="task-toggle" type="button" aria-label="Show task details" aria-expanded="false">Details</button>` : ""}
+    </div>
+    <p class="item-meta task-meta">
+      <span class="task-date">${escapeHtml(dateLabel)}</span>
+    </p>
+    <div class="actions">
+      <button class="icon-btn edit-btn" type="button" aria-label="Edit ${item.type}" title="Edit ${item.type}"><span class="action-icon edit-icon" aria-hidden="true"></span></button>
+      <button class="icon-btn delete-btn" type="button" aria-label="Delete ${item.type}" title="Delete ${item.type}"><span class="action-icon delete-icon" aria-hidden="true"></span></button>
+    </div>
+  `;
+
+  const toggleTaskDetails = () => {
+    if (!item.body) return;
+    const expanded = card.classList.toggle("expanded");
+    card.setAttribute("aria-expanded", String(expanded));
+    const toggleButton = card.querySelector(".task-toggle");
+    toggleButton.textContent = expanded ? "Hide" : "Details";
+    toggleButton.setAttribute("aria-expanded", String(expanded));
+    toggleButton.setAttribute("aria-label", expanded ? "Hide task details" : "Show task details");
+  };
+
+  if (item.body) {
+    card.addEventListener("click", event => {
+      if (event.target.closest("button, input")) return;
+      toggleTaskDetails();
+    });
+    card.addEventListener("keydown", event => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      if (event.target.closest("button, input")) return;
+      event.preventDefault();
+      toggleTaskDetails();
+    });
+    card.querySelector(".task-toggle").addEventListener("click", event => {
+      event.stopPropagation();
+      toggleTaskDetails();
+    });
+  }
+
+  const check = card.querySelector(".check");
+  if (check) check.addEventListener("change", () => toggleDone(item.id, check.checked));
+  card.querySelector(".edit-btn").addEventListener("click", () => editItem(item.id));
+  card.querySelector(".delete-btn").addEventListener("click", () => deleteItem(item.id));
+  return card;
+}
+
+function getVisibleTasks() {
+  const now = new Date();
+  const tasks = items
+    .filter(item => item.type === "task")
+    .filter(item => {
+      if (taskFilter === "open") return !item.done;
+      if (taskFilter === "done") return item.done;
+      return true;
+    })
+    .sort((a, b) => {
+      if (a.done !== b.done) return a.done ? 1 : -1;
+      const dateSort = String(a.dueDate || "").localeCompare(String(b.dueDate || ""));
+      if (dateSort) return dateSort;
+      return Number(b.createdAt) - Number(a.createdAt);
+    });
+  if (activeView === "today") return tasks.filter(item => item.dueDate === toDateInputValue(now));
+  if (activeView === "week") return tasks.filter(item => isSameWeek(parseLocalDate(item.dueDate), now));
+  if (activeView === "month") return tasks.filter(item => isSameMonth(parseLocalDate(item.dueDate), now));
+  return tasks;
+}
+
+function getVisibleNotes(notes) {
+  const now = new Date();
+  return notes.filter(item => {
+    const created = new Date(Number(item.createdAt) || Date.now());
+    const matchesDate =
+      noteFilter === "all" ||
+      (noteFilter === "today" && toDateInputValue(created) === toDateInputValue(now)) ||
+      (noteFilter === "week" && isSameWeek(created, now)) ||
+      (noteFilter === "month" && isSameMonth(created, now));
+    if (!matchesDate) return false;
+    if (!noteQuery) return true;
+    return `${item.title || ""} ${item.body || ""}`.toLowerCase().includes(noteQuery);
+  });
+}
+
+function getNoteCountText(visible, total) {
+  const label = total === 1 ? "note" : "notes";
+  if (visible === total) return `${total} ${label}`;
+  return `${visible} of ${total} ${label}`;
+}
+
+function toggleDone(id, done) {
+  items = items.map(item => item.id === id ? { ...item, done, updatedAt: Date.now() } : item);
+  saveItems();
+  render();
+  announce(done ? "Task completed." : "Task reopened.");
+  showToast(done ? "Task completed." : "Task reopened.");
+}
+
+function editItem(id) {
+  const item = items.find(entry => entry.id === id);
+  if (!item) return;
+  if (item.type === "note") {
+    openWindow("notes");
+    noteBodyInput.value = item.body || item.title;
+  } else {
+    openWindow("planner");
+    activeView = "today";
+    setActiveTab();
+    setTaskEditMode(item);
+    render();
+    taskTitleInput.focus();
+    announce("Task ready to edit.");
+    showToast("Editing task.");
+    return;
+  }
+  items = items.filter(entry => entry.id !== id);
+  saveItems();
+  render();
+  (item.type === "note" ? noteBodyInput : taskTitleInput).focus();
+  announce(`${item.type === "note" ? "Note" : "Task"} ready to edit.`);
+  showToast("Edit it, then add again.");
+}
+
+function deleteItem(id) {
+  const item = items.find(entry => entry.id === id);
+  const confirmed = window.confirm(`Delete this ${item && item.type === "note" ? "note" : "task"}? This cannot be undone.`);
+  if (!confirmed) {
+    showToast("Item kept.");
+    return;
+  }
+  items = items.filter(entry => entry.id !== id);
+  saveItems();
+  render();
+  announce("Item deleted.");
+  showToast("Item deleted.");
+}
+
+function setActiveTab() {
+  tabs.forEach(tab => {
+    const isActive = tab.dataset.view === activeView;
+    tab.classList.toggle("active", isActive);
+    tab.setAttribute("aria-selected", String(isActive));
+  });
+}
+
+function setNoteFilter() {
+  noteFilterButtons.forEach(button => {
+    const isActive = button.dataset.noteFilter === noteFilter;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-checked", String(isActive));
+  });
+  noteFilterLabel.textContent = capitalize(noteFilter);
+}
+
+function setTaskFilter() {
+  taskFilterButtons.forEach(button => {
+    const isActive = button.dataset.taskFilter === taskFilter;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", String(isActive));
+  });
+  const icon = taskFilterToggle.querySelector(".task-filter-icon");
+  icon.className = `task-filter-icon ${taskFilter === "done" ? "done-icon" : taskFilter === "open" ? "open-icon" : "all-icon"}`;
+}
+
+function setTaskEditMode(item) {
+  editingTaskId = item.id;
+  taskTitleInput.value = item.title;
+  taskBodyInput.value = item.body;
+  taskDateInput.value = item.dueDate || toDateInputValue(new Date());
+  taskSubmitButton.textContent = "Update Task";
+  taskForm.setAttribute("aria-label", "Edit task");
+  taskCancelEditButton.hidden = false;
+}
+
+function clearTaskEditMode() {
+  editingTaskId = null;
+  taskTitleInput.value = "";
+  taskBodyInput.value = "";
+  taskDateInput.value = taskDateInput.value || toDateInputValue(new Date());
+  taskSubmitButton.textContent = "+ Add Task";
+  taskForm.setAttribute("aria-label", "Add task");
+  taskCancelEditButton.hidden = true;
+}
+
+function setNoteFilterMenuOpen(open) {
+  noteFilterToggle.setAttribute("aria-expanded", String(open));
+}
+
+function setTaskFilterMenuOpen(open) {
+  taskFilterToggle.setAttribute("aria-expanded", String(open));
+}
+
+function canDragWindows() {
+  return window.matchMedia("(min-width: 781px)").matches;
+}
+
+function getWindowWidthLimit(name) {
+  const viewportLimit = Math.max(0, window.innerWidth - 32);
+  const gridLimit = desktopGrid.clientWidth || viewportLimit;
+  const designLimit = {
+    planner: 720,
+    notes: 520,
+    readme: 520
+  }[name] || viewportLimit;
+  return Math.min(viewportLimit, gridLimit, designLimit);
+}
+
+function applyWindowPositions() {
+  surfaces.forEach(surface => {
+    if (!canDragWindows()) {
+      surface.classList.remove("window-dragged");
+      surface.style.left = "";
+      surface.style.top = "";
+      surface.style.width = "";
+      surface.style.zIndex = "";
+      return;
+    }
+
+    const position = windowPositions[surface.dataset.surface];
+    if (!position) return;
+    const name = surface.dataset.surface;
+    const savedWidth = Number(position.width) || surface.getBoundingClientRect().width;
+    const width = Math.min(savedWidth, getWindowWidthLimit(name));
+    surface.classList.add("window-dragged");
+    surface.style.left = `${position.left}px`;
+    surface.style.top = `${position.top}px`;
+    surface.style.width = `${width}px`;
+    if (position.zIndex) surface.style.zIndex = position.zIndex;
+    if (width !== savedWidth) {
+      windowPositions[name] = { ...position, width };
+      saveWindowPositions();
+    }
+    keepWindowInView(name);
+  });
+}
+
+function bringWindowForward(name) {
+  if (!canDragWindows()) return;
+  const surface = surfaces.find(item => item.dataset.surface === name);
+  if (!surface) return;
+  const nextZIndex = String(++windowZIndex);
+  surface.style.zIndex = nextZIndex;
+  if (windowPositions[name]) {
+    windowPositions[name].zIndex = nextZIndex;
+    saveWindowPositions();
+  }
+}
+
+function keepWindowInView(name) {
+  if (!canDragWindows()) return;
+  const surface = surfaces.find(item => item.dataset.surface === name);
+  if (!surface || surface.classList.contains("window-closed")) return;
+
+  const gridRect = desktopGrid.getBoundingClientRect();
+  const rect = surface.getBoundingClientRect();
+  const minVisible = 120;
+  const currentWidth = Number.parseFloat(surface.style.width) || rect.width;
+  const width = Math.min(currentWidth, getWindowWidthLimit(name));
+  const maxLeft = Math.max(0, window.innerWidth - gridRect.left - minVisible);
+  const minTop = Math.min(0, 8 - gridRect.top);
+  const maxTop = Math.max(minTop, window.innerHeight - gridRect.top - minVisible);
+  const currentLeft = Number.parseFloat(surface.style.left) || rect.left - gridRect.left;
+  const currentTop = Number.parseFloat(surface.style.top) || rect.top - gridRect.top;
+  const isMostlyOutOfView =
+    rect.right < gridRect.left + minVisible ||
+    rect.left > window.innerWidth - minVisible ||
+    rect.bottom < gridRect.top + 34 ||
+    rect.top > window.innerHeight - minVisible;
+  const defaultLeft = {
+    planner: 0,
+    notes: Math.max(0, window.innerWidth - gridRect.left - width - 24),
+    readme: Math.max(0, Math.min(180, window.innerWidth - gridRect.left - width - 24))
+  }[name] || 0;
+  const defaultTop = {
+    planner: 0,
+    notes: 28,
+    readme: 28
+  }[name] || 0;
+  const left = isMostlyOutOfView ? clamp(defaultLeft, 0, maxLeft) : clamp(currentLeft, 0, maxLeft);
+  const top = isMostlyOutOfView ? clamp(defaultTop, minTop, maxTop) : clamp(currentTop, minTop, maxTop);
+
+  if (!isMostlyOutOfView && left === currentLeft && top === currentTop && width === currentWidth) return;
+
+  surface.classList.add("window-dragged");
+  surface.style.left = `${left}px`;
+  surface.style.top = `${top}px`;
+  surface.style.width = `${width}px`;
+  windowPositions[name] = {
+    left,
+    top,
+    width,
+    zIndex: surface.style.zIndex
+  };
+  saveWindowPositions();
+}
+
+function startWindowDrag(event) {
+  if (!canDragWindows()) return;
+  if (event.button !== 0) return;
+  if (event.target.closest(".window-controls")) return;
+
+  const surface = event.currentTarget.closest("[data-surface]");
+  if (!surface || surface.classList.contains("window-fullscreen")) return;
+  const name = surface.dataset.surface;
+  const state = windowState[name];
+  if (!state || !state.open || state.minimized) return;
+
+  const gridRect = desktopGrid.getBoundingClientRect();
+  const rect = surface.getBoundingClientRect();
+  const left = rect.left - gridRect.left;
+  const top = rect.top - gridRect.top;
+  const width = Math.min(rect.width, getWindowWidthLimit(name));
+
+  surface.classList.add("window-dragged", "is-dragging");
+  surface.style.left = `${left}px`;
+  surface.style.top = `${top}px`;
+  surface.style.width = `${width}px`;
+  surface.setPointerCapture(event.pointerId);
+
+  activeSurface = name;
+  bringWindowForward(name);
+  setActiveSurface();
+  dragState = {
+    pointerId: event.pointerId,
+    surface,
+    name,
+    offsetX: event.clientX - rect.left,
+    offsetY: event.clientY - rect.top,
+    width
+  };
+  event.preventDefault();
+}
+
+function moveWindowDrag(event) {
+  if (!dragState || event.pointerId !== dragState.pointerId) return;
+  const gridRect = desktopGrid.getBoundingClientRect();
+  const rect = dragState.surface.getBoundingClientRect();
+  const maxLeft = Math.max(0, desktopGrid.clientWidth - rect.width);
+  const minTop = Math.min(0, 8 - gridRect.top);
+  const maxTop = Math.max(minTop, window.innerHeight - gridRect.top - 34);
+  const left = clamp(event.clientX - gridRect.left - dragState.offsetX, 0, maxLeft);
+  const top = clamp(event.clientY - gridRect.top - dragState.offsetY, minTop, maxTop);
+  dragState.surface.style.left = `${left}px`;
+  dragState.surface.style.top = `${top}px`;
+}
+
+function endWindowDrag(event) {
+  if (!dragState || event.pointerId !== dragState.pointerId) return;
+  const surface = dragState.surface;
+  const left = Number.parseFloat(surface.style.left) || 0;
+  const top = Number.parseFloat(surface.style.top) || 0;
+  windowPositions[dragState.name] = {
+    left,
+    top,
+    width: dragState.width,
+    zIndex: surface.style.zIndex
+  };
+  saveWindowPositions();
+  surface.classList.remove("is-dragging");
+  if (surface.hasPointerCapture(event.pointerId)) surface.releasePointerCapture(event.pointerId);
+  dragState = null;
+}
+
+function setActiveSurface() {
+  if (!windowState[activeSurface].open || windowState[activeSurface].minimized) {
+    const fallback = Object.keys(windowState).find(key => windowState[key].open && !windowState[key].minimized);
+    if (fallback) activeSurface = fallback;
+  }
+
+  surfaceTabs.forEach(tab => {
+    const isActive = tab.dataset.surfaceTarget === activeSurface;
+    const state = windowState[tab.dataset.surfaceTarget];
+    tab.classList.toggle("active", isActive);
+    tab.classList.toggle("minimized", state.minimized);
+    tab.setAttribute("aria-selected", String(isActive));
+    tab.title = `${tab.textContent} ${state.minimized ? "minimized" : state.open ? "open" : "closed"}`;
+  });
+  surfaces.forEach(surface => {
+    const name = surface.dataset.surface;
+    const state = windowState[name];
+    surface.classList.toggle("active-surface", name === activeSurface);
+    surface.classList.toggle("window-closed", !state.open);
+    surface.classList.toggle("window-minimized", state.minimized);
+    surface.classList.toggle("window-fullscreen", state.fullscreen);
+    surface.classList.toggle("launching", Boolean(state.launching));
+    surface.setAttribute("aria-hidden", String(!state.open || state.minimized));
+  });
+
+  document.body.classList.toggle("has-fullscreen-window", Object.values(windowState).some(state => state.fullscreen && state.open && !state.minimized));
+}
+
+function openWindow(name, animate = false) {
+  const state = windowState[name];
+  if (!state) return;
+  Object.keys(windowState).forEach(key => {
+    if (key !== name) windowState[key].fullscreen = false;
+  });
+  state.open = true;
+  state.minimized = false;
+  activeSurface = name;
+  setActiveSurface();
+  keepWindowInView(name);
+  bringWindowForward(name);
+  if (animate) {
+    state.launching = true;
+    setActiveSurface();
+    window.setTimeout(() => {
+      state.launching = false;
+      setActiveSurface();
+    }, 110);
+  }
+  announce(`${capitalize(name)} opened.`);
+}
+
+function handleWindowAction(name, action) {
+  const state = windowState[name];
+  if (!state) return;
+
+  if (action === "minimize") {
+    state.minimized = true;
+    state.fullscreen = false;
+    showToast(`${capitalize(name)} minimized.`);
+  }
+
+  if (action === "close") {
+    state.open = false;
+    state.minimized = false;
+    state.fullscreen = false;
+    showToast(`${capitalize(name)} closed.`);
+  }
+
+  if (action === "fullscreen") {
+    state.fullscreen = !state.fullscreen;
+    state.minimized = false;
+    state.open = true;
+    activeSurface = name;
+    bringWindowForward(name);
+    Object.keys(windowState).forEach(key => {
+      if (key !== name) windowState[key].fullscreen = false;
+    });
+    showToast(state.fullscreen ? `${capitalize(name)} full screen.` : `${capitalize(name)} restored.`);
+  }
+
+  setActiveSurface();
+  announce(`${capitalize(name)} ${action}.`);
+}
+
+function capitalize(value) {
+  return String(value || "").charAt(0).toUpperCase() + String(value || "").slice(1);
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function getViewTitle() {
+  if (activeView === "week") return "This Week";
+  if (activeView === "month") return "This Month";
+  return "Today";
+}
+
+function getViewSubtitle() {
+  if (activeView === "week") return "Tasks due from Monday through Sunday.";
+  if (activeView === "month") return "Everything due this month, grouped by day.";
+  return new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric" }).format(new Date());
+}
+
+function getTaskCountText(visible) {
+  const open = visible.filter(item => !item.done).length;
+  return `${visible.length} ${visible.length === 1 ? "task" : "tasks"} | ${open} open`;
+}
+
+function getReadmeText() {
+  const today = toDateInputValue(new Date());
+  const limit = 5;
+  const tasks = items
+    .filter(item => item.type === "task")
+    .slice()
+    .sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)) || Number(a.createdAt) - Number(b.createdAt));
+  const todayTasks = tasks.filter(item => item.dueDate === today);
+  const todayOpen = todayTasks.filter(item => !item.done);
+  const todayDone = todayTasks.filter(item => item.done);
+  const overdue = tasks.filter(item => item.dueDate < today && !item.done);
+  const weekOpen = tasks.filter(item => !item.done && isSameWeek(parseLocalDate(item.dueDate), new Date()));
+  const notes = items.filter(item => item.type === "note");
+  const lines = [
+    "README.txt",
+    "",
+    "DAILY TO DO",
+    formatDateLabel(today),
+    ""
+  ];
+
+  if (todayOpen.length) {
+    todayOpen.slice(0, limit).forEach(item => lines.push(`[ ] ${item.title}`));
+    if (todayOpen.length > limit) lines.push(`... ${todayOpen.length - limit} more in Planner`);
+  } else {
+    lines.push("No open tasks for today.");
+  }
+
+  if (todayDone.length) {
+    lines.push("");
+    lines.push("DONE");
+    todayDone.slice(0, limit).forEach(item => lines.push(`[x] ${item.title}`));
+    if (todayDone.length > limit) lines.push(`... ${todayDone.length - limit} more done`);
+  }
+
+  lines.push("");
+  lines.push("OVERDUE");
+  if (overdue.length) {
+    overdue.slice(0, limit).forEach(item => lines.push(`[ ] ${item.title} (${formatDateLabel(item.dueDate)})`));
+    if (overdue.length > limit) lines.push(`... ${overdue.length - limit} more in Planner`);
+  } else {
+    lines.push("Nothing overdue.");
+  }
+
+  lines.push("");
+  lines.push(`Today: ${todayTasks.length} tasks, ${todayOpen.length} open`);
+  lines.push(`Week: ${weekOpen.length} open | Notes: ${notes.length}`);
+  lines.push("");
+  lines.push("Edit tasks in Planner.");
+
+  return lines.join("\n");
+}
+
+function getEmptyText() {
+  if (taskFilter === "open") return "No open tasks in this view.";
+  if (taskFilter === "done") return "No completed tasks in this view.";
+  if (activeView === "week") return "No tasks planned for this week.";
+  if (activeView === "month") return "No tasks planned for this month.";
+  return "No tasks for today.";
+}
+
+function makeNotePreview(body) {
+  const compact = String(body || "").replace(/\s+/g, " ").trim();
+  return compact.slice(0, 80) || "Untitled note";
+}
+
+function isExpandableNote(body, preview) {
+  const compact = String(body || "").replace(/\s+/g, " ").trim();
+  return compact.length > String(preview || "").length || String(body || "").trim().includes("\n");
+}
+
+function toDateInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseLocalDate(value) {
+  const [year, month, day] = String(value || toDateInputValue(new Date())).split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function startOfWeek(date) {
+  const copy = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const day = copy.getDay() || 7;
+  copy.setDate(copy.getDate() - day + 1);
+  return copy;
+}
+
+function isSameWeek(a, b) {
+  return toDateInputValue(startOfWeek(a)) === toDateInputValue(startOfWeek(b));
+}
+
+function isSameMonth(a, b) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth();
+}
+
+function formatWeekday(value) {
+  return new Intl.DateTimeFormat(undefined, { weekday: "long", month: "short", day: "numeric" }).format(parseLocalDate(value));
+}
+
+function formatMonthDay(value) {
+  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(parseLocalDate(value));
+}
+
+function formatDateLabel(value) {
+  return new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric" }).format(parseLocalDate(value));
+}
+
+function formatCreated(ts) {
+  return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(ts));
+}
+
+function showToast(message) {
+  const toast = document.getElementById("toast");
+  clearTimeout(toastTimer);
+  toast.textContent = message;
+  toast.classList.add("show");
+  toastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
+}
+
+function announce(message) {
+  const status = document.getElementById("sr-status");
+  status.textContent = "";
+  setTimeout(() => { status.textContent = message; }, 40);
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+</script>
+</body>
+</html>
