@@ -19,7 +19,7 @@
 <meta name="twitter:description" content="A private local planner for tasks and quick thoughts.">
 <meta name="twitter:image" content="bg-2.jpg">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="styles.css?v=planner-filter-menu-20260617">
+<link rel="stylesheet" href="styles.css?v=draggable-desktop-icons-20260619">
 </head>
 <body>
 <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -195,6 +195,7 @@
 <script>
 const STORAGE_KEY = "random_notes_v1";
 const WINDOW_POSITIONS_KEY = "random_notes_window_positions_v1";
+const ICON_POSITIONS_KEY = "random_notes_icon_positions_v1";
 
 let items = [];
 let activeView = "today";
@@ -205,7 +206,9 @@ let taskFilter = "all";
 let editingTaskId = null;
 let toastTimer = null;
 let windowPositions = {};
+let iconPositions = {};
 let dragState = null;
+let iconDragState = null;
 let windowZIndex = 10;
 const windowState = {
   planner: { open: false, minimized: false, fullscreen: false },
@@ -244,9 +247,11 @@ const windowControls = Array.from(document.querySelectorAll("[data-window-action
 
 loadItems();
 loadWindowPositions();
+loadIconPositions();
 taskDateInput.value = toDateInputValue(new Date());
 render();
 applyWindowPositions();
+applyIconPositions();
 setActiveSurface();
 setTaskFilter();
 
@@ -328,8 +333,13 @@ surfaceTabs.forEach(button => {
 
 desktopIcons.forEach(button => {
   button.addEventListener("click", () => {
+    if (button.dataset.dragged === "true") {
+      delete button.dataset.dragged;
+      return;
+    }
     openWindow(button.dataset.openWindow, true);
   });
+  button.addEventListener("pointerdown", startIconDrag);
 });
 
 windowControls.forEach(button => {
@@ -354,9 +364,15 @@ surfaces.forEach(surface => {
 });
 
 window.addEventListener("pointermove", moveWindowDrag);
+window.addEventListener("pointermove", moveIconDrag);
 window.addEventListener("pointerup", endWindowDrag);
+window.addEventListener("pointerup", endIconDrag);
 window.addEventListener("pointercancel", endWindowDrag);
-window.addEventListener("resize", applyWindowPositions);
+window.addEventListener("pointercancel", endIconDrag);
+window.addEventListener("resize", () => {
+  applyWindowPositions();
+  applyIconPositions();
+});
 
 function loadItems() {
   try {
@@ -415,6 +431,19 @@ function loadWindowPositions() {
 
 function saveWindowPositions() {
   localStorage.setItem(WINDOW_POSITIONS_KEY, JSON.stringify(windowPositions));
+}
+
+function loadIconPositions() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(ICON_POSITIONS_KEY) || "{}");
+    iconPositions = saved && typeof saved === "object" ? saved : {};
+  } catch (error) {
+    iconPositions = {};
+  }
+}
+
+function saveIconPositions() {
+  localStorage.setItem(ICON_POSITIONS_KEY, JSON.stringify(iconPositions));
 }
 
 function addTask() {
@@ -822,6 +851,40 @@ function canDragWindows() {
   return window.matchMedia("(min-width: 781px)").matches;
 }
 
+function getIconBounds(icon) {
+  const width = icon.offsetWidth || 88;
+  const height = icon.offsetHeight || 86;
+  return {
+    maxLeft: Math.max(0, window.innerWidth - width),
+    maxTop: Math.max(0, window.innerHeight - 28 - height)
+  };
+}
+
+function applyIconPositions() {
+  desktopIcons.forEach(icon => {
+    if (!canDragWindows()) {
+      icon.classList.remove("icon-dragged", "is-dragging");
+      icon.style.left = "";
+      icon.style.top = "";
+      return;
+    }
+
+    const name = icon.dataset.openWindow;
+    const position = iconPositions[name];
+    if (!position) return;
+    const bounds = getIconBounds(icon);
+    const left = clamp(Number(position.left) || 0, 0, bounds.maxLeft);
+    const top = clamp(Number(position.top) || 0, 0, bounds.maxTop);
+    icon.classList.add("icon-dragged");
+    icon.style.left = `${left}px`;
+    icon.style.top = `${top}px`;
+    if (left !== position.left || top !== position.top) {
+      iconPositions[name] = { left, top };
+      saveIconPositions();
+    }
+  });
+}
+
 function getWindowWidthLimit(name) {
   const viewportLimit = Math.max(0, window.innerWidth - 32);
   const gridLimit = desktopGrid.clientWidth || viewportLimit;
@@ -987,6 +1050,58 @@ function endWindowDrag(event) {
   surface.classList.remove("is-dragging");
   if (surface.hasPointerCapture(event.pointerId)) surface.releasePointerCapture(event.pointerId);
   dragState = null;
+}
+
+function startIconDrag(event) {
+  if (!canDragWindows()) return;
+  if (event.button !== 0) return;
+  event.preventDefault();
+
+  const icon = event.currentTarget;
+  const rect = icon.getBoundingClientRect();
+  icon.classList.add("icon-dragged", "is-dragging");
+  icon.style.left = `${rect.left}px`;
+  icon.style.top = `${rect.top}px`;
+  icon.setPointerCapture(event.pointerId);
+
+  iconDragState = {
+    pointerId: event.pointerId,
+    icon,
+    name: icon.dataset.openWindow,
+    offsetX: event.clientX - rect.left,
+    offsetY: event.clientY - rect.top,
+    startX: event.clientX,
+    startY: event.clientY,
+    moved: false
+  };
+}
+
+function moveIconDrag(event) {
+  if (!iconDragState || event.pointerId !== iconDragState.pointerId) return;
+  const bounds = getIconBounds(iconDragState.icon);
+  const left = clamp(event.clientX - iconDragState.offsetX, 0, bounds.maxLeft);
+  const top = clamp(event.clientY - iconDragState.offsetY, 0, bounds.maxTop);
+  const movedX = Math.abs(event.clientX - iconDragState.startX);
+  const movedY = Math.abs(event.clientY - iconDragState.startY);
+  if (movedX > 4 || movedY > 4) iconDragState.moved = true;
+  iconDragState.icon.style.left = `${left}px`;
+  iconDragState.icon.style.top = `${top}px`;
+  if (iconDragState.moved) event.preventDefault();
+}
+
+function endIconDrag(event) {
+  if (!iconDragState || event.pointerId !== iconDragState.pointerId) return;
+  const icon = iconDragState.icon;
+  const left = Number.parseFloat(icon.style.left) || 0;
+  const top = Number.parseFloat(icon.style.top) || 0;
+  if (iconDragState.moved) {
+    icon.dataset.dragged = "true";
+    iconPositions[iconDragState.name] = { left, top };
+    saveIconPositions();
+  }
+  icon.classList.remove("is-dragging");
+  if (icon.hasPointerCapture(event.pointerId)) icon.releasePointerCapture(event.pointerId);
+  iconDragState = null;
 }
 
 function setActiveSurface() {

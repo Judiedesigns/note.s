@@ -461,6 +461,34 @@ test("desktop icons recover windows from stale offscreen positions", async ({ pa
   expect(result.frontWindow).toBe("notes");
 });
 
+test("desktop icons can be dragged and keep their position", async ({ page }) => {
+  const viewport = page.viewportSize();
+  if (viewport && viewport.width <= 780) test.skip();
+
+  const plannerIcon = page.getByRole("button", { name: "Open Planner" });
+  const before = await plannerIcon.boundingBox();
+  expect(before).toBeTruthy();
+
+  await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(before.x + before.width / 2 + 96, before.y + before.height / 2 + 72, { steps: 4 });
+  await page.mouse.up();
+
+  const after = await plannerIcon.boundingBox();
+  expect(after.x).toBeGreaterThan(before.x + 80);
+  expect(after.y).toBeGreaterThan(before.y + 56);
+  await expect(page.getByLabel("Planner app")).toBeHidden();
+
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("random_notes_icon_positions_v1")));
+  expect(saved.planner.left).toBeCloseTo(after.x, 1);
+  expect(saved.planner.top).toBeCloseTo(after.y, 1);
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  const restored = await plannerIcon.boundingBox();
+  expect(restored.x).toBeCloseTo(after.x, 1);
+  expect(restored.y).toBeCloseTo(after.y, 1);
+});
+
 test("desktop windows can be dragged and keep their position", async ({ page }) => {
   const viewport = page.viewportSize();
   if (viewport && viewport.width <= 780) test.skip();

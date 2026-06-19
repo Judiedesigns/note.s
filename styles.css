@@ -125,6 +125,7 @@ button { cursor: pointer; }
   pointer-events: auto;
   text-align: center;
   text-shadow: 1px 1px 0 #003a86;
+  touch-action: none;
 }
 
 .desktop-icon:hover,
@@ -132,6 +133,16 @@ button { cursor: pointer; }
   border-color: rgba(255, 255, 255, 0.9);
   background: rgba(0, 46, 122, 0.22);
   outline: 0;
+}
+
+.desktop-icon.icon-dragged {
+  right: auto;
+  bottom: auto;
+}
+
+.desktop-icon.is-dragging {
+  cursor: grabbing;
+  user-select: none;
 }
 
 .icon-art {
@@ -143,18 +154,18 @@ button { cursor: pointer; }
 }
 
 .planner-icon {
-  top: 2.3rem;
-  left: 64vw;
+  top: clamp(7rem, 14vh, 7.8rem);
+  left: clamp(32rem, 52vw, 47rem);
 }
 
 .notes-icon {
-  top: 2.3rem;
-  left: 74vw;
+  top: clamp(12.8rem, 26vh, 14.2rem);
+  left: clamp(27rem, 44vw, 39rem);
 }
 
 .readme-icon {
-  top: 2.3rem;
-  left: 84vw;
+  top: clamp(7rem, 14vh, 7.8rem);
+  left: clamp(18rem, 30vw, 27rem);
 }
 
 .desktop-grid {
@@ -167,7 +178,7 @@ button { cursor: pointer; }
   align-items: start;
   justify-content: start;
   min-height: 34rem;
-  margin-top: 10.2rem;
+  margin-top: 15rem;
   pointer-events: none;
 }
 
