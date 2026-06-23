@@ -394,6 +394,7 @@ button { cursor: pointer; }
 .mode-tab,
 .task-filter-toggle,
 .task-filter,
+.calendar-export-btn,
 .note-filter-toggle,
 .note-filter,
 .add-btn,
@@ -412,6 +413,7 @@ button { cursor: pointer; }
 .mode-tab:active,
 .task-filter-toggle:active,
 .task-filter:active,
+.calendar-export-btn:active,
 .note-filter-toggle:active,
 .note-filter:active,
 .add-btn:active,
@@ -508,7 +510,7 @@ button { cursor: pointer; }
 
 .planner-controls {
   display: grid;
-  grid-template-columns: max-content 26px;
+  grid-template-columns: max-content max-content;
   align-self: flex-start;
   align-items: center;
   justify-content: space-between;
@@ -537,6 +539,51 @@ button { cursor: pointer; }
 .mode-tab.active {
   background: var(--title);
   color: #fff;
+}
+
+.planner-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.24rem;
+}
+
+.calendar-export-btn {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+}
+
+.calendar-export-icon {
+  position: relative;
+  display: block;
+  width: 15px;
+  height: 15px;
+  border: 1px solid #111;
+  background:
+    linear-gradient(#111, #111) 3px 6px / 9px 1px no-repeat,
+    linear-gradient(#111, #111) 3px 9px / 6px 1px no-repeat,
+    linear-gradient(#fff, #fff) 0 4px / 100% 11px no-repeat,
+    #fff45c;
+}
+
+.calendar-export-icon::before,
+.calendar-export-icon::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  width: 3px;
+  height: 5px;
+  border: 1px solid #111;
+  background: #0b73f6;
+}
+
+.calendar-export-icon::before {
+  left: 2px;
+}
+
+.calendar-export-icon::after {
+  right: 2px;
 }
 
 .task-filter-menu {

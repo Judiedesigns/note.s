@@ -19,7 +19,7 @@
 <meta name="twitter:description" content="A private local planner for tasks and quick thoughts.">
 <meta name="twitter:image" content="bg-2.jpg">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="styles.css?v=draggable-desktop-icons-20260619">
+<link rel="stylesheet" href="styles.css?v=calendar-export-20260623">
 </head>
 <body>
 <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -101,14 +101,19 @@
                 <button class="mode-tab" type="button" data-view="week" role="tab" aria-selected="false">Week</button>
                 <button class="mode-tab" type="button" data-view="month" role="tab" aria-selected="false">Month</button>
               </div>
-              <div class="task-filter-menu">
-                <button class="task-filter-toggle" id="task-filter-toggle" type="button" aria-label="Task status filter" aria-expanded="false" title="Task status filter">
-                  <span class="task-filter-icon all-icon" aria-hidden="true"></span>
+              <div class="planner-tools">
+                <button class="calendar-export-btn" id="calendar-export" type="button" aria-label="Export tasks to calendar" title="Export tasks to calendar">
+                  <span class="calendar-export-icon" aria-hidden="true"></span>
                 </button>
-                <div class="task-filter-options" role="group" aria-label="Task status filter">
-                  <button class="task-filter active" type="button" data-task-filter="all" aria-pressed="true">All</button>
-                  <button class="task-filter" type="button" data-task-filter="open" aria-pressed="false">Open</button>
-                  <button class="task-filter" type="button" data-task-filter="done" aria-pressed="false">Done</button>
+                <div class="task-filter-menu">
+                  <button class="task-filter-toggle" id="task-filter-toggle" type="button" aria-label="Task status filter" aria-expanded="false" title="Task status filter">
+                    <span class="task-filter-icon all-icon" aria-hidden="true"></span>
+                  </button>
+                  <div class="task-filter-options" role="group" aria-label="Task status filter">
+                    <button class="task-filter active" type="button" data-task-filter="all" aria-pressed="true">All</button>
+                    <button class="task-filter" type="button" data-task-filter="open" aria-pressed="false">Open</button>
+                    <button class="task-filter" type="button" data-task-filter="done" aria-pressed="false">Done</button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -222,6 +227,7 @@ const taskBodyInput = document.getElementById("task-body");
 const taskDateInput = document.getElementById("task-date");
 const taskSubmitButton = document.getElementById("task-submit");
 const taskCancelEditButton = document.getElementById("task-cancel-edit");
+const calendarExportButton = document.getElementById("calendar-export");
 const taskFilterToggle = document.getElementById("task-filter-toggle");
 const noteForm = document.getElementById("note-form");
 const noteBodyInput = document.getElementById("note-body");
@@ -264,6 +270,8 @@ taskCancelEditButton.addEventListener("click", () => {
   clearTaskEditMode();
   taskTitleInput.focus();
 });
+
+calendarExportButton.addEventListener("click", exportTasksToCalendar);
 
 taskFilterToggle.addEventListener("click", () => {
   const open = taskFilterToggle.getAttribute("aria-expanded") === "true";
@@ -513,6 +521,113 @@ function addNote() {
   announce("Note added.");
   showToast("Note added.");
   noteBodyInput.focus();
+}
+
+function exportTasksToCalendar() {
+  const tasks = items
+    .filter(item => item.type === "task" && item.dueDate)
+    .sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)) || Number(a.createdAt) - Number(b.createdAt));
+
+  if (!tasks.length) {
+    showToast("No dated tasks to export.");
+    announce("No dated tasks to export.");
+    return;
+  }
+
+  const calendar = buildCalendarFile(tasks);
+  const blob = new Blob([calendar], { type: "text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `random-notes-calendar-${toDateInputValue(new Date())}.ics`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  showToast(`Exported ${tasks.length} ${tasks.length === 1 ? "task" : "tasks"}.`);
+  announce("Calendar file exported.");
+}
+
+function buildCalendarFile(tasks) {
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Random Notes//Local Planner//EN",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "X-WR-CALNAME:Random Notes Tasks"
+  ];
+
+  tasks.forEach(task => {
+    const date = task.dueDate.replaceAll("-", "");
+    const nextDate = addDaysToDateValue(task.dueDate, 1).replaceAll("-", "");
+    const title = `${task.done ? "[Done] " : ""}${task.title || "Untitled task"}`;
+    const details = [
+      task.body || "",
+      task.done ? "Status: Done" : "Status: Open",
+      `Source: Random Notes`
+    ].filter(Boolean).join("\\n\\n");
+
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:${sanitizeCalendarId(task.id)}@random-notes.local`,
+      `DTSTAMP:${formatCalendarTimestamp(new Date(Number(task.updatedAt) || Date.now()))}`,
+      `DTSTART;VALUE=DATE:${date}`,
+      `DTEND;VALUE=DATE:${nextDate}`,
+      `SUMMARY:${escapeCalendarText(title)}`,
+      `DESCRIPTION:${escapeCalendarText(details)}`,
+      `STATUS:${task.done ? "COMPLETED" : "CONFIRMED"}`,
+      "TRANSP:TRANSPARENT",
+      "END:VEVENT"
+    );
+  });
+
+  lines.push("END:VCALENDAR");
+  return foldCalendarLines(lines).join("\r\n") + "\r\n";
+}
+
+function addDaysToDateValue(value, days) {
+  const date = parseLocalDate(value);
+  date.setDate(date.getDate() + days);
+  return toDateInputValue(date);
+}
+
+function formatCalendarTimestamp(date) {
+  return [
+    date.getUTCFullYear(),
+    String(date.getUTCMonth() + 1).padStart(2, "0"),
+    String(date.getUTCDate()).padStart(2, "0"),
+    "T",
+    String(date.getUTCHours()).padStart(2, "0"),
+    String(date.getUTCMinutes()).padStart(2, "0"),
+    String(date.getUTCSeconds()).padStart(2, "0"),
+    "Z"
+  ].join("");
+}
+
+function sanitizeCalendarId(value) {
+  return String(value || Date.now()).replace(/[^a-zA-Z0-9-]/g, "-");
+}
+
+function escapeCalendarText(value) {
+  return String(value || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/\r?\n/g, "\\n")
+    .replace(/,/g, "\\,")
+    .replace(/;/g, "\\;");
+}
+
+function foldCalendarLines(lines) {
+  return lines.flatMap(line => {
+    const chunks = [];
+    let remaining = line;
+    while (remaining.length > 75) {
+      chunks.push(remaining.slice(0, 75));
+      remaining = ` ${remaining.slice(75)}`;
+    }
+    chunks.push(remaining);
+    return chunks;
+  });
 }
 
 function render() {

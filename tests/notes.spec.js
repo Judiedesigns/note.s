@@ -116,6 +116,27 @@ test("adds and completes a task for today", async ({ page }) => {
   await expect(page.getByText("1 task | 0 open")).toBeVisible();
 });
 
+test("exports dated tasks to a calendar file", async ({ page }) => {
+  await openPlannerSurface(page);
+  await page.getByPlaceholder("Task to remember").fill("Review calendar sync");
+  await page.getByRole("textbox", { name: "Details" }).fill("Only my browser exports this task.");
+  await page.getByRole("button", { name: "+ Add Task" }).click();
+
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export tasks to calendar" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^random-notes-calendar-\d{4}-\d{2}-\d{2}\.ics$/);
+
+  const path = await download.path();
+  const content = require("fs").readFileSync(path, "utf8");
+  expect(content).toContain("BEGIN:VCALENDAR");
+  expect(content).toContain("BEGIN:VEVENT");
+  expect(content).toContain("SUMMARY:Review calendar sync");
+  expect(content).toContain(`DTSTART;VALUE=DATE:${todayValue().replaceAll("-", "")}`);
+  expect(content).toContain("DESCRIPTION:Only my browser exports this task.");
+  expect(content).toContain("END:VCALENDAR");
+});
+
 test("shows tasks across week and month views", async ({ page }) => {
   const today = todayValue();
   const sameWeek = addDaysValue(new Date().getDay() === 1 ? 1 : -1);
