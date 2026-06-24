@@ -1421,10 +1421,6 @@ button { cursor: pointer; }
     margin-bottom: 0.75rem;
   }
 
-  .surface-switch {
-    display: grid;
-  }
-
   .desktop-grid {
     display: block;
   }
