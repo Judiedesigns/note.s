@@ -401,6 +401,7 @@ function normalizeItem(item) {
       title: String((hasTodo ? item.todo : item.note) || "Untitled"),
       body: hasTodo ? String(item.note || "") : "",
       dueDate: hasTodo ? toDateInputValue(new Date(Number(item.ts) || Date.now())) : "",
+      planView: hasTodo ? "today" : "",
       done: Boolean(item.done),
       createdAt: Number(item.ts) || Date.now(),
       updatedAt: Number(item.ts) || Date.now()
@@ -412,10 +413,15 @@ function normalizeItem(item) {
     title: String(item.title || "Untitled"),
     body: String(item.body || ""),
     dueDate: item.type === "note" ? "" : String(item.dueDate || toDateInputValue(new Date())),
+    planView: item.type === "note" ? "" : normalizePlanView(item.planView),
     done: Boolean(item.done),
     createdAt: Number(item.createdAt) || Date.now(),
     updatedAt: Number(item.updatedAt) || Date.now()
   };
+}
+
+function normalizePlanView(value) {
+  return ["today", "week", "month"].includes(value) ? value : "today";
 }
 
 function saveItems() {
@@ -469,6 +475,7 @@ function addTask() {
       title: title || body.split("\n")[0].slice(0, 80) || "Untitled",
       body: title ? body : "",
       dueDate: taskDateInput.value || toDateInputValue(new Date()),
+      planView: activeView,
       updatedAt: Date.now()
     } : item);
   } else {
@@ -478,6 +485,7 @@ function addTask() {
       title: title || body.split("\n")[0].slice(0, 80) || "Untitled",
       body: title ? body : "",
       dueDate: taskDateInput.value || toDateInputValue(new Date()),
+      planView: activeView,
       done: false,
       createdAt: Date.now(),
       updatedAt: Date.now()
@@ -818,7 +826,6 @@ function createCard(item) {
 }
 
 function getVisibleTasks() {
-  const now = new Date();
   const tasks = items
     .filter(item => item.type === "task")
     .filter(item => {
@@ -832,10 +839,7 @@ function getVisibleTasks() {
       if (dateSort) return dateSort;
       return Number(b.createdAt) - Number(a.createdAt);
     });
-  if (activeView === "today") return tasks.filter(item => item.dueDate === toDateInputValue(now));
-  if (activeView === "week") return tasks.filter(item => isSameWeek(parseLocalDate(item.dueDate), now));
-  if (activeView === "month") return tasks.filter(item => isSameMonth(parseLocalDate(item.dueDate), now));
-  return tasks;
+  return tasks.filter(item => normalizePlanView(item.planView) === activeView);
 }
 
 function getVisibleNotes(notes) {
@@ -875,7 +879,7 @@ function editItem(id) {
     noteBodyInput.value = item.body || item.title;
   } else {
     openWindow("planner");
-    activeView = "today";
+    activeView = normalizePlanView(item.planView);
     setActiveTab();
     setTaskEditMode(item);
     render();
@@ -1323,8 +1327,8 @@ function getViewTitle() {
 }
 
 function getViewSubtitle() {
-  if (activeView === "week") return "Tasks due from Monday through Sunday.";
-  if (activeView === "month") return "Everything due this month, grouped by day.";
+  if (activeView === "week") return "Tasks you planned for the week.";
+  if (activeView === "month") return "Tasks you planned for the month.";
   return new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric" }).format(new Date());
 }
 

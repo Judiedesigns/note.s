@@ -141,14 +141,15 @@ test("exports dated tasks to a calendar file", async ({ page }) => {
   expect(content).toContain("END:VCALENDAR");
 });
 
-test("shows tasks across week and month views", async ({ page }) => {
+test("keeps planner views as separate task buckets", async ({ page }) => {
   const today = todayValue();
   const sameWeek = addDaysValue(new Date().getDay() === 1 ? 1 : -1);
   await page.evaluate(({ today, sameWeek }) => {
     localStorage.setItem("random_notes_v1", JSON.stringify([
-      { id: "one", type: "task", title: "Today priority", body: "", dueDate: today, done: false, createdAt: Date.now(), updatedAt: Date.now() },
-      { id: "two", type: "task", title: "Same-week priority", body: "", dueDate: sameWeek, done: false, createdAt: Date.now(), updatedAt: Date.now() },
-      { id: "three", type: "note", title: "Loose thought", body: "Save for later", dueDate: "", done: false, createdAt: Date.now(), updatedAt: Date.now() }
+      { id: "one", type: "task", title: "Today priority", body: "", dueDate: today, planView: "today", done: false, createdAt: Date.now(), updatedAt: Date.now() },
+      { id: "two", type: "task", title: "Same-week priority", body: "", dueDate: sameWeek, planView: "week", done: false, createdAt: Date.now(), updatedAt: Date.now() },
+      { id: "three", type: "task", title: "Month priority with today date", body: "", dueDate: today, planView: "month", done: false, createdAt: Date.now(), updatedAt: Date.now() },
+      { id: "four", type: "note", title: "Loose thought", body: "Save for later", dueDate: "", done: false, createdAt: Date.now(), updatedAt: Date.now() }
     ]));
   }, { today, sameWeek });
   await page.reload({ waitUntil: "domcontentloaded" });
@@ -156,15 +157,18 @@ test("shows tasks across week and month views", async ({ page }) => {
 
   await expect(page.getByLabel("Saved tasks").getByText("Today priority")).toBeVisible();
   await expect(page.getByLabel("Saved tasks").getByText("Same-week priority")).toBeHidden();
+  await expect(page.getByLabel("Saved tasks").getByText("Month priority with today date")).toBeHidden();
 
   await page.getByRole("tab", { name: "Week" }).click();
-  await expect(page.getByLabel("Saved tasks").getByText("Today priority")).toBeVisible();
+  await expect(page.getByLabel("Saved tasks").getByText("Today priority")).toBeHidden();
   await expect(page.getByLabel("Saved tasks").getByText("Same-week priority")).toBeVisible();
+  await expect(page.getByLabel("Saved tasks").getByText("Month priority with today date")).toBeHidden();
   await expect(page.getByLabel("Saved tasks").getByText("Loose thought", { exact: true })).toBeHidden();
 
   await page.getByRole("tab", { name: "Month" }).click();
-  await expect(page.getByLabel("Saved tasks").getByText("Today priority")).toBeVisible();
-  await expect(page.getByLabel("Saved tasks").getByText("Same-week priority")).toBeVisible();
+  await expect(page.getByLabel("Saved tasks").getByText("Today priority")).toBeHidden();
+  await expect(page.getByLabel("Saved tasks").getByText("Same-week priority")).toBeHidden();
+  await expect(page.getByLabel("Saved tasks").getByText("Month priority with today date")).toBeVisible();
 });
 
 test("planner handles a long task queue with compact expandable rows", async ({ page }) => {
