@@ -92,7 +92,6 @@
             </div>
             <button class="add-task-launch" id="task-add-toggle" type="button" aria-controls="task-form" aria-expanded="false">+ Add Task</button>
             <form class="capture task-capture" id="task-form" aria-label="Add task" hidden>
-              <p class="todo-kicker">enter your tasks</p>
               <div class="task-entry-row">
                 <div class="task-title-field">
                   <label class="field-label" for="task-title">Task</label>
@@ -103,7 +102,7 @@
                   <input class="date-input" id="task-date" type="date">
                 </div>
                 <div class="form-actions">
-                  <button class="add-btn" id="task-submit" type="submit">Save Task</button>
+                  <button class="add-btn" id="task-submit" type="submit">Save</button>
                   <button class="secondary-btn" id="task-cancel-edit" type="button" hidden>Cancel</button>
                 </div>
               </div>
@@ -942,7 +941,6 @@ function setTaskEditMode(item) {
   taskDateInput.value = item.dueDate || toDateInputValue(new Date());
   taskSubmitButton.textContent = "Update Task";
   taskForm.setAttribute("aria-label", "Edit task");
-  taskCancelEditButton.hidden = false;
 }
 
 function clearTaskEditMode() {
@@ -950,14 +948,14 @@ function clearTaskEditMode() {
   taskTitleInput.value = "";
   taskBodyInput.value = "";
   taskDateInput.value = taskDateInput.value || toDateInputValue(new Date());
-  taskSubmitButton.textContent = "Save Task";
+  taskSubmitButton.textContent = "Save";
   taskForm.setAttribute("aria-label", "Add task");
-  taskCancelEditButton.hidden = true;
 }
 
 function setTaskFormOpen(open) {
   taskForm.hidden = !open;
   taskAddToggle.hidden = open;
+  taskCancelEditButton.hidden = !open;
   taskAddToggle.setAttribute("aria-expanded", String(open));
 }
 

@@ -769,22 +769,8 @@ button { cursor: pointer; }
 
 .secondary-btn {
   min-height: 31px;
-  padding: 0 0.5rem;
+  padding: 0 0.65rem;
   background: #d8dbe1;
-  font-size: 0.66rem;
-}
-
-.todo-kicker {
-  display: inline-block;
-  align-self: flex-start;
-  margin-bottom: 0.26rem;
-  padding: 0.1rem 0.25rem;
-  background: #f1f300;
-  color: #000;
-  font-size: 0.7rem;
-  font-weight: 900;
-  text-transform: uppercase;
-  letter-spacing: 0;
 }
 
 .notes-capture {

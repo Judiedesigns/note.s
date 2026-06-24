@@ -66,8 +66,8 @@ test("planner UI fits the viewport", async ({ page }) => {
   await expect(page.getByRole("button", { name: "+ Add Task" })).toBeVisible();
   await expect(page.getByPlaceholder("Add a task")).toBeHidden();
   await page.getByRole("button", { name: "+ Add Task" }).click();
-  await expect(page.getByText("enter your tasks")).toBeVisible();
   await expect(page.getByPlaceholder("Add a task")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
   await expect(page.getByPlaceholder("Add a task for today")).toHaveCount(0);
   await expect(page.getByLabel("Focus timer")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Export tasks to calendar" })).toBeVisible();
@@ -103,7 +103,7 @@ test("adds and completes a task for today", async ({ page }) => {
   await openPlannerSurface(page);
   await page.getByRole("button", { name: "+ Add Task" }).click();
   await page.getByPlaceholder("Add a task").fill("Edit script and film B-roll");
-  await page.getByRole("button", { name: "Save Task" }).click();
+  await page.getByRole("button", { name: "Save" }).click();
 
   const plannerWindow = page.getByLabel("Planner app");
   await expect(plannerWindow.getByLabel("Saved tasks").getByText("Edit script and film B-roll")).toBeVisible();
@@ -124,7 +124,7 @@ test("exports dated tasks to a calendar file", async ({ page }) => {
   await openPlannerSurface(page);
   await page.getByRole("button", { name: "+ Add Task" }).click();
   await page.getByPlaceholder("Add a task").fill("Review calendar sync");
-  await page.getByRole("button", { name: "Save Task" }).click();
+  await page.getByRole("button", { name: "Save" }).click();
 
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export tasks to calendar" }).click();
