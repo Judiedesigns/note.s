@@ -59,13 +59,15 @@ test("planner UI fits the viewport", async ({ page }) => {
   await expect(page.getByLabel("Planner app")).toBeHidden();
 
   await page.getByRole("button", { name: "Open Planner" }).click();
-  await expect(page.getByRole("heading", { name: "daily" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Today" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Week" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Month" })).toBeVisible();
-  await expect(page.getByPlaceholder("Task to remember")).toBeVisible();
   await expect(page.getByRole("button", { name: "+ Add Task" })).toBeVisible();
+  await expect(page.getByPlaceholder("Add a task")).toBeHidden();
+  await page.getByRole("button", { name: "+ Add Task" }).click();
+  await expect(page.getByText("enter your tasks")).toBeVisible();
+  await expect(page.getByPlaceholder("Add a task")).toBeVisible();
   await expect(page.getByPlaceholder("Add a task for today")).toHaveCount(0);
   await expect(page.getByLabel("Focus timer")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Export tasks to calendar" })).toBeVisible();
@@ -99,8 +101,9 @@ test("README opens as a generated daily checklist", async ({ page }) => {
 
 test("adds and completes a task for today", async ({ page }) => {
   await openPlannerSurface(page);
-  await page.getByPlaceholder("Task to remember").fill("Edit script and film B-roll");
   await page.getByRole("button", { name: "+ Add Task" }).click();
+  await page.getByPlaceholder("Add a task").fill("Edit script and film B-roll");
+  await page.getByRole("button", { name: "Save Task" }).click();
 
   const plannerWindow = page.getByLabel("Planner app");
   await expect(plannerWindow.getByLabel("Saved tasks").getByText("Edit script and film B-roll")).toBeVisible();
@@ -119,9 +122,9 @@ test("adds and completes a task for today", async ({ page }) => {
 
 test("exports dated tasks to a calendar file", async ({ page }) => {
   await openPlannerSurface(page);
-  await page.getByPlaceholder("Task to remember").fill("Review calendar sync");
-  await page.getByRole("textbox", { name: "Details" }).fill("Only my browser exports this task.");
   await page.getByRole("button", { name: "+ Add Task" }).click();
+  await page.getByPlaceholder("Add a task").fill("Review calendar sync");
+  await page.getByRole("button", { name: "Save Task" }).click();
 
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export tasks to calendar" }).click();
@@ -134,7 +137,7 @@ test("exports dated tasks to a calendar file", async ({ page }) => {
   expect(content).toContain("BEGIN:VEVENT");
   expect(content).toContain("SUMMARY:Review calendar sync");
   expect(content).toContain(`DTSTART;VALUE=DATE:${todayValue().replaceAll("-", "")}`);
-  expect(content).toContain("DESCRIPTION:Only my browser exports this task.");
+  expect(content).toContain("DESCRIPTION:Status: Open");
   expect(content).toContain("END:VCALENDAR");
 });
 
@@ -329,12 +332,11 @@ test("edit updates a task in place", async ({ page }) => {
   await openPlannerSurface(page);
 
   await page.getByRole("button", { name: "Edit task" }).click();
-  await expect(page.getByPlaceholder("Task to remember")).toHaveValue("Rewrite this task");
-  await expect(page.getByRole("textbox", { name: "Details" })).toHaveValue("Tighten copy");
+  await expect(page.getByPlaceholder("Add a task")).toHaveValue("Rewrite this task");
+  await expect(page.getByRole("textbox", { name: "Details" })).toHaveCount(0);
   await expect(page.getByLabel("Saved tasks").getByText("Rewrite this task")).toBeVisible();
 
-  await page.getByPlaceholder("Task to remember").fill("Rewrite this task again");
-  await page.getByRole("textbox", { name: "Details" }).fill("Tighten copy twice");
+  await page.getByPlaceholder("Add a task").fill("Rewrite this task again");
   await page.getByRole("button", { name: "Update Task" }).click();
 
   await expect(page.getByLabel("Saved tasks").getByText("Rewrite this task again")).toBeVisible();

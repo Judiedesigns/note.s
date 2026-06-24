@@ -60,34 +60,7 @@
           </div>
         </div>
         <div class="window-body">
-          <aside class="sidebar daily-panel">
-            <div class="brand">
-              <h1>daily</h1>
-              <p>Plan dated work by today, week, and month.</p>
-            </div>
-
-            <form class="capture" id="task-form" aria-label="Add task">
-              <div>
-                <label class="field-label" for="task-title">Task</label>
-                <input class="text-input" id="task-title" type="text" maxlength="160" placeholder="Task to remember">
-              </div>
-              <div>
-                <label class="field-label" for="task-date">Date</label>
-                <input class="date-input" id="task-date" type="date">
-              </div>
-              <div>
-                <label class="field-label" for="task-body">Details</label>
-                <textarea class="body-input" id="task-body" maxlength="900" placeholder="Details for this task"></textarea>
-              </div>
-              <div class="form-actions">
-                <button class="add-btn" id="task-submit" type="submit">+ Add Task</button>
-                <button class="secondary-btn" id="task-cancel-edit" type="button" hidden>Cancel</button>
-              </div>
-            </form>
-          </aside>
-
           <section class="content-panel todo-board" aria-live="polite">
-            <p class="todo-kicker">to do</p>
             <div class="panel-head">
               <div>
                 <h2 class="panel-title" id="view-title">Today</h2>
@@ -117,6 +90,25 @@
                 </div>
               </div>
             </div>
+            <button class="add-task-launch" id="task-add-toggle" type="button" aria-controls="task-form" aria-expanded="false">+ Add Task</button>
+            <form class="capture task-capture" id="task-form" aria-label="Add task" hidden>
+              <p class="todo-kicker">enter your tasks</p>
+              <div class="task-entry-row">
+                <div class="task-title-field">
+                  <label class="field-label" for="task-title">Task</label>
+                  <input class="text-input" id="task-title" type="text" maxlength="220" placeholder="Add a task">
+                </div>
+                <div class="task-date-field">
+                  <label class="field-label" for="task-date">Date</label>
+                  <input class="date-input" id="task-date" type="date">
+                </div>
+                <div class="form-actions">
+                  <button class="add-btn" id="task-submit" type="submit">Save Task</button>
+                  <button class="secondary-btn" id="task-cancel-edit" type="button" hidden>Cancel</button>
+                </div>
+              </div>
+              <input id="task-body" type="hidden" value="">
+            </form>
             <section class="items-list" id="task-list" aria-label="Saved tasks"></section>
           </section>
         </div>
@@ -227,6 +219,7 @@ const taskBodyInput = document.getElementById("task-body");
 const taskDateInput = document.getElementById("task-date");
 const taskSubmitButton = document.getElementById("task-submit");
 const taskCancelEditButton = document.getElementById("task-cancel-edit");
+const taskAddToggle = document.getElementById("task-add-toggle");
 const calendarExportButton = document.getElementById("calendar-export");
 const taskFilterToggle = document.getElementById("task-filter-toggle");
 const noteForm = document.getElementById("note-form");
@@ -266,9 +259,15 @@ taskForm.addEventListener("submit", event => {
   addTask();
 });
 
+taskAddToggle.addEventListener("click", () => {
+  setTaskFormOpen(true);
+  taskTitleInput.focus();
+});
+
 taskCancelEditButton.addEventListener("click", () => {
   clearTaskEditMode();
-  taskTitleInput.focus();
+  setTaskFormOpen(false);
+  taskAddToggle.focus();
 });
 
 calendarExportButton.addEventListener("click", exportTasksToCalendar);
@@ -489,10 +488,11 @@ function addTask() {
   saveItems();
   const wasEditing = Boolean(editingTaskId);
   clearTaskEditMode();
+  setTaskFormOpen(false);
   render();
   announce(wasEditing ? "Task updated." : "Task added.");
   showToast(wasEditing ? "Task updated." : "Task added.");
-  taskTitleInput.focus();
+  taskAddToggle.focus();
 }
 
 function addNote() {
@@ -936,8 +936,9 @@ function setTaskFilter() {
 
 function setTaskEditMode(item) {
   editingTaskId = item.id;
+  setTaskFormOpen(true);
   taskTitleInput.value = item.title;
-  taskBodyInput.value = item.body;
+  taskBodyInput.value = "";
   taskDateInput.value = item.dueDate || toDateInputValue(new Date());
   taskSubmitButton.textContent = "Update Task";
   taskForm.setAttribute("aria-label", "Edit task");
@@ -949,9 +950,15 @@ function clearTaskEditMode() {
   taskTitleInput.value = "";
   taskBodyInput.value = "";
   taskDateInput.value = taskDateInput.value || toDateInputValue(new Date());
-  taskSubmitButton.textContent = "+ Add Task";
+  taskSubmitButton.textContent = "Save Task";
   taskForm.setAttribute("aria-label", "Add task");
   taskCancelEditButton.hidden = true;
+}
+
+function setTaskFormOpen(open) {
+  taskForm.hidden = !open;
+  taskAddToggle.hidden = open;
+  taskAddToggle.setAttribute("aria-expanded", String(open));
 }
 
 function setNoteFilterMenuOpen(open) {
