@@ -19,7 +19,7 @@
 <meta name="twitter:description" content="A private local planner for tasks and quick thoughts.">
 <meta name="twitter:image" content="bg-2.jpg">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="styles.css?v=calendar-export-20260623">
+<link rel="stylesheet" href="styles.css?v=simple-planner-20260624">
 </head>
 <body>
 <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -565,7 +565,7 @@ function buildCalendarFile(tasks) {
     const details = [
       task.body || "",
       task.done ? "Status: Done" : "Status: Open",
-      `Source: Random Notes`
+      "Source: Random Notes"
     ].filter(Boolean).join("\\n\\n");
 
     lines.push(

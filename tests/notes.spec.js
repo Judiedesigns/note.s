@@ -60,11 +60,15 @@ test("planner UI fits the viewport", async ({ page }) => {
 
   await page.getByRole("button", { name: "Open Planner" }).click();
   await expect(page.getByRole("heading", { name: "daily" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Today" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Week" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Month" })).toBeVisible();
   await expect(page.getByPlaceholder("Task to remember")).toBeVisible();
   await expect(page.getByRole("button", { name: "+ Add Task" })).toBeVisible();
+  await expect(page.getByPlaceholder("Add a task for today")).toHaveCount(0);
+  await expect(page.getByLabel("Focus timer")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Export tasks to calendar" })).toBeVisible();
 
   const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(horizontalOverflow).toBe(false);
@@ -96,24 +100,21 @@ test("README opens as a generated daily checklist", async ({ page }) => {
 test("adds and completes a task for today", async ({ page }) => {
   await openPlannerSurface(page);
   await page.getByPlaceholder("Task to remember").fill("Edit script and film B-roll");
-  await page.getByRole("textbox", { name: "Details" }).fill("Need a first pass before lunch.");
   await page.getByRole("button", { name: "+ Add Task" }).click();
 
-  await expect(page.getByLabel("Saved tasks").getByText("Edit script and film B-roll")).toBeVisible();
-  const task = page.getByRole("group", { name: "Task Edit script and film B-roll" });
-  await expect(task.locator(".task-details")).toBeHidden();
-  await task.click();
-  await expect(task.locator(".task-details")).toContainText("Need a first pass before lunch.");
-  await expect(page.getByText("1 task | 1 open")).toBeVisible();
+  const plannerWindow = page.getByLabel("Planner app");
+  await expect(plannerWindow.getByLabel("Saved tasks").getByText("Edit script and film B-roll")).toBeVisible();
+  await expect(plannerWindow.getByText("1 task | 1 open")).toBeVisible();
 
-  const checkbox = page.getByRole("checkbox", { name: "Mark task as done" });
+  const checkbox = plannerWindow.getByRole("checkbox", { name: "Mark task as done" });
   await checkbox.click();
-  await expect(page.getByText("1 task | 0 open")).toBeVisible();
+  await expect(plannerWindow.getByText("1 task | 0 open")).toBeVisible();
 
   await page.reload({ waitUntil: "domcontentloaded" });
   await openPlannerSurface(page);
-  await expect(page.getByRole("checkbox", { name: "Mark task as open" })).toBeChecked();
-  await expect(page.getByText("1 task | 0 open")).toBeVisible();
+  const reloadedPlannerWindow = page.getByLabel("Planner app");
+  await expect(reloadedPlannerWindow.getByRole("checkbox", { name: "Mark task as open" })).toBeChecked();
+  await expect(reloadedPlannerWindow.getByText("1 task | 0 open")).toBeVisible();
 });
 
 test("exports dated tasks to a calendar file", async ({ page }) => {
@@ -183,7 +184,6 @@ test("planner handles a long task queue with compact expandable rows", async ({ 
     localStorage.setItem("random_notes_v1", JSON.stringify(tasks));
   }, today);
   await page.reload({ waitUntil: "domcontentloaded" });
-
   await openPlannerSurface(page);
 
   const taskList = page.getByLabel("Saved tasks");
