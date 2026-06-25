@@ -126,6 +126,10 @@ test("exports dated tasks to a calendar file", async ({ page }) => {
   await page.getByPlaceholder("Add a task").fill("Review calendar sync");
   await page.getByRole("button", { name: "Save" }).click();
 
+  page.once("dialog", async dialog => {
+    expect(dialog.message()).toContain("Export 1 task to a calendar file?");
+    await dialog.accept();
+  });
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export tasks to calendar" }).click();
   const download = await downloadPromise;

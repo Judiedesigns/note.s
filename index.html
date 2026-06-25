@@ -541,6 +541,12 @@ function exportTasksToCalendar() {
     return;
   }
 
+  const confirmed = window.confirm(`Export ${tasks.length} ${tasks.length === 1 ? "task" : "tasks"} to a calendar file?`);
+  if (!confirmed) {
+    announce("Calendar export canceled.");
+    return;
+  }
+
   const calendar = buildCalendarFile(tasks);
   const blob = new Blob([calendar], { type: "text/calendar;charset=utf-8" });
   const url = URL.createObjectURL(blob);
