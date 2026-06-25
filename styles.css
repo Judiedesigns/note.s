@@ -1409,6 +1409,8 @@ button { cursor: pointer; }
 
   .desktop-title {
     font-size: clamp(1.55rem, 8.8vw, 2.7rem);
+    line-height: 1.08;
+    margin-bottom: 1.45rem;
   }
 
   .shell {
@@ -1418,7 +1420,8 @@ button { cursor: pointer; }
   .desktop-icons {
     justify-content: start;
     grid-template-columns: repeat(3, minmax(68px, 1fr));
-    margin-bottom: 0.75rem;
+    gap: 0.95rem;
+    margin-bottom: 1.25rem;
   }
 
   .desktop-grid {
@@ -1490,6 +1493,17 @@ button { cursor: pointer; }
     font-size: 12px;
   }
 
+  .desktop-title {
+    font-size: clamp(2rem, 10vw, 2.35rem);
+    margin-bottom: 1.8rem;
+  }
+
+  .desktop-icons {
+    grid-template-columns: repeat(3, minmax(72px, 1fr));
+    gap: 1.1rem;
+    margin-bottom: 1.35rem;
+  }
+
   .window-titlebar {
     height: 26px;
   }
@@ -1551,11 +1565,13 @@ button { cursor: pointer; }
   }
 
   .task-card {
-    grid-template-columns: 22px minmax(0, 1fr);
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+    align-items: center;
   }
 
   .task-meta {
     grid-column: 2;
+    grid-row: 2;
     justify-self: start;
     justify-items: start;
     min-width: 0;
@@ -1590,7 +1606,9 @@ button { cursor: pointer; }
   }
 
   .task-card .actions {
-    grid-column: 2;
-    justify-content: flex-start;
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    align-self: center;
+    justify-content: flex-end;
   }
 }
