@@ -186,6 +186,22 @@
   </div>
 </main>
 
+<div class="note-popup-backdrop" id="note-popup" hidden>
+  <section class="note-popup-window" role="dialog" aria-modal="true" aria-labelledby="note-popup-title">
+    <div class="window-titlebar note-popup-titlebar">
+      <span class="window-title"><span class="title-icon" aria-hidden="true"></span><span id="note-popup-title">Note</span></span>
+      <button class="window-control close-control" id="note-popup-close" type="button" aria-label="Close full note"></button>
+    </div>
+    <div class="note-popup-body">
+      <pre class="note-popup-text" id="note-popup-text"></pre>
+      <div class="note-popup-actions">
+        <button class="secondary-btn" id="note-popup-copy" type="button">Copy</button>
+        <button class="add-btn" id="note-popup-done" type="button">Done</button>
+      </div>
+    </div>
+  </section>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
 <script>
@@ -206,6 +222,8 @@ let iconPositions = {};
 let dragState = null;
 let iconDragState = null;
 let windowZIndex = 10;
+let activePopupNoteText = "";
+let notePopupReturnFocus = null;
 const windowState = {
   planner: { open: false, minimized: false, fullscreen: false },
   notes: { open: false, minimized: false, fullscreen: false },
@@ -226,6 +244,12 @@ const noteBodyInput = document.getElementById("note-body");
 const noteSearchInput = document.getElementById("note-search");
 const noteFilterToggle = document.getElementById("note-filter-toggle");
 const noteFilterLabel = document.getElementById("note-filter-label");
+const notePopup = document.getElementById("note-popup");
+const notePopupText = document.getElementById("note-popup-text");
+const notePopupTitle = document.getElementById("note-popup-title");
+const notePopupCloseButton = document.getElementById("note-popup-close");
+const notePopupCopyButton = document.getElementById("note-popup-copy");
+const notePopupDoneButton = document.getElementById("note-popup-done");
 const taskList = document.getElementById("task-list");
 const noteList = document.getElementById("note-list");
 const taskCountLabel = document.getElementById("task-count");
@@ -311,8 +335,17 @@ document.addEventListener("keydown", event => {
   if (event.key === "Escape") {
     setTaskFilterMenuOpen(false);
     setNoteFilterMenuOpen(false);
+    closeNotePopup();
   }
 });
+
+notePopup.addEventListener("click", event => {
+  if (event.target === notePopup) closeNotePopup();
+});
+
+notePopupCloseButton.addEventListener("click", closeNotePopup);
+notePopupDoneButton.addEventListener("click", closeNotePopup);
+notePopupCopyButton.addEventListener("click", () => copyNoteText(activePopupNoteText));
 
 tabs.forEach(button => {
   button.addEventListener("click", () => {
@@ -714,17 +747,15 @@ function createCard(item) {
     card.setAttribute("aria-label", "Note preview");
     if (canExpandNote) {
       card.tabIndex = 0;
-      card.setAttribute("aria-expanded", "false");
     }
     card.innerHTML = `
       <div>
-        ${canExpandNote ? `<button class="note-collapse" type="button" aria-label="Close note preview" title="Close note preview"></button>` : ""}
         <p class="note-preview">${escapeHtml(previewText)}</p>
-        ${canExpandNote ? `<p class="item-body note-text">${escapeHtml(noteText)}</p>` : ""}
         <div class="item-meta note-meta">
           <span>Note | ${escapeHtml(formatCreated(item.createdAt))} | </span>
-          ${canExpandNote ? `<button class="note-toggle" type="button" aria-label="Show full note" aria-expanded="false">Show more</button>` : `<span class="note-static">Full note shown</span>`}
+          ${canExpandNote ? `<button class="note-toggle" type="button" aria-label="Show full note">Show more</button>` : `<span class="note-static">Full note shown</span>`}
           <span class="actions note-actions">
+            <button class="icon-btn copy-btn" type="button" aria-label="Copy note" title="Copy note"><span class="action-icon copy-icon" aria-hidden="true"></span></button>
             <button class="icon-btn edit-btn" type="button" aria-label="Edit note" title="Edit note"><span class="action-icon edit-icon" aria-hidden="true"></span></button>
             <button class="icon-btn delete-btn" type="button" aria-label="Delete note" title="Delete note"><span class="action-icon delete-icon" aria-hidden="true"></span></button>
           </span>
@@ -732,39 +763,26 @@ function createCard(item) {
       </div>
     `;
 
-    const togglePreview = () => {
-      const expanded = card.classList.toggle("expanded");
-      card.setAttribute("aria-expanded", String(expanded));
-      const toggleButton = card.querySelector(".note-toggle");
-      toggleButton.textContent = expanded ? "Show less" : "Show more";
-      toggleButton.setAttribute("aria-expanded", String(expanded));
-      toggleButton.setAttribute("aria-label", expanded ? "Hide full note" : "Show full note");
-      if (expanded) {
-        window.requestAnimationFrame(() => {
-          card.scrollIntoView({ block: "nearest", behavior: "smooth" });
-        });
-      }
+    const openFullNote = () => {
+      openNotePopup(noteText, formatCreated(item.createdAt), card);
     };
     if (canExpandNote) {
       card.addEventListener("click", event => {
         if (event.target.closest("button")) return;
-        togglePreview();
+        openFullNote();
       });
       card.addEventListener("keydown", event => {
         if (event.key !== "Enter" && event.key !== " ") return;
         if (event.target.closest("button")) return;
         event.preventDefault();
-        togglePreview();
+        openFullNote();
       });
       card.querySelector(".note-toggle").addEventListener("click", event => {
         event.stopPropagation();
-        togglePreview();
-      });
-      card.querySelector(".note-collapse").addEventListener("click", event => {
-        event.stopPropagation();
-        if (card.classList.contains("expanded")) togglePreview();
+        openFullNote();
       });
     }
+    card.querySelector(".copy-btn").addEventListener("click", () => copyNoteText(noteText));
     card.querySelector(".edit-btn").addEventListener("click", () => editItem(item.id));
     card.querySelector(".delete-btn").addEventListener("click", () => deleteItem(item.id));
     return card;
@@ -914,6 +932,54 @@ function deleteItem(id) {
   render();
   announce("Item deleted.");
   showToast("Item deleted.");
+}
+
+function openNotePopup(text, createdLabel, returnFocusElement) {
+  activePopupNoteText = text;
+  notePopupReturnFocus = returnFocusElement || document.activeElement;
+  notePopupTitle.textContent = `Note | ${createdLabel}`;
+  notePopupText.textContent = text;
+  notePopup.hidden = false;
+  notePopupCloseButton.focus();
+}
+
+function closeNotePopup() {
+  if (notePopup.hidden) return;
+  notePopup.hidden = true;
+  activePopupNoteText = "";
+  if (notePopupReturnFocus && typeof notePopupReturnFocus.focus === "function") {
+    notePopupReturnFocus.focus();
+  }
+  notePopupReturnFocus = null;
+}
+
+async function copyNoteText(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+    } else {
+      copyTextFallback(text);
+    }
+    announce("Note copied.");
+    showToast("Note copied.");
+  } catch (error) {
+    copyTextFallback(text);
+    announce("Note copied.");
+    showToast("Note copied.");
+  }
+}
+
+function copyTextFallback(text) {
+  const field = document.createElement("textarea");
+  field.value = text;
+  field.setAttribute("readonly", "");
+  field.style.position = "fixed";
+  field.style.left = "-9999px";
+  field.style.top = "0";
+  document.body.appendChild(field);
+  field.select();
+  document.execCommand("copy");
+  field.remove();
 }
 
 function setActiveTab() {

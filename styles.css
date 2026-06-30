@@ -1128,6 +1128,10 @@ button { cursor: pointer; }
   color: var(--danger);
 }
 
+.copy-btn {
+  color: #111;
+}
+
 .action-icon {
   position: relative;
   display: block;
@@ -1156,6 +1160,29 @@ button { cursor: pointer; }
   height: 4px;
   border-left: 2px solid #111;
   border-bottom: 2px solid #111;
+}
+
+.copy-icon::before,
+.copy-icon::after {
+  content: "";
+  position: absolute;
+  border: 1px solid #111;
+  background: #fff;
+}
+
+.copy-icon::before {
+  left: 3px;
+  top: 1px;
+  width: 7px;
+  height: 9px;
+}
+
+.copy-icon::after {
+  left: 1px;
+  top: 4px;
+  width: 7px;
+  height: 8px;
+  box-shadow: inset 0 2px 0 #f1f300;
 }
 
 .delete-icon::before,
@@ -1202,11 +1229,6 @@ button { cursor: pointer; }
   background: #eef2ff;
 }
 
-.notes-window .item-card.expanded {
-  border-color: #1f3198;
-  background: #f4f6ff;
-}
-
 .notes-window .item-meta {
   margin-top: 0.22rem;
   font-size: 0.68rem;
@@ -1249,26 +1271,6 @@ button { cursor: pointer; }
   word-break: break-word;
 }
 
-.note-text {
-  display: none;
-  margin-top: 0.28rem;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  max-height: 14rem;
-  padding-right: 0.35rem;
-}
-
-.note-card.expanded .note-preview {
-  display: none;
-}
-
-.note-card.expanded .note-text {
-  display: block;
-  overflow: auto;
-  -webkit-line-clamp: unset;
-}
-
 .note-toggle {
   border: 0;
   background: transparent;
@@ -1284,55 +1286,62 @@ button { cursor: pointer; }
   outline-offset: 2px;
 }
 
-.note-collapse {
-  position: absolute;
-  top: 0.34rem;
-  right: 0.36rem;
-  display: none;
-  width: 20px;
-  height: 19px;
-  border: 2px solid;
-  border-color: #fff var(--line-soft) var(--line-soft) #fff;
-  border-radius: 0;
-  background: var(--chrome);
-  box-shadow: inset 1px 1px 0 var(--chrome-light), inset -1px -1px 0 var(--chrome-dark);
-}
-
-.note-collapse::before,
-.note-collapse::after {
-  content: "";
-  position: absolute;
-  left: 4px;
-  top: 7px;
-  width: 8px;
-  height: 2px;
-  background: #000;
-}
-
-.note-collapse::before {
-  transform: rotate(45deg);
-}
-
-.note-collapse::after {
-  transform: rotate(-45deg);
-}
-
-.note-card.expanded .note-collapse {
-  display: block;
-}
-
-.note-card.expanded .note-text {
-  padding-right: 1.65rem;
-}
-
-.note-collapse:focus-visible {
-  outline: 2px solid #f1f300;
-  outline-offset: 2px;
-}
-
 .note-card:focus-visible {
   outline: 3px solid #f1f300;
   outline-offset: 2px;
+}
+
+.note-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(0, 20, 72, 0.42);
+}
+
+.note-popup-window {
+  width: min(34rem, 100%);
+  max-height: min(36rem, calc(100vh - 2rem));
+  border: 2px solid var(--line);
+  background: var(--chrome);
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.34);
+}
+
+.note-popup-titlebar {
+  cursor: default;
+}
+
+.note-popup-body {
+  display: grid;
+  gap: 0.6rem;
+  max-height: calc(min(36rem, calc(100vh - 2rem)) - 30px);
+  padding: 0.7rem;
+  background: #fbfbfc;
+}
+
+.note-popup-text {
+  min-height: 12rem;
+  max-height: calc(100vh - 12rem);
+  overflow: auto;
+  padding: 0.65rem;
+  border: 2px solid;
+  border-color: var(--line-soft) #fff #fff var(--line-soft);
+  background: #fff;
+  color: #111;
+  font-family: "MS Sans Serif", Geneva, Tahoma, Arial, sans-serif;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  box-shadow: inset 1px 1px 0 #8a8a8a;
+}
+
+.note-popup-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.35rem;
 }
 
 .toast {

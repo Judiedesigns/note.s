@@ -227,19 +227,12 @@ test("notes view captures loose thoughts separately", async ({ page }) => {
   await expect(page.getByText("1 note")).toBeVisible();
   const notePreview = page.getByRole("group", { name: "Note preview" });
   await expect(notePreview.locator(".note-preview")).toContainText("Hook idea");
-  await expect(notePreview).toHaveAttribute("aria-expanded", "false");
   await notePreview.click();
-  await expect(notePreview).toHaveAttribute("aria-expanded", "true");
-  await expect(notePreview.getByRole("button", { name: "Hide full note" })).toBeVisible();
-  await expect(notePreview.locator(".note-text")).toBeVisible();
-  await expect(notePreview.locator(".note-text")).toContainText("Try a softer intro before the task list.");
-  await notePreview.getByRole("button", { name: "Close note preview" }).click();
-  await expect(notePreview).toHaveAttribute("aria-expanded", "false");
-  await expect(notePreview.locator(".note-text")).toBeHidden();
-  await notePreview.click();
-  await notePreview.getByRole("button", { name: "Hide full note" }).click();
-  await expect(notePreview).toHaveAttribute("aria-expanded", "false");
-  await expect(notePreview.locator(".note-text")).toBeHidden();
+  const notePopup = page.getByRole("dialog", { name: /Note \|/ });
+  await expect(notePopup).toBeVisible();
+  await expect(notePopup.locator("#note-popup-text")).toContainText("Try a softer intro before the task list.");
+  await notePopup.getByRole("button", { name: "Done" }).click();
+  await expect(notePopup).toBeHidden();
 
   await openPlannerSurface(page);
   await expect(page.getByLabel("Saved tasks").getByText("Hook idea")).toBeHidden();
@@ -298,10 +291,54 @@ test("short notes do not show expansion controls", async ({ page }) => {
   const notesWindow = page.getByLabel("Notes app");
   const shortNote = notesWindow.locator(".note-card", { hasText: "Buy stamps" });
   await expect(shortNote.getByRole("button", { name: "Show full note" })).toHaveCount(0);
-  await expect(shortNote.getByRole("button", { name: "Close note preview" })).toHaveCount(0);
 
   const longNote = notesWindow.locator(".note-card", { hasText: "This note is intentionally long" });
   await expect(longNote.getByRole("button", { name: "Show full note" })).toBeVisible();
+});
+
+test("notes can be copied and long notes open in a popup", async ({ page }) => {
+  const noteBody = "This note should copy cleanly.\nIt is long enough to open in a popup instead of expanding inside the card.";
+  await page.evaluate(body => {
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "copy-note", type: "note", title: "Copy note", body, dueDate: "", done: false, createdAt: Date.now(), updatedAt: Date.now() }
+    ]));
+  }, noteBody);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.evaluate(() => {
+    window.__copiedText = "";
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: {
+        writeText: async text => {
+          window.__copiedText = text;
+        }
+      }
+    });
+  });
+  await openNotesSurface(page);
+
+  const note = page.getByLabel("Notes app").locator(".note-card", { hasText: "This note should copy cleanly" });
+  await note.getByRole("button", { name: "Copy note" }).click();
+  await expect(page.locator("#toast")).toHaveText("Note copied.");
+  await expect.poll(() => page.evaluate(() => window.__copiedText)).toBe(noteBody);
+
+  await note.getByRole("button", { name: "Show full note" }).click();
+  const notePopup = page.getByRole("dialog", { name: /Note \|/ });
+  await expect(notePopup).toBeVisible();
+  await expect(notePopup.locator("#note-popup-text")).toContainText("instead of expanding inside the card");
+
+  const popupStyle = await notePopup.locator("#note-popup-text").evaluate(element => {
+    const styles = getComputedStyle(element);
+    return {
+      whiteSpace: styles.whiteSpace,
+      overflowY: styles.overflowY
+    };
+  });
+  expect(popupStyle.whiteSpace).toBe("pre-wrap");
+  expect(["auto", "scroll"]).toContain(popupStyle.overflowY);
+
+  await notePopup.getByRole("button", { name: "Close full note" }).click();
+  await expect(notePopup).toBeHidden();
 });
 
 test("delete asks for confirmation", async ({ page }) => {
