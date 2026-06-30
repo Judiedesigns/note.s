@@ -341,6 +341,42 @@ test("notes can be copied and long notes open in a popup", async ({ page }) => {
   await expect(notePopup).toBeHidden();
 });
 
+test("note popup respects a reduced mobile visual viewport", async ({ page }) => {
+  const viewport = page.viewportSize();
+  if (!viewport || viewport.width > 520) test.skip();
+
+  await page.addInitScript(() => {
+    const listeners = {};
+    Object.defineProperty(window, "visualViewport", {
+      configurable: true,
+      value: {
+        height: 520,
+        offsetTop: 0,
+        addEventListener: (name, callback) => {
+          listeners[name] = callback;
+        },
+        removeEventListener: () => {}
+      }
+    });
+  });
+
+  await page.evaluate(() => {
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "reduced", type: "note", title: "Reduced viewport", body: "This note opens while mobile browser controls reduce the real visible area.\n\nThe popup actions should stay above the taskbar.", dueDate: "", done: false, createdAt: Date.now(), updatedAt: Date.now() }
+    ]));
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openNotesSurface(page);
+  await page.getByRole("button", { name: "Show full note" }).click();
+
+  const popupBox = await page.locator(".note-popup-window").boundingBox();
+  const actionsBox = await page.locator(".note-popup-actions").boundingBox();
+  expect(popupBox).not.toBeNull();
+  expect(actionsBox).not.toBeNull();
+  expect(popupBox.y + popupBox.height).toBeLessThanOrEqual(520 - 28 + 1);
+  expect(actionsBox.y + actionsBox.height).toBeLessThanOrEqual(520 - 28 + 1);
+});
+
 test("delete asks for confirmation", async ({ page }) => {
   await page.evaluate(today => {
     localStorage.setItem("random_notes_v1", JSON.stringify([

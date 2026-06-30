@@ -271,6 +271,7 @@ loadItems();
 loadWindowPositions();
 loadIconPositions();
 taskDateInput.value = toDateInputValue(new Date());
+updateVisualViewportVars();
 render();
 applyWindowPositions();
 applyIconPositions();
@@ -409,9 +410,15 @@ window.addEventListener("pointerup", endIconDrag);
 window.addEventListener("pointercancel", endWindowDrag);
 window.addEventListener("pointercancel", endIconDrag);
 window.addEventListener("resize", () => {
+  updateVisualViewportVars();
   applyWindowPositions();
   applyIconPositions();
 });
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", updateVisualViewportVars);
+  window.visualViewport.addEventListener("scroll", updateVisualViewportVars);
+}
 
 function loadItems() {
   try {
@@ -421,6 +428,14 @@ function loadItems() {
     items = [];
     showToast("Could not read saved notes.");
   }
+}
+
+function updateVisualViewportVars() {
+  const viewport = window.visualViewport;
+  const height = viewport ? viewport.height : window.innerHeight;
+  const offsetTop = viewport ? viewport.offsetTop : 0;
+  document.documentElement.style.setProperty("--visual-viewport-height", `${height}px`);
+  document.documentElement.style.setProperty("--visual-viewport-offset-top", `${offsetTop}px`);
 }
 
 function normalizeItem(item) {
