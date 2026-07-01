@@ -129,6 +129,20 @@
               <p>Loose thoughts, scribbles, and ideas.</p>
             </div>
 
+            <section class="sync-panel" aria-label="Sync settings">
+              <div>
+                <p class="sync-title">Sync</p>
+                <p class="sync-status" id="sync-status">Local mode</p>
+              </div>
+              <form class="sync-form" id="sync-form" aria-label="Sign in to sync">
+                <label class="sr-only" for="sync-email">Email</label>
+                <input class="text-input sync-email" id="sync-email" type="email" inputmode="email" autocomplete="email" placeholder="Email for sync">
+                <button class="secondary-btn" id="sync-signin" type="submit">Sign in</button>
+                <button class="secondary-btn" id="sync-pull" type="button" hidden>Sync now</button>
+                <button class="secondary-btn" id="sync-signout" type="button" hidden>Sign out</button>
+              </form>
+            </section>
+
             <form class="capture notes-capture" id="note-form" aria-label="Add note">
               <div>
                 <label class="field-label" for="note-body">body</label>
@@ -208,6 +222,10 @@
 const STORAGE_KEY = "random_notes_v1";
 const WINDOW_POSITIONS_KEY = "random_notes_window_positions_v1";
 const ICON_POSITIONS_KEY = "random_notes_icon_positions_v1";
+const SUPABASE_URL = "https://wmlmallkptqjoqzjmlov.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_akgeXDLHsoOPVdXu_OfpPw_oS01BHeD";
+const SYNC_TABLE = "random_notes_sync";
+const SYNC_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
 
 let items = [];
 let activeView = "today";
@@ -224,6 +242,12 @@ let iconDragState = null;
 let windowZIndex = 10;
 let activePopupNoteText = "";
 let notePopupReturnFocus = null;
+let syncClient = null;
+let syncUser = null;
+let syncReady = false;
+let syncConfigured = false;
+let syncSaving = false;
+let syncSaveTimer = null;
 const windowState = {
   planner: { open: false, minimized: false, fullscreen: false },
   notes: { open: false, minimized: false, fullscreen: false },
@@ -250,6 +274,12 @@ const notePopupTitle = document.getElementById("note-popup-title");
 const notePopupCloseButton = document.getElementById("note-popup-close");
 const notePopupCopyButton = document.getElementById("note-popup-copy");
 const notePopupDoneButton = document.getElementById("note-popup-done");
+const syncForm = document.getElementById("sync-form");
+const syncEmailInput = document.getElementById("sync-email");
+const syncStatus = document.getElementById("sync-status");
+const syncSignInButton = document.getElementById("sync-signin");
+const syncPullButton = document.getElementById("sync-pull");
+const syncSignOutButton = document.getElementById("sync-signout");
 const taskList = document.getElementById("task-list");
 const noteList = document.getElementById("note-list");
 const taskCountLabel = document.getElementById("task-count");
@@ -277,6 +307,7 @@ applyWindowPositions();
 applyIconPositions();
 setActiveSurface();
 setTaskFilter();
+initSync();
 
 taskForm.addEventListener("submit", event => {
   event.preventDefault();
@@ -347,6 +378,14 @@ notePopup.addEventListener("click", event => {
 notePopupCloseButton.addEventListener("click", closeNotePopup);
 notePopupDoneButton.addEventListener("click", closeNotePopup);
 notePopupCopyButton.addEventListener("click", () => copyNoteText(activePopupNoteText));
+
+syncForm.addEventListener("submit", event => {
+  event.preventDefault();
+  signInToSync();
+});
+
+syncPullButton.addEventListener("click", () => pullCloudItems());
+syncSignOutButton.addEventListener("click", signOutOfSync);
 
 tabs.forEach(button => {
   button.addEventListener("click", () => {
@@ -452,7 +491,8 @@ function normalizeItem(item) {
       planView: hasTodo ? "today" : "",
       done: Boolean(item.done),
       createdAt: Number(item.ts) || Date.now(),
-      updatedAt: Number(item.ts) || Date.now()
+      updatedAt: Number(item.ts) || Date.now(),
+      deletedAt: 0
     };
   }
   return {
@@ -464,7 +504,8 @@ function normalizeItem(item) {
     planView: item.type === "note" ? "" : normalizePlanView(item.planView),
     done: Boolean(item.done),
     createdAt: Number(item.createdAt) || Date.now(),
-    updatedAt: Number(item.updatedAt) || Date.now()
+    updatedAt: Number(item.updatedAt) || Date.now(),
+    deletedAt: Number(item.deletedAt) || 0
   };
 }
 
@@ -474,6 +515,182 @@ function normalizePlanView(value) {
 
 function saveItems() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  queueCloudSave();
+}
+
+function saveLocalItems() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+}
+
+function getSyncConfig() {
+  return {
+    url: String(SUPABASE_URL || "").trim(),
+    anonKey: String(SUPABASE_ANON_KEY || "").trim()
+  };
+}
+
+async function initSync() {
+  const config = getSyncConfig();
+  syncConfigured = Boolean(config.url && config.anonKey);
+  updateSyncUi();
+  if (!syncConfigured) return;
+
+  try {
+    await loadSupabaseScript();
+    syncClient = window.supabase.createClient(config.url, config.anonKey, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
+    const { data } = await syncClient.auth.getSession();
+    syncUser = data.session ? data.session.user : null;
+    syncReady = true;
+    syncClient.auth.onAuthStateChange((event, session) => {
+      syncUser = session ? session.user : null;
+      updateSyncUi();
+      if (event === "SIGNED_IN" && syncUser) pullCloudItems({ silent: true });
+    });
+    updateSyncUi();
+    if (syncUser) await pullCloudItems({ silent: true });
+  } catch (error) {
+    syncReady = false;
+    updateSyncUi("Sync unavailable.");
+  }
+}
+
+function loadSupabaseScript() {
+  if (window.supabase && typeof window.supabase.createClient === "function") return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector(`script[src="${SYNC_SCRIPT_URL}"]`);
+    if (existing) {
+      existing.addEventListener("load", resolve, { once: true });
+      existing.addEventListener("error", reject, { once: true });
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = SYNC_SCRIPT_URL;
+    script.async = true;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+function updateSyncUi(message) {
+  const signedIn = Boolean(syncUser);
+  const configured = syncConfigured || Boolean(getSyncConfig().url && getSyncConfig().anonKey);
+  syncStatus.textContent = message || (signedIn
+    ? `Syncing as ${syncUser.email || "signed-in user"}`
+    : configured
+      ? "Sign in to sync phone and laptop."
+      : "Local mode. Add Supabase keys in index.html.");
+  syncEmailInput.hidden = signedIn;
+  syncSignInButton.hidden = signedIn;
+  syncPullButton.hidden = !signedIn;
+  syncSignOutButton.hidden = !signedIn;
+  syncEmailInput.disabled = !configured || signedIn;
+  syncSignInButton.disabled = !configured || signedIn;
+  syncPullButton.disabled = !syncReady || !signedIn || syncSaving;
+  syncSignOutButton.disabled = !syncReady || !signedIn;
+}
+
+async function signInToSync() {
+  if (!syncReady || !syncClient) {
+    updateSyncUi(syncConfigured ? "Sync is still loading." : "Add Supabase keys first.");
+    return;
+  }
+  const email = syncEmailInput.value.trim();
+  if (!email) {
+    showToast("Enter your email.");
+    syncEmailInput.focus();
+    return;
+  }
+  try {
+    const redirectTo = window.location.href.split("#")[0];
+    const { error } = await syncClient.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: redirectTo }
+    });
+    if (error) throw error;
+    updateSyncUi("Check your email for the sign-in link.");
+    showToast("Check your email.");
+  } catch (error) {
+    updateSyncUi("Could not send sign-in link.");
+    showToast("Sync sign-in failed.");
+  }
+}
+
+async function signOutOfSync() {
+  if (!syncClient) return;
+  await syncClient.auth.signOut();
+  syncUser = null;
+  updateSyncUi();
+  showToast("Signed out of sync.");
+}
+
+function queueCloudSave() {
+  if (!syncReady || !syncUser || !syncClient) return;
+  clearTimeout(syncSaveTimer);
+  syncSaveTimer = setTimeout(() => pushCloudItems({ silent: true }), 500);
+}
+
+async function pushCloudItems({ silent = false } = {}) {
+  if (!syncReady || !syncUser || !syncClient || syncSaving) return;
+  syncSaving = true;
+  updateSyncUi("Syncing...");
+  try {
+    const { error } = await syncClient
+      .from(SYNC_TABLE)
+      .upsert({
+        user_id: syncUser.id,
+        items,
+        updated_at: new Date().toISOString()
+      }, { onConflict: "user_id" });
+    if (error) throw error;
+    updateSyncUi();
+    if (!silent) showToast("Synced.");
+  } catch (error) {
+    updateSyncUi("Sync save failed. Local copy kept.");
+    if (!silent) showToast("Sync failed.");
+  } finally {
+    syncSaving = false;
+  }
+}
+
+async function pullCloudItems({ silent = false } = {}) {
+  if (!syncReady || !syncUser || !syncClient) return;
+  updateSyncUi("Checking cloud notes...");
+  try {
+    const { data, error } = await syncClient
+      .from(SYNC_TABLE)
+      .select("items")
+      .eq("user_id", syncUser.id)
+      .maybeSingle();
+    if (error) throw error;
+    const cloudItems = Array.isArray(data && data.items)
+      ? data.items.map(normalizeItem).filter(Boolean)
+      : [];
+    const merged = mergeItems(items, cloudItems);
+    const changed = JSON.stringify(merged) !== JSON.stringify(items);
+    items = merged;
+    saveLocalItems();
+    render();
+    updateSyncUi();
+    await pushCloudItems({ silent: true });
+    if (!silent) showToast(changed ? "Synced latest notes." : "Already up to date.");
+  } catch (error) {
+    updateSyncUi("Cloud sync failed. Local copy kept.");
+    if (!silent) showToast("Sync failed.");
+  }
+}
+
+function mergeItems(localItems, cloudItems) {
+  const byId = new Map();
+  [...cloudItems, ...localItems].forEach(item => {
+    const existing = byId.get(item.id);
+    if (!existing || Number(item.updatedAt) >= Number(existing.updatedAt)) {
+      byId.set(item.id, item);
+    }
+  });
+  return Array.from(byId.values()).sort((a, b) => Number(b.createdAt) - Number(a.createdAt));
 }
 
 function loadWindowPositions() {
@@ -580,7 +797,7 @@ function addNote() {
 
 function exportTasksToCalendar() {
   const tasks = items
-    .filter(item => item.type === "task" && item.dueDate)
+    .filter(item => item.type === "task" && item.dueDate && !item.deletedAt)
     .sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)) || Number(a.createdAt) - Number(b.createdAt));
 
   if (!tasks.length) {
@@ -693,7 +910,7 @@ function foldCalendarLines(lines) {
 
 function render() {
   const visibleTasks = getVisibleTasks();
-  const notes = items.filter(item => item.type === "note");
+  const notes = items.filter(item => item.type === "note" && !item.deletedAt);
   const visibleNotes = getVisibleNotes(notes);
   taskList.innerHTML = "";
   noteList.innerHTML = "";
@@ -866,7 +1083,7 @@ function createCard(item) {
 
 function getVisibleTasks() {
   const tasks = items
-    .filter(item => item.type === "task")
+    .filter(item => item.type === "task" && !item.deletedAt)
     .filter(item => {
       if (taskFilter === "open") return !item.done;
       if (taskFilter === "done") return item.done;
@@ -927,7 +1144,7 @@ function editItem(id) {
     showToast("Editing task.");
     return;
   }
-  items = items.filter(entry => entry.id !== id);
+  items = items.map(entry => entry.id === id ? { ...entry, deletedAt: Date.now(), updatedAt: Date.now() } : entry);
   saveItems();
   render();
   (item.type === "note" ? noteBodyInput : taskTitleInput).focus();
@@ -942,7 +1159,7 @@ function deleteItem(id) {
     showToast("Item kept.");
     return;
   }
-  items = items.filter(entry => entry.id !== id);
+  items = items.map(entry => entry.id === id ? { ...entry, deletedAt: Date.now(), updatedAt: Date.now() } : entry);
   saveItems();
   render();
   announce("Item deleted.");
@@ -1428,7 +1645,7 @@ function getReadmeText() {
   const today = toDateInputValue(new Date());
   const limit = 5;
   const tasks = items
-    .filter(item => item.type === "task")
+    .filter(item => item.type === "task" && !item.deletedAt)
     .slice()
     .sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)) || Number(a.createdAt) - Number(b.createdAt));
   const todayTasks = tasks.filter(item => item.dueDate === today);
@@ -1436,7 +1653,7 @@ function getReadmeText() {
   const todayDone = todayTasks.filter(item => item.done);
   const overdue = tasks.filter(item => item.dueDate < today && !item.done);
   const weekOpen = tasks.filter(item => !item.done && isSameWeek(parseLocalDate(item.dueDate), new Date()));
-  const notes = items.filter(item => item.type === "note");
+  const notes = items.filter(item => item.type === "note" && !item.deletedAt);
   const lines = [
     "README.txt",
     "",

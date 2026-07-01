@@ -773,6 +773,56 @@ button { cursor: pointer; }
   background: #d8dbe1;
 }
 
+.sync-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(14rem, 1.1fr);
+  align-items: end;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+  padding: 0.45rem;
+  border: 2px solid;
+  border-color: #8a8f98 #f8f9fb #f8f9fb #8a8f98;
+  background: #eceef3;
+}
+
+.sync-title {
+  color: #111;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.sync-status {
+  margin-top: 0.18rem;
+  color: var(--muted);
+  font-size: 0.66rem;
+  line-height: 1.25;
+}
+
+.sync-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content max-content max-content;
+  gap: 0.28rem;
+  align-items: center;
+}
+
+.sync-email {
+  height: 28px;
+  font-size: 0.7rem;
+}
+
+.sync-form .secondary-btn {
+  min-height: 28px;
+  padding-inline: 0.46rem;
+  font-size: 0.66rem;
+  white-space: nowrap;
+}
+
+.sync-form .secondary-btn:disabled,
+.sync-email:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
 .notes-capture {
   flex: 0 0 auto;
   margin-bottom: 0.65rem;
@@ -1521,6 +1571,15 @@ button { cursor: pointer; }
     gap: 0.4rem;
   }
 
+  .sync-panel {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .sync-form {
+    grid-template-columns: minmax(0, 1fr) max-content;
+  }
+
   .count {
     text-align: left;
   }
@@ -1585,6 +1644,14 @@ button { cursor: pointer; }
 
   .capture {
     gap: 0.45rem;
+  }
+
+  .sync-form {
+    grid-template-columns: 1fr;
+  }
+
+  .sync-form .secondary-btn {
+    width: 100%;
   }
 
   .task-entry-row {

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Random Notes Project Summary</title>
+  <style>
+    body {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+      color: #1f2328;
+      font-family: Arial, sans-serif;
+      line-height: 1.55;
+      background: #f7f8fa;
+    }
+
+    main {
+      padding: 28px;
+      border: 1px solid #d0d7de;
+      background: #fff;
+    }
+
+    h1 {
+      margin-top: 0;
+      font-size: 30px;
+      line-height: 1.15;
+    }
+
+    h2 {
+      margin-top: 28px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #d8dee4;
+      font-size: 20px;
+    }
+
+    code {
+      padding: 2px 5px;
+      border-radius: 3px;
+      background: #eef1f4;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 0.95em;
+    }
+
+    ul {
+      padding-left: 22px;
+    }
+
+    li {
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Random Notes Local Planner Summary</h1>
+
+    <h2>Project</h2>
+    <p>We are building <strong>Random Notes local planner</strong>, a browser app with a retro Windows-95-style desktop UI.</p>
+    <ul>
+      <li>Project folder: <code>/Users/theoneglobal/Downloads/cc/random-notes-planner</code></li>
+      <li>GitHub repo: <code>git@github.com:Judiedesigns/note.s.git</code></li>
+      <li>Latest pushed commit: <code>10c7a3c Fix mobile note popup viewport</code></li>
+      <li>Current test result: <code>49 passed, 14 skipped</code></li>
+    </ul>
+
+    <h2>Current Status</h2>
+    <ul>
+      <li>Browser app with retro desktop UI.</li>
+      <li>Stores data locally in <code>localStorage</code>.</li>
+      <li>Local-first storage with optional Supabase sync.</li>
+      <li>Works as a private planner per browser/device when sync is not configured.</li>
+    </ul>
+
+    <h2>Main Windows</h2>
+    <ul>
+      <li><strong>Planner</strong></li>
+      <li><strong>Notes</strong></li>
+      <li><strong>README.txt</strong></li>
+    </ul>
+
+    <h2>Planner Features</h2>
+    <ul>
+      <li>Today / Week / Month task buckets are separate.</li>
+      <li>Add task via retro <code>+ Add Task</code> button.</li>
+      <li>Task form has one task field and date.</li>
+      <li>Task completion with checkbox and strikethrough.</li>
+      <li>Edit task.</li>
+      <li>Delete task with confirmation.</li>
+      <li>Status filter: All / Open / Done.</li>
+      <li><code>.ics</code> calendar export with confirmation before download.</li>
+      <li>Planner desktop width reduced to <code>42rem</code>.</li>
+      <li>Mobile task/form layout polished.</li>
+    </ul>
+
+    <h2>Notes Features</h2>
+    <ul>
+      <li>Notes are separate from tasks.</li>
+      <li>Add loose thoughts.</li>
+      <li>Search notes.</li>
+      <li>Filter notes by All / Today / Week / Month.</li>
+      <li>Compact previews.</li>
+      <li>Long notes open in a retro popup showing only the clicked note.</li>
+      <li>Popup has Copy, Done, and close button.</li>
+      <li>Notes also have a copy icon directly on the row.</li>
+      <li>Mobile popup respects <code>window.visualViewport</code>, so buttons stay above browser/taskbar chrome.</li>
+      <li>Notes window includes optional email-link sync controls.</li>
+    </ul>
+
+    <h2>README.txt In App</h2>
+    <ul>
+      <li>Generated daily summary/status view.</li>
+      <li>Shows today’s tasks, done tasks, overdue tasks, weekly count, and notes count.</li>
+    </ul>
+
+    <h2>Desktop And Mobile Behavior</h2>
+    <ul>
+      <li>Draggable desktop icons.</li>
+      <li>Movable desktop windows.</li>
+      <li>Persistent icon/window positions.</li>
+      <li>Offscreen window recovery.</li>
+      <li>Mobile/tablet layout polished.</li>
+      <li>Duplicate mobile surface tabs hidden.</li>
+      <li>Desktop icons act as navigation on mobile.</li>
+      <li>Mobile title/icon spacing improved.</li>
+    </ul>
+
+    <h2>Repo README</h2>
+    <p><code>README.md</code> has been updated to describe the current app accurately.</p>
+
+    <h2>Recent Pushed Commits</h2>
+    <ul>
+      <li><code>e535dac Polish mobile planner layout</code></li>
+      <li><code>646a636 Open long notes in popup</code></li>
+      <li><code>10c7a3c Fix mobile note popup viewport</code></li>
+    </ul>
+
+    <h2>Sync Discussion</h2>
+    <ul>
+      <li>Optional sync UI has been added using Supabase Auth and a Supabase table.</li>
+      <li>Auth approach: email magic link.</li>
+      <li>Each user signs in with their own email.</li>
+      <li>Same email on PC and phone syncs that person’s planner.</li>
+      <li>Different users stay separate.</li>
+      <li>Local fallback remains: app still works without sign-in/internet.</li>
+      <li>Setup still requires creating a Supabase project, running the SQL in <code>README.md</code>, adding redirect URLs, and pasting the URL/anon key into <code>index.html</code>.</li>
+    </ul>
+
+    <h2>Potential Next Steps</h2>
+    <ul>
+      <li>Recheck the app live on mobile after the latest push.</li>
+      <li>Create and configure the Supabase project.</li>
+      <li>Deploy the app to a URL that phone and laptop can both open.</li>
+      <li>Continue polishing mobile or notes interactions.</li>
+    </ul>
+  </main>
+</body>
+</html>

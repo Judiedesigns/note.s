@@ -6,7 +6,7 @@ A retro desktop-style local planner for dated tasks and loose notes.
 
 Open the page in any modern browser and use it like a small Windows-95-style desktop. The Planner window handles dated tasks, the Notes window holds loose thoughts, and `README.txt` gives a daily status summary.
 
-Everything is saved in `localStorage`, so it stays private to the same browser on the same device. There is no backend, account, or sync layer yet.
+Everything is saved in `localStorage` first, so it still works in the same browser when you are offline. Optional Supabase sync can be enabled so the same email account sees the same planner and notes on phone and laptop.
 
 ## Features
 
@@ -25,7 +25,54 @@ Everything is saved in `localStorage`, so it stays private to the same browser o
 - Offscreen window recovery
 - Responsive desktop, tablet, and mobile layout
 - Backward-compatible loading for older saved note/todo entries
-- Local-only storage with no backend, accounts, or syncing
+- Local-first storage with optional Supabase email-link sync
+
+## Optional phone/laptop sync
+
+1. Create a Supabase project.
+2. In Supabase SQL Editor, run:
+
+```sql
+create table if not exists public.random_notes_sync (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  items jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.random_notes_sync enable row level security;
+
+create policy "Users can read their own random notes"
+on public.random_notes_sync
+for select
+to authenticated
+using (auth.uid() = user_id);
+
+create policy "Users can insert their own random notes"
+on public.random_notes_sync
+for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+create policy "Users can update their own random notes"
+on public.random_notes_sync
+for update
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+```
+
+3. In `index.html`, paste your project values:
+
+```js
+const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
+const SUPABASE_ANON_KEY = "YOUR_PUBLIC_ANON_KEY";
+```
+
+4. In Supabase Auth settings, add the hosted app URL to the allowed redirect URLs.
+5. Host this folder somewhere your phone can open it.
+6. Open Notes, enter your email, use the magic link, then sign in with the same email on your phone.
+
+The app merges local and cloud items on sign-in. After that, task and note changes save locally first and then sync to Supabase.
 
 ## Preview
 
