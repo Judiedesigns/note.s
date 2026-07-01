@@ -773,26 +773,48 @@ button { cursor: pointer; }
   background: #d8dbe1;
 }
 
-.sync-panel {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(14rem, 1.1fr);
-  align-items: end;
-  gap: 0.5rem;
+.notes-topbar {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 0.75rem;
   margin-bottom: 0.65rem;
-  padding: 0.45rem;
-  border: 2px solid;
-  border-color: #8a8f98 #f8f9fb #f8f9fb #8a8f98;
-  background: #eceef3;
 }
 
-.sync-title {
-  color: #111;
-  font-size: 0.72rem;
-  font-weight: 700;
+.notes-topbar .brand {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.sync-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.sync-toggle {
+  min-height: 27px;
+  padding-inline: 0.55rem;
+  font-size: 0.68rem;
+}
+
+.sync-toggle.is-signed-in {
+  background: #d9f4ce;
+}
+
+.sync-panel {
+  position: absolute;
+  top: calc(100% + 0.25rem);
+  right: 0;
+  z-index: 32;
+  width: min(20rem, calc(100vw - 2rem));
+  padding: 0.45rem;
+  border: 2px solid #22262c;
+  background: var(--chrome);
+  box-shadow: var(--shadow);
 }
 
 .sync-status {
-  margin-top: 0.18rem;
+  margin-bottom: 0.4rem;
   color: var(--muted);
   font-size: 0.66rem;
   line-height: 1.25;
@@ -800,7 +822,7 @@ button { cursor: pointer; }
 
 .sync-form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content max-content max-content;
+  grid-template-columns: minmax(0, 1fr) max-content;
   gap: 0.28rem;
   align-items: center;
 }
@@ -1571,15 +1593,6 @@ button { cursor: pointer; }
     gap: 0.4rem;
   }
 
-  .sync-panel {
-    grid-template-columns: 1fr;
-    align-items: stretch;
-  }
-
-  .sync-form {
-    grid-template-columns: minmax(0, 1fr) max-content;
-  }
-
   .count {
     text-align: left;
   }
@@ -1644,6 +1657,14 @@ button { cursor: pointer; }
 
   .capture {
     gap: 0.45rem;
+  }
+
+  .notes-topbar {
+    gap: 0.45rem;
+  }
+
+  .sync-panel {
+    right: -0.1rem;
   }
 
   .sync-form {

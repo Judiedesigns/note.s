@@ -124,24 +124,25 @@
         </div>
         <div class="window-body">
           <section class="content-panel" aria-live="polite">
-            <div class="brand">
-              <h1>notes</h1>
-              <p>Loose thoughts, scribbles, and ideas.</p>
-            </div>
-
-            <section class="sync-panel" aria-label="Sync settings">
-              <div>
-                <p class="sync-title">Sync</p>
-                <p class="sync-status" id="sync-status">Local mode</p>
+            <div class="notes-topbar">
+              <div class="brand">
+                <h1>notes</h1>
+                <p>Loose thoughts, scribbles, and ideas.</p>
               </div>
-              <form class="sync-form" id="sync-form" aria-label="Sign in to sync">
-                <label class="sr-only" for="sync-email">Email</label>
-                <input class="text-input sync-email" id="sync-email" type="email" inputmode="email" autocomplete="email" placeholder="Email for sync">
-                <button class="secondary-btn" id="sync-signin" type="submit">Sign in</button>
-                <button class="secondary-btn" id="sync-pull" type="button" hidden>Sync now</button>
-                <button class="secondary-btn" id="sync-signout" type="button" hidden>Sign out</button>
-              </form>
-            </section>
+              <div class="sync-menu" aria-label="Sync settings">
+                <button class="secondary-btn sync-toggle" id="sync-toggle" type="button" aria-expanded="false" aria-controls="sync-panel">Sync</button>
+                <section class="sync-panel" id="sync-panel" hidden>
+                  <p class="sync-status" id="sync-status">Local mode</p>
+                  <form class="sync-form" id="sync-form" aria-label="Sign in to sync">
+                    <label class="sr-only" for="sync-email">Email</label>
+                    <input class="text-input sync-email" id="sync-email" type="email" inputmode="email" autocomplete="email" placeholder="Email for sync">
+                    <button class="secondary-btn" id="sync-signin" type="submit">Sign in</button>
+                    <button class="secondary-btn" id="sync-pull" type="button" hidden>Sync now</button>
+                    <button class="secondary-btn" id="sync-signout" type="button" hidden>Sign out</button>
+                  </form>
+                </section>
+              </div>
+            </div>
 
             <form class="capture notes-capture" id="note-form" aria-label="Add note">
               <div>
@@ -274,6 +275,8 @@ const notePopupTitle = document.getElementById("note-popup-title");
 const notePopupCloseButton = document.getElementById("note-popup-close");
 const notePopupCopyButton = document.getElementById("note-popup-copy");
 const notePopupDoneButton = document.getElementById("note-popup-done");
+const syncToggle = document.getElementById("sync-toggle");
+const syncPanel = document.getElementById("sync-panel");
 const syncForm = document.getElementById("sync-form");
 const syncEmailInput = document.getElementById("sync-email");
 const syncStatus = document.getElementById("sync-status");
@@ -359,14 +362,17 @@ noteFilterButtons.forEach(button => {
 document.addEventListener("click", event => {
   if (event.target.closest(".task-filter-menu")) return;
   if (event.target.closest(".note-filter-menu")) return;
+  if (event.target.closest(".sync-menu")) return;
   setTaskFilterMenuOpen(false);
   setNoteFilterMenuOpen(false);
+  setSyncPanelOpen(false);
 });
 
 document.addEventListener("keydown", event => {
   if (event.key === "Escape") {
     setTaskFilterMenuOpen(false);
     setNoteFilterMenuOpen(false);
+    setSyncPanelOpen(false);
     closeNotePopup();
   }
 });
@@ -378,6 +384,11 @@ notePopup.addEventListener("click", event => {
 notePopupCloseButton.addEventListener("click", closeNotePopup);
 notePopupDoneButton.addEventListener("click", closeNotePopup);
 notePopupCopyButton.addEventListener("click", () => copyNoteText(activePopupNoteText));
+
+syncToggle.addEventListener("click", () => {
+  const open = syncToggle.getAttribute("aria-expanded") === "true";
+  setSyncPanelOpen(!open);
+});
 
 syncForm.addEventListener("submit", event => {
   event.preventDefault();
@@ -590,6 +601,9 @@ function updateSyncUi(message) {
   syncSignInButton.disabled = !configured || signedIn;
   syncPullButton.disabled = !syncReady || !signedIn || syncSaving;
   syncSignOutButton.disabled = !syncReady || !signedIn;
+  syncToggle.textContent = signedIn ? "Synced" : "Sync";
+  syncToggle.classList.toggle("is-signed-in", signedIn);
+  if (message) setSyncPanelOpen(true);
 }
 
 async function signInToSync() {
@@ -1273,6 +1287,11 @@ function setNoteFilterMenuOpen(open) {
 
 function setTaskFilterMenuOpen(open) {
   taskFilterToggle.setAttribute("aria-expanded", String(open));
+}
+
+function setSyncPanelOpen(open) {
+  syncPanel.hidden = !open;
+  syncToggle.setAttribute("aria-expanded", String(open));
 }
 
 function canDragWindows() {
