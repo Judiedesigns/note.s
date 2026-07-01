@@ -627,7 +627,9 @@ async function signInToSync() {
     updateSyncUi("Check your email for the sign-in link.");
     showToast("Check your email.");
   } catch (error) {
-    updateSyncUi("Could not send sign-in link.");
+    const message = error && error.message ? error.message : "Could not send sign-in link.";
+    console.error("Supabase sign-in failed:", error);
+    updateSyncUi(message);
     showToast("Sync sign-in failed.");
   }
 }
