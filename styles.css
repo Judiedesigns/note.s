@@ -1011,6 +1011,18 @@ button { cursor: pointer; }
   padding-right: 0.25rem;
 }
 
+.notes-more {
+  display: flex;
+  justify-content: center;
+  padding: 0.42rem 0 0.1rem;
+}
+
+.notes-more-btn {
+  min-height: 28px;
+  padding-inline: 0.75rem;
+  font-size: 0.68rem;
+}
+
 .group {
   display: grid;
   gap: 0.16rem;

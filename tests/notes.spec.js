@@ -277,6 +277,40 @@ test("notes can be searched and filtered", async ({ page }) => {
   await expect(notesWindow.locator(".note-preview", { hasText: "Old location note" })).toBeVisible();
 });
 
+test("notes list reveals large archives in batches", async ({ page }) => {
+  const now = Date.now();
+  await page.evaluate(now => {
+    const notes = Array.from({ length: 25 }, (_, index) => ({
+      id: `note-${index}`,
+      type: "note",
+      title: `Archive note ${index + 1}`,
+      body: index === 24 ? "Deep archive keyword" : `Archive note ${index + 1}`,
+      dueDate: "",
+      done: false,
+      createdAt: now - index,
+      updatedAt: now - index
+    }));
+    localStorage.setItem("random_notes_v1", JSON.stringify(notes));
+  }, now);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openNotesSurface(page);
+
+  const notesWindow = page.getByLabel("Notes app");
+  await expect(notesWindow.getByText("25 notes")).toBeVisible();
+  await expect(notesWindow.locator(".note-card")).toHaveCount(10);
+  await expect(notesWindow.getByRole("button", { name: "Show 10 more" })).toBeVisible();
+
+  await notesWindow.getByRole("button", { name: "Show 10 more" }).click();
+  await expect(notesWindow.locator(".note-card")).toHaveCount(20);
+  await expect(notesWindow.getByRole("button", { name: "Show 5 more" })).toBeVisible();
+
+  await notesWindow.getByRole("searchbox", { name: "Search notes" }).fill("Deep archive keyword");
+  await expect(notesWindow.getByText("1 of 25 notes")).toBeVisible();
+  await expect(notesWindow.locator(".note-card")).toHaveCount(1);
+  await expect(notesWindow.locator(".note-preview")).toContainText("Deep archive keyword");
+  await expect(notesWindow.getByRole("button", { name: /Show .* more/ })).toHaveCount(0);
+});
+
 test("short notes do not show expansion controls", async ({ page }) => {
   const now = Date.now();
   await page.evaluate(now => {

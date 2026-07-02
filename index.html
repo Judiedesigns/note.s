@@ -227,12 +227,14 @@ const SUPABASE_URL = "https://wmlmallkptqjoqzjmlov.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_akgeXDLHsoOPVdXu_OfpPw_oS01BHeD";
 const SYNC_TABLE = "random_notes_sync";
 const SYNC_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+const NOTE_PAGE_SIZE = 10;
 
 let items = [];
 let activeView = "today";
 let activeSurface = "planner";
 let noteQuery = "";
 let noteFilter = "all";
+let visibleNoteLimit = NOTE_PAGE_SIZE;
 let taskFilter = "all";
 let editingTaskId = null;
 let toastTimer = null;
@@ -343,6 +345,7 @@ noteForm.addEventListener("submit", event => {
 
 noteSearchInput.addEventListener("input", () => {
   noteQuery = noteSearchInput.value.trim().toLowerCase();
+  visibleNoteLimit = NOTE_PAGE_SIZE;
   render();
 });
 
@@ -354,6 +357,7 @@ noteFilterToggle.addEventListener("click", () => {
 noteFilterButtons.forEach(button => {
   button.addEventListener("click", () => {
     noteFilter = button.dataset.noteFilter;
+    visibleNoteLimit = NOTE_PAGE_SIZE;
     setNoteFilter();
     setNoteFilterMenuOpen(false);
     render();
@@ -968,7 +972,11 @@ function render() {
     noteList.appendChild(empty);
     return;
   }
-  visibleNotes.forEach(item => noteList.appendChild(createCard(item)));
+  const shownNotes = visibleNotes.slice(0, visibleNoteLimit);
+  shownNotes.forEach(item => noteList.appendChild(createCard(item)));
+  if (shownNotes.length < visibleNotes.length) {
+    noteList.appendChild(createShowMoreNotesButton(visibleNotes.length - shownNotes.length));
+  }
 }
 
 function renderGroups(visible) {
@@ -986,6 +994,22 @@ function renderGroups(visible) {
     groupItems.forEach(item => group.appendChild(createCard(item)));
     taskList.appendChild(group);
   });
+}
+
+function createShowMoreNotesButton(remaining) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "notes-more";
+  const button = document.createElement("button");
+  button.className = "secondary-btn notes-more-btn";
+  button.type = "button";
+  button.textContent = `Show ${Math.min(NOTE_PAGE_SIZE, remaining)} more`;
+  button.addEventListener("click", () => {
+    visibleNoteLimit += NOTE_PAGE_SIZE;
+    render();
+    button.focus();
+  });
+  wrapper.appendChild(button);
+  return wrapper;
 }
 
 function createCard(item) {
