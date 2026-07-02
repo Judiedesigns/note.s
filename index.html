@@ -249,6 +249,7 @@ let syncReady = false;
 let syncConfigured = false;
 let syncSaving = false;
 let syncSaveTimer = null;
+let syncCompleted = false;
 const windowState = {
   planner: { open: false, minimized: false, fullscreen: false },
   notes: { open: false, minimized: false, fullscreen: false },
@@ -395,7 +396,7 @@ syncForm.addEventListener("submit", event => {
   signInToSync();
 });
 
-syncPullButton.addEventListener("click", () => pullCloudItems());
+syncPullButton.addEventListener("click", () => syncCloudItems());
 syncSignOutButton.addEventListener("click", signOutOfSync);
 
 tabs.forEach(button => {
@@ -556,11 +557,12 @@ async function initSync() {
     syncReady = true;
     syncClient.auth.onAuthStateChange((event, session) => {
       syncUser = session ? session.user : null;
+      if (!syncUser) syncCompleted = false;
       updateSyncUi();
-      if (event === "SIGNED_IN" && syncUser) pullCloudItems({ silent: true });
+      if (event === "SIGNED_IN" && syncUser) syncCloudItems({ silent: true });
     });
     updateSyncUi();
-    if (syncUser) await pullCloudItems({ silent: true });
+    if (syncUser) await syncCloudItems({ silent: true });
   } catch (error) {
     syncReady = false;
     updateSyncUi("Sync unavailable.");
@@ -601,7 +603,7 @@ function updateSyncUi(message) {
   syncSignInButton.disabled = !configured || signedIn;
   syncPullButton.disabled = !syncReady || !signedIn || syncSaving;
   syncSignOutButton.disabled = !syncReady || !signedIn;
-  syncToggle.textContent = signedIn ? "Synced" : "Sync";
+  syncToggle.textContent = signedIn && syncCompleted ? "Synced" : "Sync";
   syncToggle.classList.toggle("is-signed-in", signedIn);
   if (message) setSyncPanelOpen(true);
 }
@@ -638,6 +640,7 @@ async function signOutOfSync() {
   if (!syncClient) return;
   await syncClient.auth.signOut();
   syncUser = null;
+  syncCompleted = false;
   updateSyncUi();
   showToast("Signed out of sync.");
 }
@@ -661,9 +664,11 @@ async function pushCloudItems({ silent = false } = {}) {
         updated_at: new Date().toISOString()
       }, { onConflict: "user_id" });
     if (error) throw error;
+    syncCompleted = true;
     updateSyncUi();
     if (!silent) showToast("Synced.");
   } catch (error) {
+    syncCompleted = false;
     updateSyncUi("Sync save failed. Local copy kept.");
     if (!silent) showToast("Sync failed.");
   } finally {
@@ -671,9 +676,9 @@ async function pushCloudItems({ silent = false } = {}) {
   }
 }
 
-async function pullCloudItems({ silent = false } = {}) {
+async function syncCloudItems({ silent = false } = {}) {
   if (!syncReady || !syncUser || !syncClient) return;
-  updateSyncUi("Checking cloud notes...");
+  updateSyncUi("Syncing notes...");
   try {
     const { data, error } = await syncClient
       .from(SYNC_TABLE)
@@ -689,10 +694,12 @@ async function pullCloudItems({ silent = false } = {}) {
     items = merged;
     saveLocalItems();
     render();
-    updateSyncUi();
     await pushCloudItems({ silent: true });
+    syncCompleted = true;
+    updateSyncUi();
     if (!silent) showToast(changed ? "Synced latest notes." : "Already up to date.");
   } catch (error) {
+    syncCompleted = false;
     updateSyncUi("Cloud sync failed. Local copy kept.");
     if (!silent) showToast("Sync failed.");
   }
