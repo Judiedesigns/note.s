@@ -98,6 +98,41 @@ button { cursor: pointer; }
   color: #111;
 }
 
+.taskbar-nav {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  gap: 0.25rem;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.taskbar-item {
+  border: 0;
+  background: transparent;
+  color: #111;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.taskbar-item:hover,
+.taskbar-item:focus-visible {
+  text-decoration: underline;
+  outline: 0;
+}
+
+.taskbar-item.active {
+  font-weight: 700;
+}
+
+.taskbar-item.minimized {
+  color: var(--muted);
+}
+
+.taskbar-separator {
+  flex: 0 0 auto;
+}
+
 .taskbar a {
   color: #111;
   text-decoration: none;

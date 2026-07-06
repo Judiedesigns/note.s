@@ -202,7 +202,15 @@
 </main>
 
 <footer class="taskbar" aria-label="Taskbar">
-  <span>Start | Planner | Notes | README.txt</span>
+  <nav class="taskbar-nav" aria-label="Window shortcuts">
+    <button class="taskbar-item start-item" type="button" data-taskbar-start>Start</button>
+    <span class="taskbar-separator" aria-hidden="true">|</span>
+    <button class="taskbar-item" type="button" data-taskbar-window="planner">Planner</button>
+    <span class="taskbar-separator" aria-hidden="true">|</span>
+    <button class="taskbar-item" type="button" data-taskbar-window="notes">Notes</button>
+    <span class="taskbar-separator" aria-hidden="true">|</span>
+    <button class="taskbar-item" type="button" data-taskbar-window="readme">README.txt</button>
+  </nav>
   <a href="https://vibe-coding.vercel.app/" target="_blank" rel="noopener noreferrer">Made by Mars</a>
 </footer>
 
@@ -307,6 +315,8 @@ const desktopGrid = document.querySelector(".desktop-grid");
 const titlebars = Array.from(document.querySelectorAll(".window-titlebar"));
 const desktopIcons = Array.from(document.querySelectorAll("[data-open-window]"));
 const windowControls = Array.from(document.querySelectorAll("[data-window-action]"));
+const taskbarButtons = Array.from(document.querySelectorAll("[data-taskbar-window]"));
+const taskbarStartButton = document.querySelector("[data-taskbar-start]");
 
 loadItems();
 loadWindowPositions();
@@ -430,6 +440,14 @@ surfaceTabs.forEach(button => {
     openWindow(button.dataset.surfaceTarget);
   });
 });
+
+taskbarButtons.forEach(button => {
+  button.addEventListener("click", () => {
+    openWindow(button.dataset.taskbarWindow, true);
+  });
+});
+
+taskbarStartButton.addEventListener("click", showDesktop);
 
 desktopIcons.forEach(button => {
   button.addEventListener("click", () => {
@@ -1603,6 +1621,15 @@ function setActiveSurface() {
     tab.setAttribute("aria-selected", String(isActive));
     tab.title = `${tab.textContent} ${state.minimized ? "minimized" : state.open ? "open" : "closed"}`;
   });
+  taskbarButtons.forEach(button => {
+    const name = button.dataset.taskbarWindow;
+    const state = windowState[name];
+    const isActive = name === activeSurface && state.open && !state.minimized;
+    button.classList.toggle("active", isActive);
+    button.classList.toggle("minimized", state.open && state.minimized);
+    button.setAttribute("aria-pressed", String(isActive));
+    button.title = `${button.textContent} ${state.minimized ? "minimized" : state.open ? "open" : "closed"}`;
+  });
   surfaces.forEach(surface => {
     const name = surface.dataset.surface;
     const state = windowState[name];
@@ -1638,6 +1665,17 @@ function openWindow(name, animate = false) {
     }, 110);
   }
   announce(`${capitalize(name)} opened.`);
+}
+
+function showDesktop() {
+  Object.values(windowState).forEach(state => {
+    if (!state.open) return;
+    state.minimized = true;
+    state.fullscreen = false;
+  });
+  setActiveSurface();
+  showToast("Desktop shown.");
+  announce("Desktop shown.");
 }
 
 function handleWindowAction(name, action) {

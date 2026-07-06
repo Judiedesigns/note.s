@@ -529,6 +529,25 @@ test("desktop window controls open, minimize, close, and full screen", async ({ 
   await expect(plannerWindow).toBeVisible();
 });
 
+test("taskbar buttons open windows and start shows desktop", async ({ page }) => {
+  const taskbar = page.getByLabel("Taskbar");
+  const plannerWindow = page.getByLabel("Planner app");
+  const notesWindow = page.getByLabel("Notes app");
+
+  await taskbar.getByRole("button", { name: "Planner" }).click();
+  await expect(plannerWindow).toBeVisible();
+  await expect(taskbar.getByRole("button", { name: "Planner" })).toHaveAttribute("aria-pressed", "true");
+
+  await taskbar.getByRole("button", { name: "Notes" }).click();
+  await expect(notesWindow).toBeVisible();
+  await expect(notesWindow).toHaveClass(/active-surface/);
+  await expect(taskbar.getByRole("button", { name: "Notes" })).toHaveAttribute("aria-pressed", "true");
+
+  await taskbar.getByRole("button", { name: "Start" }).click();
+  await expect(plannerWindow).toBeHidden();
+  await expect(notesWindow).toBeHidden();
+});
+
 test("desktop icons bring opened windows to the front", async ({ page }) => {
   const viewport = page.viewportSize();
   if (viewport && viewport.width <= 780) test.skip();
