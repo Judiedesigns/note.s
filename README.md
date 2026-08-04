@@ -16,6 +16,7 @@ Everything is saved in `localStorage` first, so it still works in the same brows
 - Task completion, edit, delete, and status filtering
 - Week and month task grouping
 - `.ics` calendar export with confirmation before download
+- Per-task `.ics` calendar export for adding one task to a calendar
 - Notes window for loose thoughts separate from tasks
 - Note search and timeline filters
 - Compact note previews with long notes opening in a retro popup

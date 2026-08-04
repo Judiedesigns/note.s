@@ -939,18 +939,41 @@ function exportTasksToCalendar() {
     return;
   }
 
+  downloadCalendarFile(tasks, `random-notes-calendar-${toDateInputValue(new Date())}.ics`);
+  showToast(`Exported ${tasks.length} ${tasks.length === 1 ? "task" : "tasks"}.`);
+  announce("Calendar file exported.");
+}
+
+function exportTaskToCalendar(task) {
+  if (!task || task.type !== "task" || !task.dueDate || task.deletedAt) {
+    showToast("This task has no date to export.");
+    announce("This task has no date to export.");
+    return;
+  }
+
+  const confirmed = window.confirm(`Add "${task.title || "Untitled task"}" to your calendar?`);
+  if (!confirmed) {
+    announce("Calendar export canceled.");
+    return;
+  }
+
+  const date = task.dueDate || toDateInputValue(new Date());
+  downloadCalendarFile([task], `random-notes-${slugifyFilename(task.title || "task")}-${date}.ics`);
+  showToast("Task calendar file exported.");
+  announce("Task calendar file exported.");
+}
+
+function downloadCalendarFile(tasks, filename) {
   const calendar = buildCalendarFile(tasks);
   const blob = new Blob([calendar], { type: "text/calendar;charset=utf-8" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `random-notes-calendar-${toDateInputValue(new Date())}.ics`;
+  link.download = filename;
   document.body.appendChild(link);
   link.click();
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
-  showToast(`Exported ${tasks.length} ${tasks.length === 1 ? "task" : "tasks"}.`);
-  announce("Calendar file exported.");
 }
 
 function buildCalendarFile(tasks) {
@@ -1012,6 +1035,15 @@ function formatCalendarTimestamp(date) {
 
 function sanitizeCalendarId(value) {
   return String(value || Date.now()).replace(/[^a-zA-Z0-9-]/g, "-");
+}
+
+function slugifyFilename(value) {
+  return String(value || "task")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48) || "task";
 }
 
 function escapeCalendarText(value) {
@@ -1189,6 +1221,7 @@ function createCard(item) {
       <span class="task-date">${escapeHtml(dateLabel)}</span>
     </p>
     <div class="actions">
+      <button class="icon-btn task-calendar-btn" type="button" aria-label="Add ${escapeHtml(item.title)} to calendar" title="Add to calendar"><span class="action-icon task-calendar-icon" aria-hidden="true"></span></button>
       <button class="icon-btn edit-btn" type="button" aria-label="Edit ${item.type}" title="Edit ${item.type}"><span class="action-icon edit-icon" aria-hidden="true"></span></button>
       <button class="icon-btn delete-btn" type="button" aria-label="Delete ${item.type}" title="Delete ${item.type}"><span class="action-icon delete-icon" aria-hidden="true"></span></button>
     </div>
@@ -1223,6 +1256,7 @@ function createCard(item) {
 
   const check = card.querySelector(".check");
   if (check) check.addEventListener("change", () => toggleDone(item.id, check.checked));
+  card.querySelector(".task-calendar-btn").addEventListener("click", () => exportTaskToCalendar(item));
   card.querySelector(".edit-btn").addEventListener("click", () => editItem(item.id));
   card.querySelector(".delete-btn").addEventListener("click", () => deleteItem(item.id));
   return card;

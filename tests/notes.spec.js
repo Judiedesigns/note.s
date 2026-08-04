@@ -145,6 +145,32 @@ test("exports dated tasks to a calendar file", async ({ page }) => {
   expect(content).toContain("END:VCALENDAR");
 });
 
+test("exports one selected task to a calendar file", async ({ page }) => {
+  const today = todayValue();
+  await page.evaluate(dueDate => {
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "one", type: "task", title: "Call the venue", body: "", dueDate, planView: "today", done: false, createdAt: Date.now(), updatedAt: Date.now() },
+      { id: "two", type: "task", title: "Buy tape", body: "", dueDate, planView: "today", done: false, createdAt: Date.now() - 1, updatedAt: Date.now() - 1 }
+    ]));
+  }, today);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+
+  page.once("dialog", async dialog => {
+    expect(dialog.message()).toContain('Add "Call the venue" to your calendar?');
+    await dialog.accept();
+  });
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Add Call the venue to calendar" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe(`random-notes-call-the-venue-${today}.ics`);
+
+  const path = await download.path();
+  const content = require("fs").readFileSync(path, "utf8");
+  expect(content).toContain("SUMMARY:Call the venue");
+  expect(content).not.toContain("SUMMARY:Buy tape");
+});
+
 test("keeps planner views as separate task buckets", async ({ page }) => {
   const today = todayValue();
   const sameWeek = addDaysValue(new Date().getDay() === 1 ? 1 : -1);
