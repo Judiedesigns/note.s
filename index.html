@@ -134,12 +134,32 @@
                 <section class="sync-panel" id="sync-panel" hidden>
                   <p class="sync-status" id="sync-status">Local mode</p>
                   <form class="sync-form" id="sync-form" aria-label="Sign in to sync">
-                    <label class="sr-only" for="sync-email">Email</label>
-                    <input class="text-input sync-email" id="sync-email" type="email" inputmode="email" autocomplete="email" placeholder="Email for sync">
-                    <button class="secondary-btn" id="sync-signin" type="submit">Sign in</button>
+                    <button class="secondary-btn" id="sync-signin" type="submit">Sign in with Google</button>
                     <button class="secondary-btn" id="sync-pull" type="button" hidden>Sync now</button>
                     <button class="secondary-btn" id="sync-signout" type="button" hidden>Sign out</button>
                   </form>
+                  <dl class="sync-diagnostics" aria-label="Sync diagnostics">
+                    <div>
+                      <dt>Account</dt>
+                      <dd id="sync-debug-account">Not signed in</dd>
+                    </div>
+                    <div>
+                      <dt>Local</dt>
+                      <dd id="sync-debug-local">0 items</dd>
+                    </div>
+                    <div>
+                      <dt>Cloud</dt>
+                      <dd id="sync-debug-cloud">Not checked</dd>
+                    </div>
+                    <div>
+                      <dt>Last sync</dt>
+                      <dd id="sync-debug-time">Never</dd>
+                    </div>
+                    <div>
+                      <dt>Error</dt>
+                      <dd id="sync-debug-error">None</dd>
+                    </div>
+                  </dl>
                 </section>
               </div>
             </div>
@@ -236,10 +256,20 @@
 const STORAGE_KEY = "random_notes_v1";
 const WINDOW_POSITIONS_KEY = "random_notes_window_positions_v1";
 const ICON_POSITIONS_KEY = "random_notes_icon_positions_v1";
-const SUPABASE_URL = "https://wmlmallkptqjoqzjmlov.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_akgeXDLHsoOPVdXu_OfpPw_oS01BHeD";
-const SYNC_TABLE = "random_notes_sync";
-const SYNC_SCRIPT_URL = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2";
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyCBt6sNfoVpKvAjjvdFt1JLAfHQ6_UNjSQ",
+  authDomain: "notes-planner-5e410.firebaseapp.com",
+  projectId: "notes-planner-5e410",
+  storageBucket: "notes-planner-5e410.firebasestorage.app",
+  messagingSenderId: "841127586093",
+  appId: "1:841127586093:web:781da019540b025e6acba4",
+  measurementId: "G-CY5L9QJZK3"
+};
+const FIREBASE_SCRIPTS = [
+  "https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js",
+  "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js",
+  "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"
+];
 const NOTE_PAGE_SIZE = 10;
 
 let items = [];
@@ -258,13 +288,16 @@ let iconDragState = null;
 let windowZIndex = 10;
 let activePopupNoteText = "";
 let notePopupReturnFocus = null;
-let syncClient = null;
+let syncDb = null;
 let syncUser = null;
 let syncReady = false;
 let syncConfigured = false;
 let syncSaving = false;
 let syncSaveTimer = null;
 let syncCompleted = false;
+let syncLastCloudCount = null;
+let syncLastSyncAt = 0;
+let syncLastError = "";
 const windowState = {
   planner: { open: false, minimized: false, fullscreen: false },
   notes: { open: false, minimized: false, fullscreen: false },
@@ -294,11 +327,15 @@ const notePopupDoneButton = document.getElementById("note-popup-done");
 const syncToggle = document.getElementById("sync-toggle");
 const syncPanel = document.getElementById("sync-panel");
 const syncForm = document.getElementById("sync-form");
-const syncEmailInput = document.getElementById("sync-email");
 const syncStatus = document.getElementById("sync-status");
 const syncSignInButton = document.getElementById("sync-signin");
 const syncPullButton = document.getElementById("sync-pull");
 const syncSignOutButton = document.getElementById("sync-signout");
+const syncDebugAccount = document.getElementById("sync-debug-account");
+const syncDebugLocal = document.getElementById("sync-debug-local");
+const syncDebugCloud = document.getElementById("sync-debug-cloud");
+const syncDebugTime = document.getElementById("sync-debug-time");
+const syncDebugError = document.getElementById("sync-debug-error");
 const taskList = document.getElementById("task-list");
 const noteList = document.getElementById("note-list");
 const taskCountLabel = document.getElementById("task-count");
@@ -562,53 +599,63 @@ function saveLocalItems() {
 }
 
 function getSyncConfig() {
-  return {
-    url: String(SUPABASE_URL || "").trim(),
-    anonKey: String(SUPABASE_ANON_KEY || "").trim()
-  };
+  return FIREBASE_CONFIG;
 }
 
 async function initSync() {
   const config = getSyncConfig();
-  syncConfigured = Boolean(config.url && config.anonKey);
+  syncConfigured = Boolean(config.apiKey && config.authDomain && config.projectId && config.appId);
   updateSyncUi();
   if (!syncConfigured) return;
 
   try {
-    await loadSupabaseScript();
-    syncClient = window.supabase.createClient(config.url, config.anonKey, {
-      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-    });
-    const { data } = await syncClient.auth.getSession();
-    syncUser = data.session ? data.session.user : null;
+    await loadFirebaseScripts();
+    if (!firebase.apps.length) firebase.initializeApp(config);
+    syncDb = firebase.firestore();
     syncReady = true;
-    syncClient.auth.onAuthStateChange((event, session) => {
-      syncUser = session ? session.user : null;
-      if (!syncUser) syncCompleted = false;
+    firebase.auth().onAuthStateChanged(user => {
+      syncUser = user;
+      if (!syncUser) {
+        syncCompleted = false;
+        syncLastCloudCount = null;
+      }
       updateSyncUi();
-      if (event === "SIGNED_IN" && syncUser) syncCloudItems({ silent: true });
+      if (syncUser) syncCloudItems({ silent: true });
     });
     updateSyncUi();
-    if (syncUser) await syncCloudItems({ silent: true });
   } catch (error) {
     syncReady = false;
+    syncLastError = getSyncErrorMessage(error, "Could not load Firebase.");
     updateSyncUi("Sync unavailable.");
   }
 }
 
-function loadSupabaseScript() {
-  if (window.supabase && typeof window.supabase.createClient === "function") return Promise.resolve();
+async function loadFirebaseScripts() {
+  if (window.firebase && firebase.apps && firebase.auth && firebase.firestore) return;
+  for (const src of FIREBASE_SCRIPTS) {
+    await loadScript(src);
+  }
+}
+
+function loadScript(src) {
   return new Promise((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${SYNC_SCRIPT_URL}"]`);
+    const existing = document.querySelector(`script[src="${src}"]`);
+    if (existing && existing.dataset.loaded === "true") {
+      resolve();
+      return;
+    }
     if (existing) {
       existing.addEventListener("load", resolve, { once: true });
       existing.addEventListener("error", reject, { once: true });
       return;
     }
     const script = document.createElement("script");
-    script.src = SYNC_SCRIPT_URL;
+    script.src = src;
     script.async = true;
-    script.onload = resolve;
+    script.onload = () => {
+      script.dataset.loaded = "true";
+      resolve();
+    };
     script.onerror = reject;
     document.head.appendChild(script);
   });
@@ -616,56 +663,79 @@ function loadSupabaseScript() {
 
 function updateSyncUi(message) {
   const signedIn = Boolean(syncUser);
-  const configured = syncConfigured || Boolean(getSyncConfig().url && getSyncConfig().anonKey);
+  const configured = syncConfigured;
   syncStatus.textContent = message || (signedIn
     ? `Syncing as ${syncUser.email || "signed-in user"}`
     : configured
       ? "Sign in to sync phone and laptop."
-      : "Local mode. Add Supabase keys in index.html.");
-  syncEmailInput.hidden = signedIn;
+      : "Local mode. Add Firebase config in index.html.");
   syncSignInButton.hidden = signedIn;
   syncPullButton.hidden = !signedIn;
   syncSignOutButton.hidden = !signedIn;
-  syncEmailInput.disabled = !configured || signedIn;
   syncSignInButton.disabled = !configured || signedIn;
   syncPullButton.disabled = !syncReady || !signedIn || syncSaving;
   syncSignOutButton.disabled = !syncReady || !signedIn;
   syncToggle.textContent = signedIn && syncCompleted ? "Synced" : "Sync";
   syncToggle.classList.toggle("is-signed-in", signedIn);
+  updateSyncDiagnostics();
   if (message) setSyncPanelOpen(true);
 }
 
+function updateSyncDiagnostics() {
+  const localCount = countVisibleStoredItems(items);
+  syncDebugAccount.textContent = syncUser && syncUser.email ? syncUser.email : "Not signed in";
+  syncDebugLocal.textContent = `${localCount} ${localCount === 1 ? "item" : "items"}`;
+  syncDebugCloud.textContent = syncLastCloudCount === null
+    ? "Not checked"
+    : `${syncLastCloudCount} ${syncLastCloudCount === 1 ? "item" : "items"}`;
+  syncDebugTime.textContent = syncLastSyncAt
+    ? new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(syncLastSyncAt))
+    : "Never";
+  syncDebugError.textContent = syncLastError || "None";
+}
+
+function countVisibleStoredItems(list) {
+  return list.filter(item => !item.deletedAt).length;
+}
+
+function getSyncErrorMessage(error, fallback) {
+  if (!error) return fallback;
+  if (error.message) return error.message;
+  if (error.error_description) return error.error_description;
+  if (error.details) return error.details;
+  return fallback;
+}
+
 async function signInToSync() {
-  if (!syncReady || !syncClient) {
-    updateSyncUi(syncConfigured ? "Sync is still loading." : "Add Supabase keys first.");
-    return;
-  }
-  const email = syncEmailInput.value.trim();
-  if (!email) {
-    showToast("Enter your email.");
-    syncEmailInput.focus();
+  if (!syncReady || !window.firebase) {
+    updateSyncUi(syncConfigured ? "Sync is still loading." : "Add Firebase config first.");
     return;
   }
   try {
-    const redirectTo = window.location.href.split("#")[0];
-    const { error } = await syncClient.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: redirectTo }
-    });
-    if (error) throw error;
-    updateSyncUi("Check your email for the sign-in link.");
-    showToast("Check your email.");
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: "select_account" });
+    await firebase.auth().signInWithPopup(provider);
+    syncLastError = "";
+    updateSyncUi("Signed in. Syncing...");
+    showToast("Signed in.");
   } catch (error) {
-    const message = error && error.message ? error.message : "Could not send sign-in link.";
-    console.error("Supabase sign-in failed:", error);
+    if (error && ["auth/popup-blocked", "auth/cancelled-popup-request"].includes(error.code)) {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      await firebase.auth().signInWithRedirect(provider);
+      return;
+    }
+    const message = getSyncErrorMessage(error, "Could not sign in with Google.");
+    syncLastError = message;
+    console.error("Firebase sign-in failed:", error);
     updateSyncUi(message);
     showToast("Sync sign-in failed.");
   }
 }
 
 async function signOutOfSync() {
-  if (!syncClient) return;
-  await syncClient.auth.signOut();
+  if (!window.firebase) return;
+  await firebase.auth().signOut();
   syncUser = null;
   syncCompleted = false;
   updateSyncUi();
@@ -673,29 +743,31 @@ async function signOutOfSync() {
 }
 
 function queueCloudSave() {
-  if (!syncReady || !syncUser || !syncClient) return;
+  if (!syncReady || !syncUser || !syncDb) return;
   clearTimeout(syncSaveTimer);
   syncSaveTimer = setTimeout(() => pushCloudItems({ silent: true }), 500);
 }
 
 async function pushCloudItems({ silent = false } = {}) {
-  if (!syncReady || !syncUser || !syncClient || syncSaving) return;
+  if (!syncReady || !syncUser || !syncDb || syncSaving) return;
   syncSaving = true;
   updateSyncUi("Syncing...");
   try {
-    const { error } = await syncClient
-      .from(SYNC_TABLE)
-      .upsert({
-        user_id: syncUser.id,
-        items,
-        updated_at: new Date().toISOString()
-      }, { onConflict: "user_id" });
-    if (error) throw error;
+    await getUserSyncRef().set({
+      items,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      ownerEmail: syncUser.email || ""
+    }, { merge: true });
     syncCompleted = true;
+    syncLastCloudCount = countVisibleStoredItems(items);
+    syncLastSyncAt = Date.now();
+    syncLastError = "";
     updateSyncUi();
     if (!silent) showToast("Synced.");
   } catch (error) {
     syncCompleted = false;
+    syncLastError = getSyncErrorMessage(error, "Could not save to Firebase.");
+    console.error("Firebase sync save failed:", error);
     updateSyncUi("Sync save failed. Local copy kept.");
     if (!silent) showToast("Sync failed.");
   } finally {
@@ -704,18 +776,15 @@ async function pushCloudItems({ silent = false } = {}) {
 }
 
 async function syncCloudItems({ silent = false } = {}) {
-  if (!syncReady || !syncUser || !syncClient) return;
+  if (!syncReady || !syncUser || !syncDb) return;
   updateSyncUi("Syncing notes...");
   try {
-    const { data, error } = await syncClient
-      .from(SYNC_TABLE)
-      .select("items")
-      .eq("user_id", syncUser.id)
-      .maybeSingle();
-    if (error) throw error;
+    const snapshot = await getUserSyncRef().get();
+    const data = snapshot.exists ? snapshot.data() : {};
     const cloudItems = Array.isArray(data && data.items)
       ? data.items.map(normalizeItem).filter(Boolean)
       : [];
+    syncLastCloudCount = countVisibleStoredItems(cloudItems);
     const merged = mergeItems(items, cloudItems);
     const changed = JSON.stringify(merged) !== JSON.stringify(items);
     items = merged;
@@ -723,13 +792,21 @@ async function syncCloudItems({ silent = false } = {}) {
     render();
     await pushCloudItems({ silent: true });
     syncCompleted = true;
+    syncLastSyncAt = Date.now();
+    syncLastError = "";
     updateSyncUi();
     if (!silent) showToast(changed ? "Synced latest notes." : "Already up to date.");
   } catch (error) {
     syncCompleted = false;
+    syncLastError = getSyncErrorMessage(error, "Could not read from Firebase.");
+    console.error("Firebase cloud sync failed:", error);
     updateSyncUi("Cloud sync failed. Local copy kept.");
     if (!silent) showToast("Sync failed.");
   }
+}
+
+function getUserSyncRef() {
+  return syncDb.collection("users").doc(syncUser.uid).collection("planner").doc("state");
 }
 
 function mergeItems(localItems, cloudItems) {

@@ -6,7 +6,7 @@ A retro desktop-style local planner for dated tasks and loose notes.
 
 Open the page in any modern browser and use it like a small Windows-95-style desktop. The Planner window handles dated tasks, the Notes window holds loose thoughts, and `README.txt` gives a daily status summary.
 
-Everything is saved in `localStorage` first, so it still works in the same browser when you are offline. Optional Supabase sync can be enabled so the same email account sees the same planner and notes on phone and laptop.
+Everything is saved in `localStorage` first, so it still works in the same browser when you are offline. Optional Firebase sync can be enabled so the same Google account sees the same planner and notes on phone and laptop.
 
 ## Features
 
@@ -25,54 +25,45 @@ Everything is saved in `localStorage` first, so it still works in the same brows
 - Offscreen window recovery
 - Responsive desktop, tablet, and mobile layout
 - Backward-compatible loading for older saved note/todo entries
-- Local-first storage with optional Supabase email-link sync
+- Local-first storage with optional Firebase Google account sync
 
 ## Optional phone/laptop sync
 
-1. Create a Supabase project.
-2. In Supabase SQL Editor, run:
-
-```sql
-create table if not exists public.random_notes_sync (
-  user_id uuid primary key references auth.users(id) on delete cascade,
-  items jsonb not null default '[]'::jsonb,
-  updated_at timestamptz not null default now()
-);
-
-alter table public.random_notes_sync enable row level security;
-
-create policy "Users can read their own random notes"
-on public.random_notes_sync
-for select
-to authenticated
-using (auth.uid() = user_id);
-
-create policy "Users can insert their own random notes"
-on public.random_notes_sync
-for insert
-to authenticated
-with check (auth.uid() = user_id);
-
-create policy "Users can update their own random notes"
-on public.random_notes_sync
-for update
-to authenticated
-using (auth.uid() = user_id)
-with check (auth.uid() = user_id);
-```
-
-3. In `index.html`, paste your project values:
+1. Create or open a Firebase project.
+2. In Firebase Authentication, enable Google sign-in.
+3. In Firestore Database, create a database.
+4. In Firestore Rules, use:
 
 ```js
-const SUPABASE_URL = "https://YOUR-PROJECT.supabase.co";
-const SUPABASE_ANON_KEY = "YOUR_PUBLIC_ANON_KEY";
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/planner/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
 ```
 
-4. In Supabase Auth settings, add the hosted app URL to the allowed redirect URLs.
-5. Host this folder somewhere your phone can open it.
-6. Open Notes, enter your email, use the magic link, then sign in with the same email on your phone.
+5. In Firebase Authentication settings, make sure the hosted app domain is authorized.
+6. In `index.html`, paste your project values:
 
-The app merges local and cloud items on sign-in. After that, task and note changes save locally first and then sync to Supabase.
+```js
+const FIREBASE_CONFIG = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT",
+  storageBucket: "YOUR_PROJECT.firebasestorage.app",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+```
+
+7. Host this folder somewhere your phone can open it.
+8. Open Notes, sign in with Google, then sign in with the same Google account on your phone.
+
+The app stores each account separately at `users/{uid}/planner/state`. The app merges local and cloud items on sign-in. After that, task and note changes save locally first and then sync to Firestore.
 
 ## Preview
 
