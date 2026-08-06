@@ -26,6 +26,7 @@ Everything is saved in `localStorage` first, so it still works in the same brows
 - Offscreen window recovery
 - Responsive desktop, tablet, and mobile layout
 - Backward-compatible loading for older saved note/todo entries
+- JSON backup export and non-destructive backup import
 - Local-first storage with optional Firebase Google account sync
 
 ## Optional phone/laptop sync

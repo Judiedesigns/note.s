@@ -138,6 +138,11 @@
                     <button class="secondary-btn" id="sync-pull" type="button" hidden>Sync now</button>
                     <button class="secondary-btn" id="sync-signout" type="button" hidden>Sign out</button>
                   </form>
+                  <div class="backup-tools" aria-label="Backup tools">
+                    <button class="secondary-btn" id="backup-export" type="button">Export backup</button>
+                    <button class="secondary-btn" id="backup-import" type="button">Import backup</button>
+                    <input id="backup-file" type="file" accept="application/json,.json" hidden>
+                  </div>
                   <dl class="sync-diagnostics" aria-label="Sync diagnostics">
                     <div>
                       <dt>Account</dt>
@@ -331,6 +336,9 @@ const syncStatus = document.getElementById("sync-status");
 const syncSignInButton = document.getElementById("sync-signin");
 const syncPullButton = document.getElementById("sync-pull");
 const syncSignOutButton = document.getElementById("sync-signout");
+const backupExportButton = document.getElementById("backup-export");
+const backupImportButton = document.getElementById("backup-import");
+const backupFileInput = document.getElementById("backup-file");
 const syncDebugAccount = document.getElementById("sync-debug-account");
 const syncDebugLocal = document.getElementById("sync-debug-local");
 const syncDebugCloud = document.getElementById("sync-debug-cloud");
@@ -454,6 +462,9 @@ syncForm.addEventListener("submit", event => {
 
 syncPullButton.addEventListener("click", () => syncCloudItems());
 syncSignOutButton.addEventListener("click", signOutOfSync);
+backupExportButton.addEventListener("click", exportBackup);
+backupImportButton.addEventListener("click", () => backupFileInput.click());
+backupFileInput.addEventListener("change", importBackupFile);
 
 tabs.forEach(button => {
   button.addEventListener("click", () => {
@@ -807,6 +818,72 @@ async function syncCloudItems({ silent = false } = {}) {
 
 function getUserSyncRef() {
   return syncDb.collection("users").doc(syncUser.uid).collection("planner").doc("state");
+}
+
+function exportBackup() {
+  const backup = {
+    app: "random-notes-planner",
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    items
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `random-notes-backup-${toDateInputValue(new Date())}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  showToast("Backup exported.");
+  announce("Backup exported.");
+}
+
+async function importBackupFile() {
+  const file = backupFileInput.files && backupFileInput.files[0];
+  backupFileInput.value = "";
+  if (!file) return;
+
+  try {
+    const text = await file.text();
+    const parsed = JSON.parse(text);
+    const importedItems = parseBackupItems(parsed);
+    if (!importedItems.length) {
+      showToast("No backup items found.");
+      announce("No backup items found.");
+      return;
+    }
+
+    const merged = mergeItems(items, importedItems);
+    const added = merged.filter(item => !items.some(existing => existing.id === item.id)).length;
+    const confirmed = window.confirm(`Import ${importedItems.length} ${importedItems.length === 1 ? "item" : "items"} from backup? This will merge with your current notes and tasks.`);
+    if (!confirmed) {
+      showToast("Backup import canceled.");
+      announce("Backup import canceled.");
+      return;
+    }
+
+    items = merged;
+    saveItems();
+    render();
+    updateSyncUi();
+    showToast(`Backup imported. ${added} new ${added === 1 ? "item" : "items"}.`);
+    announce("Backup imported.");
+  } catch (error) {
+    console.error("Backup import failed:", error);
+    showToast("Could not import backup.");
+    announce("Could not import backup.");
+  }
+}
+
+function parseBackupItems(value) {
+  const rawItems = Array.isArray(value)
+    ? value
+    : Array.isArray(value && value.items)
+      ? value.items
+      : [];
+  return rawItems.map(normalizeItem).filter(Boolean);
 }
 
 function mergeItems(localItems, cloudItems) {

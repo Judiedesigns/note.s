@@ -268,6 +268,61 @@ test("notes view captures loose thoughts separately", async ({ page }) => {
   await expect(page.getByRole("group", { name: "Note preview" }).locator(".note-preview")).toContainText("Hook idea");
 });
 
+test("exports a JSON backup of local items", async ({ page }) => {
+  const now = Date.now();
+  await page.evaluate(now => {
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "backup-note", type: "note", title: "Backup note", body: "Keep this safe", dueDate: "", done: false, createdAt: now, updatedAt: now }
+    ]));
+  }, now);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openNotesSurface(page);
+
+  await page.getByRole("button", { name: "Sync" }).click();
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export backup" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^random-notes-backup-\d{4}-\d{2}-\d{2}\.json$/);
+
+  const path = await download.path();
+  const backup = JSON.parse(require("fs").readFileSync(path, "utf8"));
+  expect(backup.app).toBe("random-notes-planner");
+  expect(backup.items).toHaveLength(1);
+  expect(backup.items[0].body).toBe("Keep this safe");
+});
+
+test("imports a JSON backup by merging with local items", async ({ page }) => {
+  const now = Date.now();
+  await page.evaluate(now => {
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "local-note", type: "note", title: "Local note", body: "Already here", dueDate: "", done: false, createdAt: now, updatedAt: now }
+    ]));
+  }, now);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openNotesSurface(page);
+  await page.getByRole("button", { name: "Sync" }).click();
+
+  page.once("dialog", async dialog => {
+    expect(dialog.message()).toContain("Import 1 item from backup?");
+    await dialog.accept();
+  });
+  await page.locator("#backup-file").setInputFiles({
+    name: "random-notes-backup.json",
+    mimeType: "application/json",
+    buffer: Buffer.from(JSON.stringify({
+      app: "random-notes-planner",
+      version: 1,
+      items: [
+        { id: "imported-note", type: "note", title: "Imported note", body: "From backup", dueDate: "", done: false, createdAt: now + 1, updatedAt: now + 1 }
+      ]
+    }))
+  });
+
+  await expect(page.getByText("2 notes")).toBeVisible();
+  await expect(page.getByRole("group", { name: "Note preview" }).filter({ hasText: "Already here" })).toBeVisible();
+  await expect(page.getByRole("group", { name: "Note preview" }).filter({ hasText: "From backup" })).toBeVisible();
+});
+
 test("notes can be searched and filtered", async ({ page }) => {
   const now = Date.now();
   const lastWeek = now - 8 * 24 * 60 * 60 * 1000;
