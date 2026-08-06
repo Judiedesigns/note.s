@@ -356,6 +356,31 @@ test("short notes do not show expansion controls", async ({ page }) => {
   await expect(longNote.getByRole("button", { name: "Show full note" })).toBeVisible();
 });
 
+test("long note previews wrap without clipping actions", async ({ page }) => {
+  const longPreview = "I want to study human-centered digital product design focusing on how designers understand complex workflows and make better tools";
+  await page.evaluate(body => {
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "long-preview", type: "note", title: body, body, dueDate: "", done: false, createdAt: Date.now(), updatedAt: Date.now() }
+    ]));
+  }, longPreview);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openNotesSurface(page);
+
+  const note = page.getByLabel("Notes app").locator(".note-card", { hasText: "human-centered" });
+  await expect(note).toBeVisible();
+  const layout = await note.evaluate(element => {
+    const preview = element.querySelector(".note-preview");
+    return {
+      cardOverflows: element.scrollWidth > element.clientWidth + 1,
+      previewOverflows: preview.scrollWidth > preview.clientWidth + 1,
+      actionsWidth: element.querySelector(".note-actions").getBoundingClientRect().width
+    };
+  });
+  expect(layout.cardOverflows).toBe(false);
+  expect(layout.previewOverflows).toBe(false);
+  expect(layout.actionsWidth).toBeGreaterThan(0);
+});
+
 test("notes can be copied and long notes open in a popup", async ({ page }) => {
   const noteBody = "This note should copy cleanly.\nIt is long enough to open in a popup instead of expanding inside the card.";
   await page.evaluate(body => {

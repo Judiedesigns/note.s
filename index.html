@@ -1160,18 +1160,18 @@ function createCard(item) {
       card.tabIndex = 0;
     }
     card.innerHTML = `
-      <div>
+      <div class="note-content">
         <p class="note-preview">${escapeHtml(previewText)}</p>
         <div class="item-meta note-meta">
           <span>Note | ${escapeHtml(formatCreated(item.createdAt))} | </span>
           ${canExpandNote ? `<button class="note-toggle" type="button" aria-label="Show full note">Show more</button>` : `<span class="note-static">Full note shown</span>`}
-          <span class="actions note-actions">
-            <button class="icon-btn copy-btn" type="button" aria-label="Copy note" title="Copy note"><span class="action-icon copy-icon" aria-hidden="true"></span></button>
-            <button class="icon-btn edit-btn" type="button" aria-label="Edit note" title="Edit note"><span class="action-icon edit-icon" aria-hidden="true"></span></button>
-            <button class="icon-btn delete-btn" type="button" aria-label="Delete note" title="Delete note"><span class="action-icon delete-icon" aria-hidden="true"></span></button>
-          </span>
         </div>
       </div>
+      <span class="actions note-actions">
+        <button class="icon-btn copy-btn" type="button" aria-label="Copy note" title="Copy note"><span class="action-icon copy-icon" aria-hidden="true"></span></button>
+        <button class="icon-btn edit-btn" type="button" aria-label="Edit note" title="Edit note"><span class="action-icon edit-icon" aria-hidden="true"></span></button>
+        <button class="icon-btn delete-btn" type="button" aria-label="Delete note" title="Delete note"><span class="action-icon delete-icon" aria-hidden="true"></span></button>
+      </span>
     `;
 
     const openFullNote = () => {
