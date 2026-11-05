@@ -11,10 +11,23 @@ Everything is saved in `localStorage` first, so it still works in the same brows
 ## Features
 
 - Retro desktop UI with draggable desktop icons and movable windows
-- Planner task buckets for Today, Week, and Month
-- Task creation with one task field and a date
+- Today, Week, and Month planner views driven by each task's due date
+- Today shows an agenda grouped into Overdue, Today, and No date
+- Week shows day columns, Month shows a calendar grid with `+N more` expansion
+- Tasks without a date are allowed and collect in the No date tray
+- Quick-capture task bar: type a title and press Enter to save instantly
+- Quick capture in Week or Month defaults to the selected day
+- Click a Month day (or press Enter on it) to open a day popover listing that day's tasks
+- Month grid supports arrow keys, Home/End, and PageUp/PageDown navigation
+- On mobile, Month view collapses tasks to dots; tap a day to see its tasks
+- Press Cmd/Ctrl+Enter (or the `⋯` button) from the task bar to set a custom date, then Escape or Cancel to return
+- Notes composer focuses automatically when the window opens; save with Cmd/Ctrl+Enter
+- Keyboard shortcuts: `T` jumps to task capture, `N` jumps to a new note
+- Overdue tasks are flagged in the task list instead of only in the README summary
+- Week boundaries follow your browser locale (Sunday-first in the US, Monday-first in the UK/EU)
+- IME-safe: Enter during Japanese/Chinese/Korean composition does not save a partial title
+- Task creation with one task field and an optional due date
 - Task completion, edit, delete, and status filtering
-- Week and month task grouping
 - `.ics` calendar export with confirmation before download
 - Per-task `.ics` calendar export for adding one task to a calendar
 - Notes window for loose thoughts separate from tasks

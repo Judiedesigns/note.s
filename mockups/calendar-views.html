@@ -1,0 +1,552 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Planner — Month / Week calendar mockup</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+
+  :root {
+    --font-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+    --ink: #1d1d1f;
+    --muted: #6e6e73;
+    --muted-2: #86868b;
+    --placeholder: #a1a1a6;
+
+    --accent: #007aff;
+    --accent-soft: rgba(0, 122, 255, 0.10);
+    --accent-line: rgba(0, 122, 255, 0.35);
+
+    --surface: #ffffff;
+    --surface-2: #f5f5f7;
+    --surface-3: #fbfbfd;
+
+    --hairline: rgba(0, 0, 0, 0.09);
+    --fill: rgba(120, 120, 128, 0.12);
+
+    --c-work: #007aff;
+    --c-life: #ff9500;
+    --c-health: #34c759;
+    --c-admin: #af52de;
+
+    --shadow-window:
+      0 30px 70px -20px rgba(0, 0, 0, 0.55),
+      0 12px 24px -14px rgba(0, 0, 0, 0.4),
+      0 0 0 0.5px rgba(0, 0, 0, 0.22);
+    --shadow-pop:
+      0 14px 34px rgba(0, 0, 0, 0.18),
+      0 2px 8px rgba(0, 0, 0, 0.08),
+      0 0 0 0.5px rgba(0, 0, 0, 0.12);
+  }
+
+  body {
+    min-height: 100vh;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--ink);
+    background-color: #101a33;
+    background-image:
+      radial-gradient(1100px 780px at 14% 8%, rgba(120, 196, 255, 0.5), transparent 62%),
+      radial-gradient(900px 700px at 84% 16%, rgba(176, 140, 255, 0.52), transparent 64%),
+      radial-gradient(1200px 900px at 68% 96%, rgba(64, 118, 255, 0.42), transparent 62%),
+      radial-gradient(800px 700px at 20% 88%, rgba(255, 128, 190, 0.22), transparent 62%),
+      linear-gradient(160deg, #0c1730 0%, #1b2a55 36%, #342a61 66%, #131f42 100%);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+    padding: 40px 24px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  /* ---------- window chrome ---------- */
+  .app-window {
+    width: min(1120px, 100%);
+    background: var(--surface);
+    border-radius: 14px;
+    box-shadow: var(--shadow-window);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .window-titlebar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 38px;
+    padding: 0 12px;
+    background: linear-gradient(#fbfbfd, #f2f2f5);
+    border-bottom: 1px solid var(--hairline);
+    user-select: none;
+  }
+  .window-title {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12.5px; font-weight: 600; color: var(--ink-soft);
+  }
+  .title-dot {
+    width: 13px; height: 13px; border-radius: 4px;
+    background: linear-gradient(160deg, #4facfe, #007aff);
+    box-shadow: inset 0 0.5px 0 rgba(255,255,255,.5);
+  }
+  .window-meta { margin-left: auto; font-size: 10.5px; color: var(--muted-2); letter-spacing: .02em; }
+  .window-controls { display: flex; gap: 6px; margin-left: 10px; }
+  .wc { width: 11px; height: 11px; border-radius: 50%; border: 0.5px solid rgba(0,0,0,.12); }
+  .wc.min { background: #febc2e; }
+  .wc.full { background: #28c840; }
+  .wc.close { background: #ff5f57; }
+
+  .window-body { display: grid; grid-template-columns: 196px 1fr; min-height: 620px; }
+
+  /* ---------- sidebar ---------- */
+  .sidebar {
+    background: var(--surface-2);
+    border-right: 1px solid var(--hairline);
+    padding: 14px 10px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .sidebar-label {
+    font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--muted-2); padding: 8px 8px 4px;
+  }
+  .side-row {
+    display: flex; align-items: center; gap: 8px;
+    width: 100%; padding: 7px 8px; border: 0; border-radius: 7px;
+    background: transparent; font: inherit; color: var(--ink-soft);
+    cursor: pointer; text-align: left;
+  }
+  .side-row:hover { background: rgba(120,120,128,.10); }
+  .side-row.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .side-icon { width: 14px; height: 14px; border-radius: 4px; background: currentColor; opacity: .55; }
+  .side-count { margin-left: auto; font-size: 11px; color: var(--muted-2); font-variant-numeric: tabular-nums; }
+  .side-row.active .side-count { color: var(--accent); }
+
+  /* ---------- content ---------- */
+  .content { padding: 16px 18px 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+  .panel-head { display: flex; align-items: flex-start; gap: 12px; }
+  .panel-title { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+  .panel-sub { font-size: 11.5px; color: var(--muted-2); margin-top: 2px; }
+  .cal-nav { margin-left: auto; display: flex; align-items: center; gap: 4px; }
+  .nav-btn {
+    height: 26px; min-width: 26px; padding: 0 8px;
+    border: 1px solid var(--hairline); border-radius: 7px;
+    background: var(--surface); color: var(--ink-soft); font: inherit; font-size: 12px;
+    cursor: pointer; box-shadow: 0 1px 1px rgba(0,0,0,.03);
+  }
+  .nav-btn:hover { background: var(--surface-2); }
+  .nav-btn.today { font-weight: 600; }
+
+  .planner-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+  .segmented {
+    display: inline-flex; padding: 2px; gap: 2px;
+    background: var(--fill); border-radius: 8px;
+  }
+  .segmented button {
+    border: 0; background: transparent; font: inherit; font-size: 12px;
+    padding: 4px 12px; border-radius: 6px; color: var(--muted); cursor: pointer;
+  }
+  .segmented button.on {
+    background: var(--surface); color: var(--ink); font-weight: 600;
+    box-shadow: 0 1px 2px rgba(0,0,0,.10), 0 0 0 .5px rgba(0,0,0,.06);
+  }
+
+  .legend { margin-left: auto; display: flex; gap: 10px; font-size: 10.5px; color: var(--muted-2); }
+  .legend span { display: inline-flex; align-items: center; gap: 4px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; }
+
+  /* ---------- month ---------- */
+  .month { border: 1px solid var(--hairline); border-radius: 10px; overflow: hidden; background: var(--surface); }
+  .month-head, .month-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); }
+  .month-head div {
+    padding: 7px 8px; font-size: 10px; font-weight: 600; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--muted-2);
+    background: var(--surface-3); border-bottom: 1px solid var(--hairline);
+  }
+  .month-head div:first-child { padding-left: 10px; }
+  .day {
+    min-height: 96px; padding: 6px 6px 5px; border-right: 1px solid var(--hairline);
+    border-bottom: 1px solid var(--hairline); display: flex; flex-direction: column; gap: 3px;
+    position: relative; cursor: default;
+  }
+  .day:nth-child(7n) { border-right: 0; }
+  .day:nth-last-child(-n+7) { border-bottom: 0; }
+  .day.dim { background: #fcfcfd; }
+  .day.dim .num { color: var(--placeholder); }
+  .day.weekend { background: #fcfcfd; }
+  .num {
+    font-size: 11px; font-weight: 600; color: var(--muted-2); font-variant-numeric: tabular-nums;
+    width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%;
+  }
+  .day.today .num { background: var(--accent); color: #fff; }
+  .day:hover { background: #fafbff; }
+  .day:hover .add-mini { opacity: 1; }
+  .add-mini {
+    position: absolute; top: 4px; right: 4px; width: 18px; height: 18px;
+    border: 0; border-radius: 5px; background: transparent; color: var(--muted-2);
+    font-size: 14px; line-height: 1; cursor: pointer; opacity: 0; transition: opacity .12s;
+  }
+  .add-mini:hover { background: var(--fill); color: var(--ink); }
+
+  .chip {
+    display: flex; align-items: center; gap: 5px;
+    padding: 2px 5px; border-radius: 5px; font-size: 10.5px; line-height: 1.35;
+    color: var(--ink-soft); background: transparent; cursor: pointer;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .chip:hover { background: var(--fill); }
+  .chip .dot { flex: none; }
+  .chip span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .chip.done { color: var(--muted-2); text-decoration: line-through; }
+  .more {
+    margin-top: auto; align-self: flex-start;
+    font-size: 10px; color: var(--muted-2); padding: 1px 5px; border-radius: 4px;
+    background: transparent; border: 0; font-family: inherit; cursor: pointer;
+  }
+  .more:hover { background: var(--fill); color: var(--ink); }
+
+  /* ---------- week ---------- */
+  .week-wrap { display: flex; flex-direction: column; gap: 8px; }
+  .week {
+    display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
+    border: 1px solid var(--hairline); border-radius: 10px; overflow: hidden; background: var(--surface);
+  }
+  .wcol { border-right: 1px solid var(--hairline); min-height: 360px; display: flex; flex-direction: column; }
+  .wcol:last-child { border-right: 0; }
+  .wcol.today { background: rgba(0, 122, 255, .035); }
+  .whead {
+    padding: 7px 8px 6px; border-bottom: 1px solid var(--hairline);
+    display: flex; align-items: baseline; gap: 5px; background: var(--surface-3);
+  }
+  .wcol.today .whead { background: rgba(0, 122, 255, .07); }
+  .wday { font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-2); }
+  .wnum { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .wcol.today .wnum { color: var(--accent); }
+  .wbody { padding: 6px 5px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .wchip {
+    display: flex; align-items: flex-start; gap: 5px;
+    padding: 5px 6px; border-radius: 6px; font-size: 10.5px; line-height: 1.3;
+    background: var(--surface-2); border: 1px solid rgba(0,0,0,.045); cursor: pointer;
+  }
+  .wchip .dot { margin-top: 3px; }
+  .wchip span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .wchip:hover { background: #eef2fa; border-color: rgba(0,0,0,.08); }
+  .wchip.done { color: var(--muted-2); }
+  .wchip.done span { text-decoration: line-through; }
+  .wadd {
+    margin-top: auto; border: 1px dashed transparent; border-radius: 6px;
+    background: transparent; color: var(--placeholder); font: inherit; font-size: 11px;
+    padding: 5px; cursor: pointer; text-align: left;
+  }
+  .wcol:hover .wadd { border-color: var(--hairline); }
+  .wadd:hover { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
+
+  .tray {
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+    border: 1px dashed var(--hairline-strong, rgba(0,0,0,.16)); border-radius: 8px;
+    background: var(--surface-3); font-size: 11px; color: var(--muted);
+  }
+  .tray strong { color: var(--ink-soft); font-weight: 600; }
+  .tray .wchip { background: var(--surface); }
+
+  /* ---------- quick capture ---------- */
+  .quick {
+    margin-top: auto; display: flex; align-items: center; gap: 7px;
+    padding: 8px 10px; border: 1px solid var(--hairline); border-radius: 9px;
+    background: var(--surface-3); color: var(--placeholder); font-size: 12px;
+  }
+  .quick .plus { color: var(--accent); font-weight: 700; }
+  .quick .kbd { margin-left: auto; font-size: 10px; color: var(--muted-2); }
+  kbd {
+    font-family: var(--font-ui); font-size: 9.5px; padding: 1px 4px; border-radius: 3px;
+    background: var(--surface); border: 1px solid var(--hairline);
+    box-shadow: 0 1px 0 rgba(0,0,0,.05);
+  }
+
+  .note {
+    text-align: center; margin-top: 14px; font-size: 11px; color: rgba(255,255,255,.55);
+    letter-spacing: .02em;
+  }
+
+  /* Below ~560px a 7-column grid cannot hold words. Collapse chips to dots,
+     like the iOS calendar, so the month stays scannable instead of showing "S..". */
+  @media (max-width: 560px) {
+    .day {
+      min-height: 62px; padding: 5px 4px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, 7px);
+      justify-content: start;
+      align-content: start;
+      gap: 4px;
+    }
+    .day .num { grid-column: 1 / -1; justify-self: start; font-size: 10.5px; }
+    .chip { width: 7px; height: 7px; padding: 0; gap: 0; background: none; }
+    .chip span { display: none; }
+    .chip:hover { background: none; }
+    .chip .dot { width: 7px; height: 7px; }
+    .more { grid-column: 1 / -1; margin-top: 0; font-size: 9px; padding: 0 2px; }
+    .add-mini { display: none; }
+  }
+
+  @media (max-width: 900px) {
+    body { padding: 16px 10px; }
+    .window-body { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .week-wrap { overflow-x: auto; }
+    .week { min-width: 760px; }
+    .day { min-height: 78px; }
+    .legend { display: none; }
+  }
+</style>
+</head>
+<body>
+  <div>
+    <section class="app-window" aria-label="Planner calendar mockup">
+      <div class="window-titlebar">
+        <span class="window-title"><span class="title-dot"></span>Planner</span>
+        <span class="window-meta">Local</span>
+        <div class="window-controls" aria-hidden="true">
+          <span class="wc min"></span><span class="wc full"></span><span class="wc close"></span>
+        </div>
+      </div>
+
+      <div class="window-body">
+        <aside class="sidebar">
+          <p class="sidebar-label">Plan</p>
+          <button class="side-row"><span class="side-icon"></span>Today<span class="side-count">4</span></button>
+          <button class="side-row active"><span class="side-icon"></span>Calendar<span class="side-count">23</span></button>
+          <p class="sidebar-label">Places</p>
+          <button class="side-row"><span class="side-icon"></span>Notes<span class="side-count">12</span></button>
+          <button class="side-row"><span class="side-icon"></span>Logbook</button>
+        </aside>
+
+        <section class="content">
+          <header class="panel-head">
+            <div>
+              <h2 class="panel-title" id="cal-title">Calendar</h2>
+              <p class="panel-sub" id="cal-sub">November 2026 · 23 open tasks</p>
+            </div>
+            <div class="cal-nav">
+              <button class="nav-btn" id="prev" aria-label="Previous">‹</button>
+              <button class="nav-btn today" id="today">Today</button>
+              <button class="nav-btn" id="next" aria-label="Next">›</button>
+            </div>
+          </header>
+
+          <div class="planner-controls">
+            <div class="segmented" role="tablist" aria-label="Calendar view">
+              <button class="on" data-mode="month" role="tab" aria-selected="true">Month</button>
+              <button data-mode="week" role="tab" aria-selected="false">Week</button>
+            </div>
+            <div class="legend">
+              <span><i class="dot" style="background:var(--c-work)"></i>Work</span>
+              <span><i class="dot" style="background:var(--c-life)"></i>Personal</span>
+              <span><i class="dot" style="background:var(--c-health)"></i>Health</span>
+              <span><i class="dot" style="background:var(--c-admin)"></i>Admin</span>
+            </div>
+          </div>
+
+          <!-- MONTH -->
+          <div class="month" id="monthView">
+            <div class="month-head" id="monthHead"></div>
+            <div class="month-grid" id="monthGrid"></div>
+          </div>
+
+          <!-- WEEK -->
+          <div class="week-wrap" id="weekView" hidden>
+            <div class="week" id="weekGrid"></div>
+            <div class="tray">
+              <strong>No date</strong>
+              <span class="wchip" style="padding:3px 7px"><i class="dot" style="background:var(--c-admin)"></i><span>Sort old receipts</span></span>
+              <span class="wchip" style="padding:3px 7px"><i class="dot" style="background:var(--c-life)"></i><span>Try new coffee place</span></span>
+            </div>
+          </div>
+
+          <form class="quick" onsubmit="return false">
+            <span class="plus">+</span>
+            <span>Add a task…</span>
+            <span class="kbd"><kbd>↵</kbd> save · <kbd>⌘↵</kbd> for date</span>
+          </form>
+        </section>
+      </div>
+    </section>
+
+    <p class="note">Mockup only — no app data touched. Month + Week, tabs at top, quick capture kept at the bottom.</p>
+  </div>
+
+<script>
+  // Fixed "today" = Wed 4 Nov 2026, matching the mockup date.
+  const TODAY = new Date(2026, 10, 4);
+
+  // Follow the browser locale: US/CA/JP start on Sunday, most of Europe on Monday.
+  function getWeekStart() {
+    try {
+      const locale = new Intl.Locale(navigator.language || "en");
+      if (locale.weekInfo) return locale.weekInfo.firstDay % 7; // 7 -> 0 (Sunday)
+    } catch (error) {}
+    return /^(en-US|en-CA|ja|ko|zh)/i.test(navigator.language || "") ? 0 : 1;
+  }
+  const WEEK_START = getWeekStart();
+  const MONDAY = new Date(2026, 10, 2);
+  const mondayIndex = (1 - WEEK_START + 7) % 7;
+  const weekStartDate = new Date(MONDAY);
+  weekStartDate.setDate(MONDAY.getDate() - mondayIndex);
+  const DOW = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStartDate);
+    d.setDate(weekStartDate.getDate() + i);
+    return d.toLocaleString("en-US", { weekday: "short" });
+  });
+  const C = { work: "var(--c-work)", life: "var(--c-life)", health: "var(--c-health)", admin: "var(--c-admin)" };
+
+  // key = YYYY-M-D (month 0-based)
+  const tasks = {
+    "2026-10-30": [{ t: "Wrap October invoices", c: "admin" }],
+    "2026-10-2":  [{ t: "Send brand deck to Anita", c: "work" }, { t: "Book studio B for shoot", c: "work" }],
+    "2026-10-3":  [{ t: "Standup · 9:30", c: "work" }, { t: "Reply to Lumen", c: "work", done: true }],
+    "2026-10-4":  [{ t: "Anita makeup trial · 2pm", c: "life" }, { t: "File Q4 expenses", c: "admin" }, { t: "Call dentist", c: "health" }, { t: "Review captions", c: "work" }],
+    "2026-10-5":  [{ t: "Shoot day — studio B", c: "work" }],
+    "2026-10-6":  [{ t: "Invoice #1042", c: "admin" }],
+    "2026-10-9":  [{ t: "Deliver final edits", c: "work" }],
+    "2026-10-10": [{ t: "Gym · 7am", c: "health" }],
+    "2026-10-12": [{ t: "Team offsite", c: "work" }],
+    "2026-10-13": [{ t: "Dentist · 11am", c: "health", done: true }],
+    "2026-10-17": [{ t: "Renew domain", c: "admin" }],
+    "2026-10-18": [{ t: "Anita second fitting", c: "life" }],
+    "2026-10-20": [{ t: "Publish November recap", c: "work" }],
+    "2026-10-23": [{ t: "Order print samples", c: "work" }],
+    "2026-10-24": [{ t: "Thanksgiving prep", c: "life" }],
+    "2026-10-26": [{ t: "Dinner at 6", c: "life" }]
+  };
+
+  const key = d => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  const same = (a, b) => a.toDateString() === b.toDateString();
+
+  function chip(t) {
+    return `<div class="chip${t.done ? " done" : ""}" title="${t.t}"><i class="dot" style="background:${C[t.c]}"></i><span>${t.t}</span></div>`;
+  }
+
+  let monthCursor = new Date(2026, 10, 1);
+  const expandedDays = new Set();
+
+  function renderMonth() {
+    const grid = document.getElementById("monthGrid");
+    const first = new Date(monthCursor.getFullYear(), monthCursor.getMonth(), 1);
+    const offset = (first.getDay() - WEEK_START + 7) % 7;
+    const start = new Date(first);
+    start.setDate(1 - offset);
+
+    document.getElementById("monthHead").innerHTML =
+      DOW.map(day => `<div>${day}</div>`).join("");
+
+    // Only draw the weeks the month actually needs, so a 5-week month does not
+    // trail an extra row of the next month.
+    const daysInMonth = new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 0).getDate();
+    const cells = Math.ceil((offset + daysInMonth) / 7) * 7;
+
+    grid.innerHTML = "";
+    for (let i = 0; i < cells; i++) {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      const dim = d.getMonth() !== monthCursor.getMonth();
+      const weekend = d.getDay() === 0 || d.getDay() === 6;
+      const list = tasks[key(d)] || [];
+
+      const cell = document.createElement("div");
+      cell.className = `day${dim ? " dim" : ""}${weekend && !dim ? " weekend" : ""}${same(d, TODAY) ? " today" : ""}`;
+      cell.innerHTML = `<span class="num">${d.getDate()}</span><button class="add-mini" title="Add task">+</button>`;
+
+      const isOpen = expandedDays.has(key(d));
+      (isOpen ? list : list.slice(0, 3)).forEach(t => cell.insertAdjacentHTML("beforeend", chip(t)));
+      if (list.length > 3) {
+        const more = document.createElement("button");
+        more.className = "more";
+        const compact = window.matchMedia("(max-width: 560px)").matches;
+        more.textContent = isOpen
+          ? (compact ? "–" : "Show less")
+          : (compact ? `+${list.length - 3}` : `+${list.length - 3} more`);
+        more.addEventListener("click", () => {
+          if (expandedDays.has(key(d))) expandedDays.delete(key(d));
+          else expandedDays.add(key(d));
+          renderMonth();
+        });
+        cell.appendChild(more);
+      }
+      grid.appendChild(cell);
+    }
+
+    const monthName = first.toLocaleString("en-US", { month: "long", year: "numeric" });
+    document.getElementById("cal-sub").textContent =
+      `${monthName} · ${Object.values(tasks).flat().filter(t => !t.done).length} open tasks`;
+  }
+
+  function weekRangeLabel() {
+    const start = new Date(TODAY);
+    start.setDate(TODAY.getDate() - ((TODAY.getDay() - WEEK_START + 7) % 7));
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    const fmt = d => d.toLocaleString("en-US", { month: "short", day: "numeric" });
+    return `${fmt(start)} – ${fmt(end)}, ${end.getFullYear()}`;
+  }
+
+  function renderWeek() {
+    const grid = document.getElementById("weekGrid");
+    const monday = new Date(TODAY);
+    monday.setDate(TODAY.getDate() - ((TODAY.getDay() - WEEK_START + 7) % 7));
+
+    grid.innerHTML = "";
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday);
+      d.setDate(monday.getDate() + i);
+      const col = document.createElement("div");
+      col.className = `wcol${same(d, TODAY) ? " today" : ""}`;
+      col.innerHTML = `<div class="whead"><span class="wday">${DOW[i]}</span><span class="wnum">${d.getDate()}</span></div>`;
+      const body = document.createElement("div");
+      body.className = "wbody";
+      (tasks[key(d)] || []).forEach(t => {
+        body.insertAdjacentHTML("beforeend",
+          `<div class="wchip${t.done ? " done" : ""}" title="${t.t}"><i class="dot" style="background:${C[t.c]}"></i><span>${t.t}</span></div>`);
+      });
+      body.insertAdjacentHTML("beforeend", `<button class="wadd">+ Add</button>`);
+      col.appendChild(body);
+      grid.appendChild(col);
+    }
+  }
+
+  document.querySelectorAll(".segmented button").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".segmented button").forEach(b => {
+        b.classList.toggle("on", b === btn);
+        b.setAttribute("aria-selected", String(b === btn));
+      });
+      const month = btn.dataset.mode === "month";
+      document.getElementById("monthView").hidden = !month;
+      document.getElementById("weekView").hidden = month;
+      document.getElementById("cal-sub").textContent = month
+        ? `${monthCursor.toLocaleString("en-US", { month: "long", year: "numeric" })} · 19 open tasks`
+        : `${weekRangeLabel()} · 9 open tasks · all-day (no times yet)`;
+    });
+  });
+
+  document.getElementById("prev").addEventListener("click", () => {
+    monthCursor = new Date(monthCursor.getFullYear(), monthCursor.getMonth() - 1, 1);
+    renderMonth();
+  });
+  document.getElementById("next").addEventListener("click", () => {
+    monthCursor = new Date(monthCursor.getFullYear(), monthCursor.getMonth() + 1, 1);
+    renderMonth();
+  });
+  document.getElementById("today").addEventListener("click", () => {
+    monthCursor = new Date(TODAY.getFullYear(), TODAY.getMonth(), 1);
+    renderMonth();
+  });
+
+  renderMonth();
+  renderWeek();
+</script>
+</body>
+</html>

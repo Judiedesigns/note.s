@@ -6,7 +6,7 @@
 <title>Random Notes | Private Local Planner</title>
 <meta name="description" content="Plan tasks by today, week, and month, then capture loose notes privately in your browser.">
 <meta name="robots" content="index, follow">
-<meta name="theme-color" content="#b9c4cf">
+<meta name="theme-color" content="#c9b7c9">
 <meta name="application-name" content="Random Notes">
 <meta name="apple-mobile-web-app-title" content="Random Notes">
 <meta property="og:type" content="website">
@@ -19,14 +19,31 @@
 <meta name="twitter:description" content="A private local planner for tasks and quick thoughts.">
 <meta name="twitter:image" content="bg-2.jpg">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="styles.css?v=simple-planner-20260624">
+<link rel="stylesheet" href="styles.css?v=finder-20261103">
 </head>
 <body>
 <a href="#main-content" class="skip-link">Skip to main content</a>
 <div class="sr-only" aria-live="polite" aria-atomic="true" id="sr-status"></div>
 
 <main class="page" id="main-content">
-  <div class="desktop-title" aria-hidden="true">Random notes local planner.</div>
+  <header class="menu-bar">
+    <div class="menu-group">
+      <span class="menu-brand"><img src="assets/icons/planner.png" alt="">Random Notes</span>
+      <span class="menu-item">Planner</span>
+      <span class="menu-item">File</span>
+      <span class="menu-item">Edit</span>
+      <span class="menu-item">View</span>
+    </div>
+    <div class="surface-switch" role="tablist" aria-label="App sections">
+      <button class="surface-tab active" type="button" data-surface-target="planner" role="tab" aria-selected="true">Planner</button>
+      <button class="surface-tab" type="button" data-surface-target="notes" role="tab" aria-selected="false">Notes</button>
+      <button class="surface-tab" type="button" data-surface-target="readme" role="tab" aria-selected="false">README.txt</button>
+    </div>
+    <div class="menu-meta">
+      <span class="menu-saved">All saved locally</span>
+      <span id="menu-clock"></span>
+    </div>
+  </header>
   <div class="shell">
     <div class="desktop-icons" aria-label="Desktop shortcuts">
       <button class="desktop-icon planner-icon" type="button" data-open-window="planner" aria-label="Open Planner">
@@ -43,12 +60,6 @@
       </button>
     </div>
 
-    <div class="surface-switch" role="tablist" aria-label="App sections">
-      <button class="surface-tab active" type="button" data-surface-target="planner" role="tab" aria-selected="true">Planner</button>
-      <button class="surface-tab" type="button" data-surface-target="notes" role="tab" aria-selected="false">Notes</button>
-      <button class="surface-tab" type="button" data-surface-target="readme" role="tab" aria-selected="false">README.txt</button>
-    </div>
-
     <div class="desktop-grid">
       <section class="app-window planner-window active-surface window-closed" data-surface="planner" aria-label="Planner app">
         <div class="window-titlebar">
@@ -58,13 +69,52 @@
             <button class="window-control fullscreen-control" type="button" data-window-action="fullscreen" data-window-target="planner" aria-label="Full screen Planner"></button>
             <button class="window-control close-control" type="button" data-window-action="close" data-window-target="planner" aria-label="Close Planner"></button>
           </div>
+          <span class="window-meta">Local</span>
         </div>
-        <div class="window-body">
-          <section class="content-panel todo-board" aria-live="polite">
+        <div class="window-body planner-shell">
+          <aside class="planner-sidebar" aria-label="Planner navigation">
+            <p class="sidebar-label">Plan</p>
+            <div class="sidebar-group">
+              <button class="side-row active" type="button" data-view="today">
+                <span class="side-icon sun-icon" aria-hidden="true"></span>
+                <span>Today</span>
+                <span class="side-count" data-side-count="today">0</span>
+              </button>
+              <button class="side-row" type="button" data-view="week">
+                <span class="side-icon calendar-icon" aria-hidden="true"></span>
+                <span>This week</span>
+                <span class="side-count" data-side-count="week">0</span>
+              </button>
+              <button class="side-row" type="button" data-view="month">
+                <span class="side-icon range-icon" aria-hidden="true"></span>
+                <span>Month</span>
+                <span class="side-count" data-side-count="month">0</span>
+              </button>
+            </div>
+            <p class="sidebar-label">Places</p>
+            <div class="sidebar-group">
+              <button class="side-row" type="button" data-side-open="notes">
+                <span class="side-icon note-icon" aria-hidden="true"></span>
+                <span>Notes</span>
+                <span class="side-count" data-side-count="notes">0</span>
+              </button>
+              <button class="side-row" type="button" data-side-open="readme">
+                <span class="side-icon book-icon" aria-hidden="true"></span>
+                <span>Logbook</span>
+                <span></span>
+              </button>
+            </div>
+          </aside>
+          <section class="content-panel todo-board main-pane" aria-live="polite">
             <div class="panel-head">
               <div>
                 <h2 class="panel-title" id="view-title">Today</h2>
                 <p class="panel-sub" id="view-subtitle"></p>
+              </div>
+              <div class="calendar-nav" id="calendar-nav" hidden>
+                <button class="calendar-nav-btn" id="calendar-prev" type="button" aria-label="Previous month">‹</button>
+                <button class="calendar-nav-btn calendar-nav-today" id="calendar-today" type="button">Today</button>
+                <button class="calendar-nav-btn" id="calendar-next" type="button" aria-label="Next month">›</button>
               </div>
               <p class="count" id="task-count">0 tasks</p>
             </div>
@@ -90,7 +140,18 @@
                 </div>
               </div>
             </div>
-            <button class="add-task-launch" id="task-add-toggle" type="button" aria-controls="task-form" aria-expanded="false">+ Add Task</button>
+            <section class="items-list" id="task-list" aria-label="Saved tasks"></section>
+            <section class="calendar-view" id="calendar-view" aria-labelledby="view-title" hidden></section>
+            <!-- Quick-capture bar: always visible, one click to type -->
+            <form class="task-quick-form" id="task-quick-form" aria-label="Quick add task">
+              <div class="task-quick-row">
+                <span class="task-quick-plus" aria-hidden="true">+</span>
+                <input class="task-quick-input" id="task-quick-input" type="text" maxlength="220" placeholder="Add a task… (↵ save)" aria-describedby="task-quick-hint">
+                <span class="sr-only" id="task-quick-hint">Press Enter to save, or Control or Command plus Enter to set a date.</span>
+                <button class="task-quick-opts-btn" id="task-quick-opts-btn" type="button" aria-label="More options: set date" title="Set date / more options">⋯</button>
+              </div>
+            </form>
+            <button class="add-task-launch" id="task-add-toggle" type="button" aria-controls="task-form" aria-expanded="false" hidden>+ Add Task</button>
             <form class="capture task-capture" id="task-form" aria-label="Add task" hidden>
               <div class="task-entry-row">
                 <div class="task-title-field">
@@ -108,7 +169,10 @@
               </div>
               <input id="task-body" type="hidden" value="">
             </form>
-            <section class="items-list" id="task-list" aria-label="Saved tasks"></section>
+            <footer class="planner-status">
+              <span>Saved locally in this browser</span>
+              <span>note.s</span>
+            </footer>
           </section>
         </div>
       </section>
@@ -121,6 +185,7 @@
             <button class="window-control fullscreen-control" type="button" data-window-action="fullscreen" data-window-target="notes" aria-label="Full screen Notes"></button>
             <button class="window-control close-control" type="button" data-window-action="close" data-window-target="notes" aria-label="Close Notes"></button>
           </div>
+          <span class="window-meta">Local</span>
         </div>
         <div class="window-body">
           <section class="content-panel" aria-live="polite">
@@ -172,7 +237,7 @@
             <form class="capture notes-capture" id="note-form" aria-label="Add note">
               <div>
                 <label class="field-label" for="note-body">body</label>
-                <textarea class="body-input" id="note-body" maxlength="1200" placeholder="Drop a thought, idea, reminder, or rough note"></textarea>
+                <textarea class="body-input" id="note-body" maxlength="1200" placeholder="Drop a thought… ⌘↵ to save"></textarea>
               </div>
               <button class="add-btn" type="submit">+ Add Note</button>
             </form>
@@ -215,6 +280,7 @@
             <button class="window-control fullscreen-control" type="button" data-window-action="fullscreen" data-window-target="readme" aria-label="Full screen README"></button>
             <button class="window-control close-control" type="button" data-window-action="close" data-window-target="readme" aria-label="Close README"></button>
           </div>
+          <span class="window-meta">Local</span>
         </div>
         <div class="window-body">
           <section class="content-panel readme-panel" aria-live="polite">
@@ -250,6 +316,22 @@
       <div class="note-popup-actions">
         <button class="secondary-btn" id="note-popup-copy" type="button">Copy</button>
         <button class="add-btn" id="note-popup-done" type="button">Done</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="day-popup-backdrop" id="day-popup" hidden>
+  <section class="day-popup-window" role="dialog" aria-modal="true" aria-labelledby="day-popup-title">
+    <div class="window-titlebar day-popup-titlebar">
+      <span class="window-title"><span class="title-icon" aria-hidden="true"></span><span id="day-popup-title">Day</span></span>
+      <button class="window-control close-control" id="day-popup-close" type="button" aria-label="Close day"></button>
+    </div>
+    <div class="day-popup-body">
+      <div class="day-popup-list" id="day-popup-list"></div>
+      <div class="day-popup-actions">
+        <button class="secondary-btn" id="day-popup-add" type="button">+ Add task</button>
+        <button class="add-btn" id="day-popup-done" type="button">Done</button>
       </div>
     </div>
   </section>
@@ -316,6 +398,9 @@ const taskDateInput = document.getElementById("task-date");
 const taskSubmitButton = document.getElementById("task-submit");
 const taskCancelEditButton = document.getElementById("task-cancel-edit");
 const taskAddToggle = document.getElementById("task-add-toggle");
+const taskQuickForm = document.getElementById("task-quick-form");
+const taskQuickInput = document.getElementById("task-quick-input");
+const taskQuickOptsBtn = document.getElementById("task-quick-opts-btn");
 const calendarExportButton = document.getElementById("calendar-export");
 const taskFilterToggle = document.getElementById("task-filter-toggle");
 const noteForm = document.getElementById("note-form");
@@ -345,6 +430,18 @@ const syncDebugCloud = document.getElementById("sync-debug-cloud");
 const syncDebugTime = document.getElementById("sync-debug-time");
 const syncDebugError = document.getElementById("sync-debug-error");
 const taskList = document.getElementById("task-list");
+const calendarView = document.getElementById("calendar-view");
+const plannerPane = document.querySelector(".planner-window .main-pane");
+const calendarNav = document.getElementById("calendar-nav");
+const calendarPrevButton = document.getElementById("calendar-prev");
+const calendarTodayButton = document.getElementById("calendar-today");
+const calendarNextButton = document.getElementById("calendar-next");
+const dayPopup = document.getElementById("day-popup");
+const dayPopupTitle = document.getElementById("day-popup-title");
+const dayPopupList = document.getElementById("day-popup-list");
+const dayPopupCloseButton = document.getElementById("day-popup-close");
+const dayPopupAddButton = document.getElementById("day-popup-add");
+const dayPopupDoneButton = document.getElementById("day-popup-done");
 const noteList = document.getElementById("note-list");
 const taskCountLabel = document.getElementById("task-count");
 const noteCountLabel = document.getElementById("note-count");
@@ -352,6 +449,9 @@ const readmeContent = document.getElementById("readme-content");
 const viewTitle = document.getElementById("view-title");
 const viewSubtitle = document.getElementById("view-subtitle");
 const tabs = Array.from(document.querySelectorAll(".mode-tab"));
+const sideViewButtons = Array.from(document.querySelectorAll(".side-row[data-view]"));
+const sideOpenButtons = Array.from(document.querySelectorAll("[data-side-open]"));
+const menuClock = document.getElementById("menu-clock");
 const taskFilterButtons = Array.from(document.querySelectorAll(".task-filter"));
 const noteFilterButtons = Array.from(document.querySelectorAll(".note-filter"));
 const surfaceTabs = Array.from(document.querySelectorAll(".surface-tab"));
@@ -363,6 +463,20 @@ const windowControls = Array.from(document.querySelectorAll("[data-window-action
 const taskbarButtons = Array.from(document.querySelectorAll("[data-taskbar-window]"));
 const taskbarStartButton = document.querySelector("[data-taskbar-start]");
 
+// Keyboard hint should name the correct modifier per platform.
+const isMacPlatform = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
+const dateShortcutLabel = isMacPlatform ? "⌘↵" : "Ctrl+↵";
+taskQuickInput.placeholder = `Add a task… (↵ save · ${dateShortcutLabel} for date)`;
+taskQuickOptsBtn.title = `Set date (${dateShortcutLabel})`;
+
+let currentDayStamp = toDateInputValue(new Date());
+let cachedWeekStart = null;
+let calendarCursor = parseLocalDate(currentDayStamp);
+let focusedDate = currentDayStamp;
+let expandedCalendarDays = new Set();
+let dayPopupDate = "";
+let dayPopupReturnFocus = null;
+
 loadItems();
 loadWindowPositions();
 loadIconPositions();
@@ -373,11 +487,69 @@ applyWindowPositions();
 applyIconPositions();
 setActiveSurface();
 setTaskFilter();
+setActiveTab();
+updateMenuClock();
+window.setInterval(updateMenuClock, 30000);
 initSync();
 
 taskForm.addEventListener("submit", event => {
   event.preventDefault();
   addTask();
+});
+
+// Quick-capture form: Enter to save immediately. In a calendar view the focused
+// day is used, so a task lands on the day the user is actually looking at.
+taskQuickForm.addEventListener("submit", event => {
+  event.preventDefault();
+  const title = taskQuickInput.value.trim();
+  if (!title) { taskQuickInput.focus(); return; }
+  items.unshift({
+    id: String(Date.now()) + Math.random().toString(16).slice(2),
+    type: "task",
+    title,
+    body: "",
+    dueDate: getQuickCaptureDate(),
+    done: false,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  });
+  saveItems();
+  taskQuickInput.value = "";
+  render();
+  announce("Task added.");
+  showToast("Task added.");
+  taskQuickInput.focus();
+});
+
+// "⋯" opens the full form with the typed title pre-filled
+function openQuickTaskForm() {
+  const title = taskQuickInput.value.trim();
+  taskQuickInput.value = "";
+  setTaskFormOpen(true);
+  taskTitleInput.value = title;
+  (title ? taskDateInput : taskTitleInput).focus();
+  if (title) taskTitleInput.setSelectionRange(title.length, title.length);
+}
+
+taskQuickOptsBtn.addEventListener("click", openQuickTaskForm);
+
+// Cmd/Ctrl+Enter opens the full form so a date can be set. Plain Tab is left
+// alone so keyboard navigation and screen-reader users keep working.
+taskQuickInput.addEventListener("keydown", event => {
+  if (isComposing(event)) {
+    // Stop the implicit form submit while an IME candidate is still open.
+    if (event.key === "Enter") event.preventDefault();
+    return;
+  }
+  if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+    event.preventDefault();
+    openQuickTaskForm();
+    return;
+  }
+  if (event.key === "Escape") {
+    taskQuickInput.value = "";
+    taskQuickInput.blur();
+  }
 });
 
 taskAddToggle.addEventListener("click", () => {
@@ -388,10 +560,34 @@ taskAddToggle.addEventListener("click", () => {
 taskCancelEditButton.addEventListener("click", () => {
   clearTaskEditMode();
   setTaskFormOpen(false);
-  taskAddToggle.focus();
+  taskQuickInput.focus();
 });
 
 calendarExportButton.addEventListener("click", exportTasksToCalendar);
+
+calendarPrevButton.addEventListener("click", () => stepCalendar(-1));
+calendarNextButton.addEventListener("click", () => stepCalendar(1));
+calendarTodayButton.addEventListener("click", () => {
+  const today = new Date();
+  calendarCursor = today;
+  focusedDate = toDateInputValue(today);
+  render();
+  focusDay(focusedDate);
+  announce("Showing today.");
+});
+
+calendarView.addEventListener("keydown", handleCalendarKeydown);
+
+dayPopup.addEventListener("click", event => {
+  if (event.target === dayPopup) closeDayPopup();
+});
+dayPopupCloseButton.addEventListener("click", closeDayPopup);
+dayPopupDoneButton.addEventListener("click", closeDayPopup);
+dayPopupAddButton.addEventListener("click", () => {
+  const date = dayPopupDate;
+  closeDayPopup();
+  startTaskForDate(date);
+});
 
 taskFilterToggle.addEventListener("click", () => {
   const open = taskFilterToggle.getAttribute("aria-expanded") === "true";
@@ -401,6 +597,15 @@ taskFilterToggle.addEventListener("click", () => {
 noteForm.addEventListener("submit", event => {
   event.preventDefault();
   addNote();
+});
+
+// Cmd+Enter / Ctrl+Enter submits note from textarea
+noteBodyInput.addEventListener("keydown", event => {
+  if (isComposing(event)) return;
+  if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+    event.preventDefault();
+    addNote();
+  }
 });
 
 noteSearchInput.addEventListener("input", () => {
@@ -434,11 +639,46 @@ document.addEventListener("click", event => {
 });
 
 document.addEventListener("keydown", event => {
+  if (isComposing(event)) return;
   if (event.key === "Escape") {
     setTaskFilterMenuOpen(false);
     setNoteFilterMenuOpen(false);
     setSyncPanelOpen(false);
     closeNotePopup();
+    closeDayPopup();
+    // Collapse full task form back to quick-capture if not editing
+    if (!taskForm.hidden && !editingTaskId) {
+      const title = taskTitleInput.value.trim();
+      if (!title) {
+        setTaskFormOpen(false);
+        taskQuickInput.focus();
+      }
+    }
+  }
+
+  // Global keyboard shortcuts — only when not focused in an input
+  const tag = document.activeElement && document.activeElement.tagName;
+  const inInput = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+  if (inInput || event.metaKey || event.ctrlKey || event.altKey) return;
+
+  // T → focus task quick-capture (open planner if needed)
+  if (event.key === "t" || event.key === "T") {
+    event.preventDefault();
+    openWindow("planner", true);
+    requestAnimationFrame(() => {
+      if (!taskForm.hidden) {
+        taskTitleInput.focus();
+      } else {
+        taskQuickInput.focus();
+      }
+    });
+  }
+
+  // N → focus notes textarea (open notes if needed)
+  if (event.key === "n" || event.key === "N") {
+    event.preventDefault();
+    openWindow("notes", true);
+    requestAnimationFrame(() => noteBodyInput.focus());
   }
 });
 
@@ -468,9 +708,19 @@ backupFileInput.addEventListener("change", importBackupFile);
 
 tabs.forEach(button => {
   button.addEventListener("click", () => {
-    activeView = button.dataset.view;
-    setActiveTab();
-    render();
+    setPlannerView(button.dataset.view);
+  });
+});
+
+sideViewButtons.forEach(button => {
+  button.addEventListener("click", () => {
+    setPlannerView(button.dataset.view);
+  });
+});
+
+sideOpenButtons.forEach(button => {
+  button.addEventListener("click", () => {
+    openWindow(button.dataset.sideOpen, true);
   });
 });
 
@@ -541,6 +791,13 @@ window.addEventListener("resize", () => {
   applyIconPositions();
 });
 
+// Catch the day rollover immediately when the user comes back to the tab,
+// instead of waiting for the 30s clock tick (mobile browsers throttle it).
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) refreshDayIfNeeded();
+});
+window.addEventListener("focus", refreshDayIfNeeded);
+
 if (window.visualViewport) {
   window.visualViewport.addEventListener("resize", updateVisualViewportVars);
   window.visualViewport.addEventListener("scroll", updateVisualViewportVars);
@@ -587,7 +844,7 @@ function normalizeItem(item) {
     type: item.type === "note" ? "note" : "task",
     title: String(item.title || "Untitled"),
     body: String(item.body || ""),
-    dueDate: item.type === "note" ? "" : String(item.dueDate || toDateInputValue(new Date())),
+    dueDate: item.type === "note" ? "" : String(item.dueDate || ""),
     planView: item.type === "note" ? "" : normalizePlanView(item.planView),
     done: Boolean(item.done),
     createdAt: Number(item.createdAt) || Date.now(),
@@ -943,8 +1200,7 @@ function addTask() {
       ...item,
       title: title || body.split("\n")[0].slice(0, 80) || "Untitled",
       body: title ? body : "",
-      dueDate: taskDateInput.value || toDateInputValue(new Date()),
-      planView: activeView,
+      dueDate: taskDateInput.value || "",
       updatedAt: Date.now()
     } : item);
   } else {
@@ -953,8 +1209,7 @@ function addTask() {
       type: "task",
       title: title || body.split("\n")[0].slice(0, 80) || "Untitled",
       body: title ? body : "",
-      dueDate: taskDateInput.value || toDateInputValue(new Date()),
-      planView: activeView,
+      dueDate: taskDateInput.value || "",
       done: false,
       createdAt: Date.now(),
       updatedAt: Date.now()
@@ -968,7 +1223,7 @@ function addTask() {
   render();
   announce(wasEditing ? "Task updated." : "Task added.");
   showToast(wasEditing ? "Task updated." : "Task added.");
-  taskAddToggle.focus();
+  taskQuickInput.focus();
 }
 
 function addNote() {
@@ -1145,27 +1400,33 @@ function foldCalendarLines(lines) {
 }
 
 function render() {
-  const visibleTasks = getVisibleTasks();
+  const calendarMode = activeView === "week" || activeView === "month";
+  const allTasks = getFilteredTasks();
+  const visibleTasks = calendarMode ? getCalendarTasks(allTasks) : getAgendaTasks(allTasks);
   const notes = items.filter(item => item.type === "note" && !item.deletedAt);
   const visibleNotes = getVisibleNotes(notes);
   taskList.innerHTML = "";
+  calendarView.innerHTML = "";
   noteList.innerHTML = "";
   viewTitle.textContent = getViewTitle();
-  viewSubtitle.textContent = getViewSubtitle();
+  viewSubtitle.textContent = getViewSubtitle(visibleTasks);
   taskCountLabel.textContent = getTaskCountText(visibleTasks);
   noteCountLabel.textContent = getNoteCountText(visibleNotes.length, notes.length);
   readmeContent.textContent = getReadmeText();
+  updateSidebarCounts(notes.length);
 
-  if (!visibleTasks.length) {
-    const empty = document.createElement("p");
-    empty.className = "empty";
-    empty.textContent = getEmptyText();
-    taskList.appendChild(empty);
-  } else if (activeView === "week" || activeView === "month") {
-    renderGroups(visibleTasks);
+  taskList.hidden = calendarMode;
+  calendarView.hidden = !calendarMode;
+  calendarNav.hidden = !calendarMode;
+  plannerPane.classList.toggle("is-calendar", calendarMode);
+
+  if (calendarMode) {
+    renderCalendar(allTasks);
   } else {
-    visibleTasks.forEach(item => taskList.appendChild(createCard(item)));
+    renderAgenda(visibleTasks);
   }
+
+  if (!dayPopup.hidden) renderDayPopup(dayPopupDate);
 
   if (!notes.length) {
     const empty = document.createElement("p");
@@ -1188,21 +1449,533 @@ function render() {
   }
 }
 
-function renderGroups(visible) {
-  const groups = new Map();
-  visible.forEach(item => {
-    const label = activeView === "week" ? formatWeekday(item.dueDate) : formatMonthDay(item.dueDate);
-    if (!groups.has(label)) groups.set(label, []);
-    groups.get(label).push(item);
-  });
+function renderAgenda(tasks) {
+  if (!tasks.length) {
+    const empty = document.createElement("p");
+    empty.className = "empty";
+    empty.textContent = getEmptyText();
+    taskList.appendChild(empty);
+    return;
+  }
 
-  groups.forEach((groupItems, label) => {
+  const today = toDateInputValue(new Date());
+  const groups = [
+    { label: "Overdue", items: tasks.filter(item => item.dueDate && item.dueDate < today) },
+    { label: "Today", items: tasks.filter(item => item.dueDate === today) },
+    { label: "No date", items: tasks.filter(item => !item.dueDate) }
+  ];
+
+  groups.forEach(({ label, items: groupItems }) => {
+    if (!groupItems.length) return;
+    const sorted = groupItems.slice().sort((a, b) => {
+      if (a.done !== b.done) return a.done ? 1 : -1;
+      return Number(b.createdAt) - Number(a.createdAt);
+    });
     const group = document.createElement("div");
     group.className = "group";
-    group.innerHTML = `<h3 class="group-title">${escapeHtml(label)} <span>${groupItems.length}</span></h3>`;
-    groupItems.forEach(item => group.appendChild(createCard(item)));
+    group.innerHTML = `<h3 class="group-title">${escapeHtml(label)} <span>${sorted.length}</span></h3>`;
+    sorted.forEach(item => group.appendChild(createCard(item)));
     taskList.appendChild(group);
   });
+}
+
+function pad2(value) {
+  return String(value).padStart(2, "0");
+}
+
+function addDays(date, days) {
+  const copy = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  copy.setDate(copy.getDate() + days);
+  return copy;
+}
+
+function addMonths(date, months) {
+  return new Date(date.getFullYear(), date.getMonth() + months, 1);
+}
+
+function startOfMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function monthPrefix(date) {
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}`;
+}
+
+function formatFullDate(date) {
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric"
+  }).format(date);
+}
+
+function weekRangeLabel(start) {
+  const end = addDays(start, 6);
+  const startText = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(start);
+  if (start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear()) {
+    return `${startText} – ${end.getDate()}, ${end.getFullYear()}`;
+  }
+  const endText = new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric"
+  }).format(end);
+  return `${startText} – ${endText}`;
+}
+
+function getQuickCaptureDate() {
+  if ((activeView === "week" || activeView === "month") && focusedDate) return focusedDate;
+  return toDateInputValue(new Date());
+}
+
+function setPlannerView(view) {
+  const wasCalendar = activeView === "week" || activeView === "month";
+  activeView = view;
+  if (view === "week" || view === "month") {
+    if (wasCalendar) {
+      // Keep the day the user was looking at when switching Month <-> Week.
+      calendarCursor = parseLocalDate(focusedDate || toDateInputValue(new Date()));
+    } else {
+      const today = new Date();
+      calendarCursor = today;
+      focusedDate = toDateInputValue(today);
+    }
+    syncFocusedToView();
+  }
+  setActiveTab();
+  render();
+}
+
+function stepCalendar(direction) {
+  if (activeView === "month") {
+    calendarCursor = addMonths(calendarCursor, direction);
+  } else if (activeView === "week") {
+    calendarCursor = addDays(calendarCursor, direction * 7);
+  } else {
+    return;
+  }
+  syncFocusedToView();
+  render();
+}
+
+function syncFocusedToView() {
+  const todayKey = toDateInputValue(new Date());
+  if (!focusedDate) focusedDate = todayKey;
+
+  if (activeView === "month") {
+    const prefix = monthPrefix(calendarCursor);
+    if (!focusedDate.startsWith(prefix)) {
+      focusedDate = todayKey.startsWith(prefix) ? todayKey : toDateInputValue(startOfMonth(calendarCursor));
+    }
+    return;
+  }
+
+  if (activeView === "week") {
+    const start = startOfWeek(calendarCursor);
+    const startKey = toDateInputValue(start);
+    const endKey = toDateInputValue(addDays(start, 6));
+    if (focusedDate < startKey || focusedDate > endKey) {
+      focusedDate = todayKey >= startKey && todayKey <= endKey ? todayKey : startKey;
+    }
+  }
+}
+
+function getTasksByDate(tasks) {
+  const map = new Map();
+  tasks.forEach(task => {
+    if (!task.dueDate) return;
+    if (!map.has(task.dueDate)) map.set(task.dueDate, []);
+    map.get(task.dueDate).push(task);
+  });
+  return map;
+}
+
+function createCalendarChip(task, dateKey, extraClass = "") {
+  const todayKey = toDateInputValue(new Date());
+  const overdue = !task.done && Boolean(task.dueDate) && task.dueDate < todayKey;
+  const chip = document.createElement("button");
+  chip.type = "button";
+  chip.className = `calendar-chip${task.done ? " is-done" : ""}${overdue ? " is-overdue" : ""}${extraClass ? ` ${extraClass}` : ""}`;
+  chip.dataset.id = task.id;
+  chip.tabIndex = -1;
+  chip.title = task.title;
+  chip.setAttribute("aria-label", `${task.title}${task.done ? " (done)" : ""}${overdue ? " (overdue)" : ""}`);
+  chip.innerHTML = `<span class="calendar-chip-dot" aria-hidden="true"></span><span class="calendar-chip-title">${escapeHtml(task.title)}</span>`;
+  chip.addEventListener("click", event => {
+    event.stopPropagation();
+    if (dateKey) focusedDate = dateKey;
+    openDayPopup(dateKey);
+  });
+  return chip;
+}
+
+function renderCalendar(allTasks) {
+  calendarView.classList.toggle("is-week", activeView === "week");
+  calendarView.classList.toggle("is-month", activeView === "month");
+  calendarPrevButton.setAttribute("aria-label", activeView === "month" ? "Previous month" : "Previous week");
+  calendarNextButton.setAttribute("aria-label", activeView === "month" ? "Next month" : "Next week");
+
+  const hint = document.createElement("p");
+  hint.className = "sr-only";
+  hint.id = "calendar-keyboard-hint";
+  hint.textContent = "Use arrow keys to move between days. Press Enter to open a day, or use the Add button to create a task.";
+  calendarView.appendChild(hint);
+
+  if (activeView === "month") {
+    renderMonthView(allTasks);
+  } else {
+    renderWeekView(allTasks);
+  }
+
+  const tray = createNoDateTray(allTasks);
+  if (tray) calendarView.appendChild(tray);
+}
+
+function renderMonthView(allTasks) {
+  const year = calendarCursor.getFullYear();
+  const month = calendarCursor.getMonth();
+  const first = new Date(year, month, 1);
+  const offset = (first.getDay() - getWeekStartsOn() + 7) % 7;
+  const start = addDays(first, -offset);
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const cellCount = Math.ceil((offset + daysInMonth) / 7) * 7;
+  const todayKey = toDateInputValue(new Date());
+  const prefix = monthPrefix(calendarCursor);
+  const tasksByDate = getTasksByDate(allTasks);
+
+  const monthEl = document.createElement("div");
+  monthEl.className = "calendar-month";
+  monthEl.setAttribute("role", "grid");
+  monthEl.setAttribute("aria-label", getViewTitle());
+  monthEl.setAttribute("aria-describedby", "calendar-keyboard-hint");
+
+  const headRow = document.createElement("div");
+  headRow.className = "calendar-month-head";
+  headRow.setAttribute("role", "row");
+  const weekdayStart = startOfWeek(new Date());
+  for (let i = 0; i < 7; i += 1) {
+    const cell = document.createElement("div");
+    cell.className = "calendar-month-head-cell";
+    cell.setAttribute("role", "columnheader");
+    cell.textContent = new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(addDays(weekdayStart, i));
+    headRow.appendChild(cell);
+  }
+  monthEl.appendChild(headRow);
+
+  // If the focused day is no longer on this calendar, move focus to today (or
+  // the first of the month) so the roving tabindex never gets stranded.
+  const keys = Array.from({ length: cellCount }, (_, index) => toDateInputValue(addDays(start, index)));
+  if (!keys.includes(focusedDate)) {
+    focusedDate = todayKey.startsWith(prefix) && keys.includes(todayKey)
+      ? todayKey
+      : toDateInputValue(addDays(start, offset));
+  }
+
+  for (let weekIndex = 0; weekIndex < cellCount / 7; weekIndex += 1) {
+    const row = document.createElement("div");
+    row.className = "calendar-month-row";
+    row.setAttribute("role", "row");
+
+    for (let dayIndex = 0; dayIndex < 7; dayIndex += 1) {
+      const date = addDays(start, weekIndex * 7 + dayIndex);
+      const dateKey = toDateInputValue(date);
+      const tasks = tasksByDate.get(dateKey) || [];
+      const outside = date.getMonth() !== month;
+      const weekend = date.getDay() === 0 || date.getDay() === 6;
+
+      const cell = document.createElement("div");
+      cell.className = `calendar-day${outside ? " is-outside" : ""}${weekend ? " is-weekend" : ""}${dateKey === todayKey ? " is-today" : ""}`;
+      cell.dataset.date = dateKey;
+      cell.setAttribute("role", "gridcell");
+      cell.setAttribute("aria-label", `${formatFullDate(date)}${tasks.length ? `, ${tasks.length} task${tasks.length === 1 ? "" : "s"}` : ", no tasks"}`);
+      cell.tabIndex = dateKey === focusedDate ? 0 : -1;
+
+      const num = document.createElement("button");
+      num.type = "button";
+      num.className = "calendar-day-num";
+      num.tabIndex = -1;
+      num.textContent = String(date.getDate());
+      num.setAttribute("aria-label", `Open ${formatFullDate(date)}`);
+      num.addEventListener("click", event => {
+        event.stopPropagation();
+        focusedDate = dateKey;
+        openDayPopup(dateKey);
+      });
+      cell.appendChild(num);
+
+      const add = document.createElement("button");
+      add.type = "button";
+      add.className = "calendar-add-mini";
+      add.tabIndex = -1;
+      add.textContent = "+";
+      add.setAttribute("aria-label", `Add task on ${formatFullDate(date)}`);
+      add.addEventListener("click", event => {
+        event.stopPropagation();
+        startTaskForDate(dateKey);
+      });
+      cell.appendChild(add);
+
+      const expanded = expandedCalendarDays.has(dateKey);
+      const shown = expanded ? tasks : tasks.slice(0, 3);
+      shown.forEach(task => cell.appendChild(createCalendarChip(task, dateKey)));
+
+      if (tasks.length > 3) {
+        const more = document.createElement("button");
+        more.type = "button";
+        more.className = "calendar-more";
+        more.textContent = expanded ? "Show less" : `+${tasks.length - 3} more`;
+        more.setAttribute("aria-expanded", String(expanded));
+        more.setAttribute("aria-label", expanded
+          ? `Show fewer tasks on ${formatFullDate(date)}`
+          : `Show ${tasks.length - 3} more tasks on ${formatFullDate(date)}`);
+        more.addEventListener("click", event => {
+          event.stopPropagation();
+          if (expandedCalendarDays.has(dateKey)) expandedCalendarDays.delete(dateKey);
+          else expandedCalendarDays.add(dateKey);
+          focusedDate = dateKey;
+          render();
+          const cellAfter = calendarView.querySelector(`.calendar-day[data-date="${dateKey}"]`);
+          const moreAfter = cellAfter && cellAfter.querySelector(".calendar-more");
+          if (moreAfter) moreAfter.focus();
+          else focusDay(dateKey);
+        });
+        cell.appendChild(more);
+      }
+
+      cell.addEventListener("keydown", event => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        if (event.target !== cell) return;
+        event.preventDefault();
+        openDayPopup(dateKey);
+      });
+
+      row.appendChild(cell);
+    }
+    monthEl.appendChild(row);
+  }
+
+  calendarView.appendChild(monthEl);
+}
+
+function renderWeekView(allTasks) {
+  const weekStart = startOfWeek(calendarCursor);
+  const todayKey = toDateInputValue(new Date());
+  const tasksByDate = getTasksByDate(allTasks);
+  const weekEl = document.createElement("div");
+  weekEl.className = "calendar-week";
+  weekEl.setAttribute("role", "list");
+  weekEl.setAttribute("aria-label", `Week of ${weekRangeLabel(weekStart)}`);
+
+  for (let index = 0; index < 7; index += 1) {
+    const date = addDays(weekStart, index);
+    const dateKey = toDateInputValue(date);
+    const tasks = tasksByDate.get(dateKey) || [];
+    const column = document.createElement("div");
+    column.className = `calendar-week-col${dateKey === todayKey ? " is-today" : ""}`;
+    column.setAttribute("role", "listitem");
+    column.setAttribute("aria-label", formatFullDate(date));
+
+    const head = document.createElement("button");
+    head.type = "button";
+    head.className = "calendar-week-head";
+    head.setAttribute("aria-label", `Open ${formatFullDate(date)}`);
+    head.innerHTML = `<span class="calendar-week-day">${escapeHtml(new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(date))}</span><span class="calendar-week-num">${date.getDate()}</span>`;
+    head.addEventListener("click", () => {
+      focusedDate = dateKey;
+      openDayPopup(dateKey);
+    });
+    column.appendChild(head);
+
+    const body = document.createElement("div");
+    body.className = "calendar-week-body";
+    tasks.forEach(task => body.appendChild(createCalendarChip(task, dateKey, "calendar-week-chip")));
+
+    const add = document.createElement("button");
+    add.type = "button";
+    add.className = "calendar-add-day";
+    add.textContent = "+ Add";
+    add.setAttribute("aria-label", `Add task on ${formatFullDate(date)}`);
+    add.addEventListener("click", () => startTaskForDate(dateKey));
+    body.appendChild(add);
+    column.appendChild(body);
+    weekEl.appendChild(column);
+  }
+
+  calendarView.appendChild(weekEl);
+}
+
+function createNoDateTray(allTasks) {
+  const undated = allTasks.filter(task => !task.dueDate);
+  if (!undated.length) return null;
+
+  const tray = document.createElement("div");
+  tray.className = "calendar-tray";
+  tray.setAttribute("role", "group");
+  tray.setAttribute("aria-label", "Tasks with no date");
+
+  const label = document.createElement("strong");
+  label.className = "calendar-tray-label";
+  label.textContent = "No date";
+  tray.appendChild(label);
+
+  undated.forEach(task => {
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = `calendar-chip calendar-tray-chip${task.done ? " is-done" : ""}`;
+    chip.dataset.id = task.id;
+    chip.title = task.title;
+    chip.setAttribute("aria-label", `${task.title}${task.done ? " (done)" : ""}`);
+    chip.innerHTML = `<span class="calendar-chip-dot" aria-hidden="true"></span><span class="calendar-chip-title">${escapeHtml(task.title)}</span>`;
+    chip.addEventListener("click", () => editItem(task.id));
+    tray.appendChild(chip);
+  });
+
+  return tray;
+}
+
+function renderDayPopup(dateKey) {
+  if (!dateKey) return;
+  const date = parseLocalDate(dateKey);
+  const tasks = getFilteredTasks().filter(task => task.dueDate === dateKey);
+  dayPopupTitle.textContent = formatDateLabel(dateKey);
+  dayPopupList.innerHTML = "";
+
+  if (!tasks.length) {
+    const empty = document.createElement("p");
+    empty.className = "day-popup-empty";
+    empty.textContent = "No tasks on this day yet.";
+    dayPopupList.appendChild(empty);
+    return;
+  }
+
+  tasks.forEach(task => {
+    const row = document.createElement("div");
+    row.className = `day-popup-row${task.done ? " is-done" : ""}`;
+    row.dataset.dayTask = task.id;
+
+    const check = document.createElement("input");
+    check.type = "checkbox";
+    check.className = "check";
+    check.checked = task.done;
+    check.setAttribute("aria-label", `Mark ${task.title} as ${task.done ? "open" : "done"}`);
+    check.addEventListener("change", () => {
+      toggleDone(task.id, check.checked);
+      requestAnimationFrame(() => {
+        const rows = Array.from(dayPopupList.querySelectorAll(".day-popup-row"));
+        const nextRow = rows.find(entry => entry.dataset.dayTask === task.id);
+        const nextCheck = nextRow && nextRow.querySelector(".check");
+        if (nextCheck) nextCheck.focus();
+      });
+    });
+    row.appendChild(check);
+
+    const title = document.createElement("button");
+    title.type = "button";
+    title.className = "day-popup-task";
+    title.textContent = task.title;
+    title.setAttribute("aria-label", `Edit ${task.title}`);
+    title.addEventListener("click", () => {
+      closeDayPopup();
+      editItem(task.id);
+    });
+    row.appendChild(title);
+
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "icon-btn delete-btn day-popup-delete";
+    remove.setAttribute("aria-label", `Delete ${task.title}`);
+    remove.innerHTML = `<span class="action-icon delete-icon" aria-hidden="true"></span>`;
+    remove.addEventListener("click", () => deleteItem(task.id));
+    row.appendChild(remove);
+
+    dayPopupList.appendChild(row);
+  });
+}
+
+function openDayPopup(dateKey) {
+  if (!dateKey) return;
+  dayPopupDate = dateKey;
+  dayPopupReturnFocus = document.activeElement;
+  renderDayPopup(dateKey);
+  dayPopup.hidden = false;
+  dayPopupCloseButton.focus();
+}
+
+function closeDayPopup() {
+  if (dayPopup.hidden) return;
+  dayPopup.hidden = true;
+  dayPopupDate = "";
+  const returnFocus = dayPopupReturnFocus;
+  dayPopupReturnFocus = null;
+  if (returnFocus && returnFocus.isConnected && typeof returnFocus.focus === "function") {
+    returnFocus.focus();
+  } else if (activeView === "month") {
+    focusDay(focusedDate);
+  }
+}
+
+function startTaskForDate(dateKey) {
+  const date = dateKey || toDateInputValue(new Date());
+  focusedDate = date;
+  calendarCursor = parseLocalDate(date);
+  openWindow("planner");
+  clearTaskEditMode();
+  setTaskFormOpen(true);
+  taskDateInput.value = dateKey || "";
+  taskTitleInput.focus();
+  announce(`Adding a task on ${formatFullDate(parseLocalDate(date))}.`);
+}
+
+function focusDay(dateKey) {
+  if (!dateKey) return;
+  requestAnimationFrame(() => {
+    const cell = calendarView.querySelector(`.calendar-day[data-date="${dateKey}"]`);
+    if (cell) cell.focus();
+  });
+}
+
+function handleCalendarKeydown(event) {
+  if (event.metaKey || event.ctrlKey || event.altKey) return;
+  const cell = event.target.closest(".calendar-day");
+  if (!cell || !cell.dataset.date) return;
+
+  const current = parseLocalDate(cell.dataset.date);
+  let next = null;
+
+  if (event.key === "ArrowLeft") next = addDays(current, -1);
+  else if (event.key === "ArrowRight") next = addDays(current, 1);
+  else if (event.key === "ArrowUp") next = addDays(current, -7);
+  else if (event.key === "ArrowDown") next = addDays(current, 7);
+  else if (event.key === "Home") next = startOfWeek(current);
+  else if (event.key === "End") next = addDays(startOfWeek(current), 6);
+  else if (event.key === "PageUp") next = addMonths(current, -1);
+  else if (event.key === "PageDown") next = addMonths(current, 1);
+  else if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    openDayPopup(cell.dataset.date);
+    return;
+  } else {
+    return;
+  }
+
+  event.preventDefault();
+  const nextKey = toDateInputValue(next);
+  focusedDate = nextKey;
+
+  if (activeView === "month") {
+    if (next.getMonth() !== calendarCursor.getMonth() || next.getFullYear() !== calendarCursor.getFullYear()) {
+      calendarCursor = new Date(next.getFullYear(), next.getMonth(), 1);
+    }
+  } else if (activeView === "week") {
+    const startKey = toDateInputValue(startOfWeek(calendarCursor));
+    const endKey = toDateInputValue(addDays(startOfWeek(calendarCursor), 6));
+    if (nextKey < startKey || nextKey > endKey) calendarCursor = next;
+  }
+
+  render();
+  focusDay(nextKey);
+  announce(formatFullDate(next));
 }
 
 function createShowMoreNotesButton(remaining) {
@@ -1286,6 +2059,9 @@ function createCard(item) {
 
   const checkbox = `<input class="check" type="checkbox" ${item.done ? "checked" : ""} aria-label="Mark task as ${item.done ? "open" : "done"}">`;
   const dateLabel = formatDateLabel(item.dueDate);
+  const todayStamp = toDateInputValue(new Date());
+  const overdue = !item.done && Boolean(item.dueDate) && item.dueDate < todayStamp;
+  if (overdue) card.classList.add("is-overdue");
 
   card.innerHTML = `
     ${checkbox}
@@ -1295,7 +2071,7 @@ function createCard(item) {
       ${item.body ? `<button class="task-toggle" type="button" aria-label="Show task details" aria-expanded="false">Details</button>` : ""}
     </div>
     <p class="item-meta task-meta">
-      <span class="task-date">${escapeHtml(dateLabel)}</span>
+      <span class="task-date">${overdue ? "Overdue · " : ""}${escapeHtml(dateLabel)}</span>
     </p>
     <div class="actions">
       <button class="icon-btn task-calendar-btn" type="button" aria-label="Add ${escapeHtml(item.title)} to calendar" title="Add to calendar"><span class="action-icon task-calendar-icon" aria-hidden="true"></span></button>
@@ -1339,8 +2115,8 @@ function createCard(item) {
   return card;
 }
 
-function getVisibleTasks() {
-  const tasks = items
+function getFilteredTasks() {
+  return items
     .filter(item => item.type === "task" && !item.deletedAt)
     .filter(item => {
       if (taskFilter === "open") return !item.done;
@@ -1348,12 +2124,32 @@ function getVisibleTasks() {
       return true;
     })
     .sort((a, b) => {
-      if (a.done !== b.done) return a.done ? 1 : -1;
-      const dateSort = String(a.dueDate || "").localeCompare(String(b.dueDate || ""));
+      const aDate = a.dueDate || "9999-12-31";
+      const bDate = b.dueDate || "9999-12-31";
+      const dateSort = aDate.localeCompare(bDate);
       if (dateSort) return dateSort;
+      if (a.done !== b.done) return a.done ? 1 : -1;
       return Number(b.createdAt) - Number(a.createdAt);
     });
-  return tasks.filter(item => normalizePlanView(item.planView) === activeView);
+}
+
+function getAgendaTasks(tasks) {
+  const today = toDateInputValue(new Date());
+  return (tasks || getFilteredTasks()).filter(item => !item.dueDate || item.dueDate <= today);
+}
+
+function getCalendarTasks(tasks) {
+  const filtered = tasks || getFilteredTasks();
+  if (activeView === "month") {
+    const prefix = monthPrefix(calendarCursor);
+    return filtered.filter(item => item.dueDate && item.dueDate.startsWith(prefix));
+  }
+  if (activeView === "week") {
+    const start = toDateInputValue(startOfWeek(calendarCursor));
+    const end = toDateInputValue(addDays(startOfWeek(calendarCursor), 6));
+    return filtered.filter(item => item.dueDate && item.dueDate >= start && item.dueDate <= end);
+  }
+  return [];
 }
 
 function getVisibleNotes(notes) {
@@ -1393,8 +2189,6 @@ function editItem(id) {
     noteBodyInput.value = item.body || item.title;
   } else {
     openWindow("planner");
-    activeView = normalizePlanView(item.planView);
-    setActiveTab();
     setTaskEditMode(item);
     render();
     taskTitleInput.focus();
@@ -1472,11 +2266,60 @@ function copyTextFallback(text) {
   field.remove();
 }
 
+function updateSidebarCounts(noteCount) {
+  const counts = { today: 0, week: 0, month: 0 };
+  const now = new Date();
+  const today = toDateInputValue(now);
+  const weekStart = toDateInputValue(startOfWeek(now));
+  const weekEnd = toDateInputValue(addDays(startOfWeek(now), 6));
+  const prefix = monthPrefix(now);
+  items.forEach(item => {
+    if (item.type !== "task" || item.deletedAt || item.done || !item.dueDate) return;
+    if (item.dueDate <= today) counts.today += 1;
+    if (item.dueDate >= weekStart && item.dueDate <= weekEnd) counts.week += 1;
+    if (item.dueDate.startsWith(prefix)) counts.month += 1;
+  });
+  Object.entries(counts).forEach(([view, count]) => {
+    const label = document.querySelector(`[data-side-count="${view}"]`);
+    if (label) label.textContent = String(count);
+  });
+  const noteLabel = document.querySelector('[data-side-count="notes"]');
+  if (noteLabel) noteLabel.textContent = String(noteCount || 0);
+}
+
+// Keep "today" honest when the app is left open past midnight, or the tab is
+// restored the next morning. Without this the Today list silently shows
+// yesterday's date until a reload.
+function refreshDayIfNeeded() {
+  const stamp = toDateInputValue(new Date());
+  if (stamp === currentDayStamp) return;
+  const previous = currentDayStamp;
+  currentDayStamp = stamp;
+  if (!taskDateInput.value || taskDateInput.value === previous) {
+    taskDateInput.value = stamp;
+  }
+  render();
+}
+
+function updateMenuClock() {
+  refreshDayIfNeeded();
+  if (!menuClock) return;
+  const now = new Date();
+  const day = new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric" }).format(now);
+  const time = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(now);
+  menuClock.textContent = `${day.replace(",", "")} · ${time}`;
+}
+
 function setActiveTab() {
   tabs.forEach(tab => {
     const isActive = tab.dataset.view === activeView;
     tab.classList.toggle("active", isActive);
     tab.setAttribute("aria-selected", String(isActive));
+  });
+  sideViewButtons.forEach(button => {
+    const isActive = button.dataset.view === activeView;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-current", isActive ? "page" : "false");
   });
 }
 
@@ -1501,12 +2344,12 @@ function setTaskFilter() {
 
 function setTaskEditMode(item) {
   editingTaskId = item.id;
-  setTaskFormOpen(true);
   taskTitleInput.value = item.title;
   taskBodyInput.value = "";
-  taskDateInput.value = item.dueDate || toDateInputValue(new Date());
+  taskDateInput.value = item.dueDate || "";
   taskSubmitButton.textContent = "Update Task";
   taskForm.setAttribute("aria-label", "Edit task");
+  setTaskFormOpen(true);
 }
 
 function clearTaskEditMode() {
@@ -1520,7 +2363,9 @@ function clearTaskEditMode() {
 
 function setTaskFormOpen(open) {
   taskForm.hidden = !open;
-  taskAddToggle.hidden = open;
+  // Hide quick form when full form is open (edit mode), show it otherwise
+  taskQuickForm.hidden = open;
+  taskAddToggle.hidden = true; // always hidden; quick form takes its place
   taskCancelEditButton.hidden = !open;
   taskAddToggle.setAttribute("aria-expanded", String(open));
 }
@@ -1580,7 +2425,7 @@ function getWindowWidthLimit(name) {
   const viewportLimit = Math.max(0, window.innerWidth - 32);
   const gridLimit = desktopGrid.clientWidth || viewportLimit;
   const designLimit = {
-    planner: 720,
+    planner: 900,
     notes: 520,
     readme: 520
   }[name] || viewportLimit;
@@ -1852,6 +2697,16 @@ function openWindow(name, animate = false) {
       setActiveSurface();
     }, 110);
   }
+  // Auto-focus the note textarea when Notes window opens
+  if (name === "notes") {
+    requestAnimationFrame(() => noteBodyInput.focus());
+  }
+  // Auto-focus the task quick-input when Planner opens (unless editing)
+  if (name === "planner") {
+    requestAnimationFrame(() => {
+      if (!editingTaskId && taskForm.hidden) taskQuickInput.focus();
+    });
+  }
   announce(`${capitalize(name)} opened.`);
 }
 
@@ -1908,14 +2763,19 @@ function clamp(value, min, max) {
 }
 
 function getViewTitle() {
-  if (activeView === "week") return "This Week";
-  if (activeView === "month") return "This Month";
+  if (activeView === "week") return weekRangeLabel(startOfWeek(calendarCursor));
+  if (activeView === "month") {
+    return new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" }).format(startOfMonth(calendarCursor));
+  }
   return "Today";
 }
 
-function getViewSubtitle() {
-  if (activeView === "week") return "Tasks you planned for the week.";
-  if (activeView === "month") return "Tasks you planned for the month.";
+function getViewSubtitle(visibleTasks) {
+  if (activeView === "week" || activeView === "month") {
+    const tasks = visibleTasks || [];
+    const open = tasks.filter(item => !item.done).length;
+    return `${open} open · ${tasks.length} ${tasks.length === 1 ? "task" : "tasks"} · all-day`;
+  }
   return new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric" }).format(new Date());
 }
 
@@ -1934,8 +2794,8 @@ function getReadmeText() {
   const todayTasks = tasks.filter(item => item.dueDate === today);
   const todayOpen = todayTasks.filter(item => !item.done);
   const todayDone = todayTasks.filter(item => item.done);
-  const overdue = tasks.filter(item => item.dueDate < today && !item.done);
-  const weekOpen = tasks.filter(item => !item.done && isSameWeek(parseLocalDate(item.dueDate), new Date()));
+  const overdue = tasks.filter(item => item.dueDate && item.dueDate < today && !item.done);
+  const weekOpen = tasks.filter(item => item.dueDate && !item.done && isSameWeek(parseLocalDate(item.dueDate), new Date()));
   const notes = items.filter(item => item.type === "note" && !item.deletedAt);
   const lines = [
     "README.txt",
@@ -1995,6 +2855,29 @@ function isExpandableNote(body, preview) {
   return compact.length > String(preview || "").length || String(body || "").trim().includes("\n");
 }
 
+// True while an IME (Japanese, Chinese, Korean, etc.) is composing text.
+// Without this, Enter during composition saves a half-typed title.
+function isComposing(event) {
+  return event.isComposing || event.keyCode === 229;
+}
+
+// 0 = Sunday, 1 = Monday, taken from the user's locale where supported.
+function getWeekStartsOn() {
+  if (cachedWeekStart !== null) return cachedWeekStart;
+  let firstDay = null;
+  try {
+    const locale = new Intl.Locale(navigator.language || "en");
+    if (locale.weekInfo) firstDay = locale.weekInfo.firstDay;
+  } catch (error) {
+    firstDay = null;
+  }
+  if (!Number.isInteger(firstDay)) {
+    firstDay = /^(en-US|en-CA|ja|ko|zh)/i.test(navigator.language || "") ? 7 : 1;
+  }
+  cachedWeekStart = firstDay % 7;
+  return cachedWeekStart;
+}
+
 function toDateInputValue(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -2004,13 +2887,14 @@ function toDateInputValue(date) {
 
 function parseLocalDate(value) {
   const [year, month, day] = String(value || toDateInputValue(new Date())).split("-").map(Number);
-  return new Date(year, month - 1, day);
+  const date = new Date(year, month - 1, day);
+  return Number.isNaN(date.getTime()) ? new Date() : date;
 }
 
 function startOfWeek(date) {
   const copy = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const day = copy.getDay() || 7;
-  copy.setDate(copy.getDate() - day + 1);
+  const diff = (copy.getDay() - getWeekStartsOn() + 7) % 7;
+  copy.setDate(copy.getDate() - diff);
   return copy;
 }
 
@@ -2023,14 +2907,17 @@ function isSameMonth(a, b) {
 }
 
 function formatWeekday(value) {
+  if (!value) return "";
   return new Intl.DateTimeFormat(undefined, { weekday: "long", month: "short", day: "numeric" }).format(parseLocalDate(value));
 }
 
 function formatMonthDay(value) {
+  if (!value) return "";
   return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" }).format(parseLocalDate(value));
 }
 
 function formatDateLabel(value) {
+  if (!value) return "No date";
   return new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric" }).format(parseLocalDate(value));
 }
 

@@ -63,10 +63,11 @@ test("planner UI fits the viewport", async ({ page }) => {
   await expect(page.getByRole("tab", { name: "Today" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Week" })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Month" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "+ Add Task" })).toBeVisible();
-  await expect(page.getByPlaceholder("Add a task")).toBeHidden();
-  await page.getByRole("button", { name: "+ Add Task" }).click();
-  await expect(page.getByPlaceholder("Add a task")).toBeVisible();
+  await expect(page.locator("#task-quick-input")).toBeVisible();
+  await expect(page.getByPlaceholder("Add a task", { exact: true })).toBeHidden();
+  await page.locator("#task-quick-input").fill("Plan the week");
+  await page.locator("#task-quick-input").press("Control+Enter");
+  await expect(page.getByPlaceholder("Add a task", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
   await expect(page.getByPlaceholder("Add a task for today")).toHaveCount(0);
   await expect(page.getByLabel("Focus timer")).toHaveCount(0);
@@ -101,9 +102,8 @@ test("README opens as a generated daily checklist", async ({ page }) => {
 
 test("adds and completes a task for today", async ({ page }) => {
   await openPlannerSurface(page);
-  await page.getByRole("button", { name: "+ Add Task" }).click();
-  await page.getByPlaceholder("Add a task").fill("Edit script and film B-roll");
-  await page.getByRole("button", { name: "Save" }).click();
+  await page.locator("#task-quick-input").fill("Edit script and film B-roll");
+  await page.locator("#task-quick-input").press("Enter");
 
   const plannerWindow = page.getByLabel("Planner app");
   await expect(plannerWindow.getByLabel("Saved tasks").getByText("Edit script and film B-roll")).toBeVisible();
@@ -120,11 +120,92 @@ test("adds and completes a task for today", async ({ page }) => {
   await expect(reloadedPlannerWindow.getByText("1 task | 0 open")).toBeVisible();
 });
 
+test("quick capture keeps focus for consecutive tasks", async ({ page }) => {
+  await openPlannerSurface(page);
+  const quickInput = page.locator("#task-quick-input");
+  await expect(quickInput).toBeFocused();
+
+  await quickInput.fill("First quick task");
+  await quickInput.press("Enter");
+  await quickInput.fill("Second quick task");
+  await quickInput.press("Enter");
+
+  const plannerWindow = page.getByLabel("Planner app");
+  await expect(plannerWindow.getByText("First quick task")).toBeVisible();
+  await expect(plannerWindow.getByText("Second quick task")).toBeVisible();
+  await expect(quickInput).toHaveValue("");
+  await expect(quickInput).toBeFocused();
+});
+
+test("Tab in quick capture keeps normal keyboard navigation", async ({ page }) => {
+  await openPlannerSurface(page);
+  const quickInput = page.locator("#task-quick-input");
+  await quickInput.click();
+  await quickInput.press("Tab");
+
+  // The full form must not open, and focus must not jump into the title field.
+  await expect(quickInput).toBeVisible();
+  await expect(page.locator("#task-title")).not.toBeFocused();
+  await expect(page.getByPlaceholder("Add a task", { exact: true })).toBeHidden();
+});
+
+test("Enter during IME composition does not add a partial task", async ({ page }) => {
+  await openPlannerSurface(page);
+  const quickInput = page.locator("#task-quick-input");
+  await quickInput.fill("にほん");
+
+  await quickInput.evaluate(element => {
+    const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+    Object.defineProperty(event, "isComposing", { get: () => true });
+    element.dispatchEvent(event);
+  });
+
+  await expect(page.getByLabel("Planner app").getByText("0 tasks | 0 open")).toBeVisible();
+  await expect(quickInput).toHaveValue("にほん");
+});
+
+test("overdue tasks are labelled in the list", async ({ page }) => {
+  await page.evaluate(({ yesterday }) => {
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "late", type: "task", title: "Send the invoice", body: "", dueDate: yesterday, planView: "today", done: false, createdAt: Date.now(), updatedAt: Date.now() }
+    ]));
+  }, { yesterday: addDaysValue(-1) });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+
+  const card = page.getByLabel("Planner app").locator(".task-card", { hasText: "Send the invoice" });
+  await expect(card).toHaveClass(/is-overdue/);
+  await expect(card).toContainText("Overdue ·");
+});
+
+test("opening notes focuses the composer and Cmd+Enter saves", async ({ page }) => {
+  await openNotesSurface(page);
+  const noteBody = page.getByRole("textbox", { name: "body" });
+  await expect(noteBody).toBeFocused();
+
+  await noteBody.fill("Captured without clicking Save");
+  await noteBody.press("Meta+Enter");
+
+  await expect(page.getByText("1 note")).toBeVisible();
+  await expect(noteBody).toHaveValue("");
+  await expect(noteBody).toBeFocused();
+});
+
+test("keyboard shortcuts jump straight to task and note capture", async ({ page }) => {
+  await page.keyboard.press("t");
+  await expect(page.getByLabel("Planner app")).toBeVisible();
+  await expect(page.locator("#task-quick-input")).toBeFocused();
+
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("n");
+  await expect(page.getByLabel("Notes app")).toBeVisible();
+  await expect(page.getByRole("textbox", { name: "body" })).toBeFocused();
+});
+
 test("exports dated tasks to a calendar file", async ({ page }) => {
   await openPlannerSurface(page);
-  await page.getByRole("button", { name: "+ Add Task" }).click();
-  await page.getByPlaceholder("Add a task").fill("Review calendar sync");
-  await page.getByRole("button", { name: "Save" }).click();
+  await page.locator("#task-quick-input").fill("Review calendar sync");
+  await page.locator("#task-quick-input").press("Enter");
 
   page.once("dialog", async dialog => {
     expect(dialog.message()).toContain("Export 1 task to a calendar file?");
@@ -171,34 +252,113 @@ test("exports one selected task to a calendar file", async ({ page }) => {
   expect(content).not.toContain("SUMMARY:Buy tape");
 });
 
-test("keeps planner views as separate task buckets", async ({ page }) => {
-  const today = todayValue();
-  const sameWeek = addDaysValue(new Date().getDay() === 1 ? 1 : -1);
-  await page.evaluate(({ today, sameWeek }) => {
+test("calendar views place tasks by due date", async ({ page }) => {
+  // Fixed Wednesday 4 Nov 2026 so month/week boundaries are predictable in
+  // every project (desktop, tablet, mobile).
+  await page.clock.setFixedTime(new Date(2026, 10, 4, 12, 0, 0));
+  const dates = {
+    today: "2026-11-04",
+    sameWeek: "2026-11-06",
+    sameMonth: "2026-11-18",
+    nextMonth: "2026-12-02"
+  };
+  await page.evaluate(dates => {
+    const now = Date.now();
+    const task = (id, title, dueDate, index) => ({
+      id, type: "task", title, body: "", dueDate,
+      done: false, createdAt: now - index, updatedAt: now - index
+    });
     localStorage.setItem("random_notes_v1", JSON.stringify([
-      { id: "one", type: "task", title: "Today priority", body: "", dueDate: today, planView: "today", done: false, createdAt: Date.now(), updatedAt: Date.now() },
-      { id: "two", type: "task", title: "Same-week priority", body: "", dueDate: sameWeek, planView: "week", done: false, createdAt: Date.now(), updatedAt: Date.now() },
-      { id: "three", type: "task", title: "Month priority with today date", body: "", dueDate: today, planView: "month", done: false, createdAt: Date.now(), updatedAt: Date.now() },
-      { id: "four", type: "note", title: "Loose thought", body: "Save for later", dueDate: "", done: false, createdAt: Date.now(), updatedAt: Date.now() }
+      task("one", "Today task", dates.today, 0),
+      task("two", "Friday task", dates.sameWeek, 1),
+      task("three", "Mid-month task", dates.sameMonth, 2),
+      task("four", "December task", dates.nextMonth, 3),
+      task("five", "Undated task", "", 4),
+      task("six", "Extra one", dates.today, 5),
+      task("seven", "Extra two", dates.today, 6),
+      task("eight", "Extra three", dates.today, 7)
     ]));
-  }, { today, sameWeek });
+  }, dates);
   await page.reload({ waitUntil: "domcontentloaded" });
   await openPlannerSurface(page);
 
-  await expect(page.getByLabel("Saved tasks").getByText("Today priority")).toBeVisible();
-  await expect(page.getByLabel("Saved tasks").getByText("Same-week priority")).toBeHidden();
-  await expect(page.getByLabel("Saved tasks").getByText("Month priority with today date")).toBeHidden();
+  const agenda = page.getByLabel("Saved tasks");
+  await expect(agenda.getByText("Today task", { exact: true })).toBeVisible();
+  await expect(agenda.getByText("Undated task", { exact: true })).toBeVisible();
+  await expect(agenda.getByText("Friday task", { exact: true })).toBeHidden();
+  await expect(agenda.getByText("December task", { exact: true })).toBeHidden();
 
+  const calendar = page.locator("#calendar-view");
   await page.getByRole("tab", { name: "Week" }).click();
-  await expect(page.getByLabel("Saved tasks").getByText("Today priority")).toBeHidden();
-  await expect(page.getByLabel("Saved tasks").getByText("Same-week priority")).toBeVisible();
-  await expect(page.getByLabel("Saved tasks").getByText("Month priority with today date")).toBeHidden();
-  await expect(page.getByLabel("Saved tasks").getByText("Loose thought", { exact: true })).toBeHidden();
+  await expect(page.locator("#view-title")).toContainText("2026");
+  await expect(calendar.getByRole("button", { name: "Today task" })).toBeVisible();
+  await expect(calendar.getByRole("button", { name: "Friday task" })).toBeVisible();
+  await expect(calendar.getByRole("button", { name: "Mid-month task" })).toBeHidden();
+  await expect(calendar.getByRole("button", { name: "December task" })).toBeHidden();
+  await expect(calendar.getByRole("group", { name: "Tasks with no date" })).toContainText("Undated task");
 
   await page.getByRole("tab", { name: "Month" }).click();
-  await expect(page.getByLabel("Saved tasks").getByText("Today priority")).toBeHidden();
-  await expect(page.getByLabel("Saved tasks").getByText("Same-week priority")).toBeHidden();
-  await expect(page.getByLabel("Saved tasks").getByText("Month priority with today date")).toBeVisible();
+  await expect(page.locator("#view-title")).toContainText("2026");
+  const novemberTitle = await page.locator("#view-title").innerText();
+  await expect(calendar.getByRole("button", { name: "Today task" })).toBeVisible();
+  await expect(calendar.getByRole("button", { name: "Friday task" })).toBeVisible();
+  await expect(calendar.getByRole("button", { name: "Mid-month task" })).toBeVisible();
+  await expect(calendar.locator('.calendar-day[data-date="2026-12-02"]')).toHaveClass(/is-outside/);
+
+  const todayCell = page.locator('.calendar-day[data-date="2026-11-04"]');
+  await expect(todayCell.locator(".calendar-chip")).toHaveCount(3);
+  await todayCell.locator(".calendar-more").click();
+  await expect(todayCell.locator(".calendar-chip")).toHaveCount(4);
+  await expect(todayCell.locator(".calendar-more")).toHaveText("Show less");
+
+  await page.getByRole("button", { name: "Next month" }).click();
+  await expect(page.locator("#view-title")).not.toHaveText(novemberTitle);
+  await expect(calendar.getByRole("button", { name: "December task" })).toBeVisible();
+  await expect(calendar.getByRole("button", { name: "Today task" })).toBeHidden();
+  await expect(calendar.getByRole("group", { name: "Tasks with no date" })).toContainText("Undated task");
+});
+
+test("month grid supports arrow-key navigation and day popover", async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 10, 4, 12, 0, 0));
+  await page.evaluate(() => {
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "one", type: "task", title: "Today task", body: "", dueDate: "2026-11-04", done: false, createdAt: Date.now(), updatedAt: Date.now() }
+    ]));
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+  await page.getByRole("tab", { name: "Month" }).click();
+
+  const todayCell = page.locator('.calendar-day[data-date="2026-11-04"]');
+  await todayCell.focus();
+  await todayCell.press("ArrowRight");
+  await expect(page.locator('.calendar-day[data-date="2026-11-05"]')).toBeFocused();
+
+  await page.locator('.calendar-day[data-date="2026-11-04"] .calendar-day-num').click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText("Today task");
+  await dialog.getByRole("checkbox", { name: "Mark Today task as done" }).click();
+  await expect(dialog.getByRole("checkbox", { name: "Mark Today task as open" })).toBeChecked();
+  await dialog.getByRole("button", { name: "Done" }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.locator("#calendar-view").getByRole("button", { name: "Today task (done)" })).toBeVisible();
+});
+
+test("adding from a calendar day presets the task date", async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 10, 4, 12, 0, 0));
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+  await page.getByRole("tab", { name: "Month" }).click();
+
+  await page.locator('.calendar-day[data-date="2026-11-18"] .calendar-day-num').click();
+  await page.getByRole("button", { name: "+ Add task" }).click();
+  await expect(page.getByRole("textbox", { name: "Task", exact: true })).toBeVisible();
+  await expect(page.locator("#task-date")).toHaveValue("2026-11-18");
+
+  await page.getByRole("textbox", { name: "Task", exact: true }).fill("Plan the offsite");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.locator("#calendar-view").getByRole("button", { name: "Plan the offsite" })).toBeVisible();
 });
 
 test("planner handles a long task queue with compact expandable rows", async ({ page }) => {
@@ -244,7 +404,7 @@ test("notes view captures loose thoughts separately", async ({ page }) => {
   await openNotesSurface(page);
   await expect(page.getByRole("heading", { name: "notes", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "saved notes", exact: true })).toBeVisible();
-  await expect(page.getByPlaceholder("Drop a thought, idea, reminder, or rough note")).toBeVisible();
+  await expect(page.getByPlaceholder("Drop a thought… ⌘↵ to save")).toBeVisible();
   await expect(page.getByRole("button", { name: "+ Add Note" })).toBeVisible();
 
   await page.getByRole("textbox", { name: "body" }).fill("Hook idea\nTry a softer intro before the task list.");
@@ -553,11 +713,11 @@ test("edit updates a task in place", async ({ page }) => {
   await openPlannerSurface(page);
 
   await page.getByRole("button", { name: "Edit task" }).click();
-  await expect(page.getByPlaceholder("Add a task")).toHaveValue("Rewrite this task");
+  await expect(page.getByRole("textbox", { name: "Task", exact: true })).toHaveValue("Rewrite this task");
   await expect(page.getByRole("textbox", { name: "Details" })).toHaveCount(0);
   await expect(page.getByLabel("Saved tasks").getByText("Rewrite this task")).toBeVisible();
 
-  await page.getByPlaceholder("Add a task").fill("Rewrite this task again");
+  await page.getByRole("textbox", { name: "Task", exact: true }).fill("Rewrite this task again");
   await page.getByRole("button", { name: "Update Task" }).click();
 
   await expect(page.getByLabel("Saved tasks").getByText("Rewrite this task again")).toBeVisible();
@@ -766,9 +926,11 @@ test("desktop windows can be dragged and keep their position", async ({ page }) 
   expect(before).toBeTruthy();
   expect(handle).toBeTruthy();
 
-  await page.mouse.move(handle.x + 24, handle.y + handle.height / 2);
+  // Traffic lights sit in the top-left of the title bar, so grab a neutral area.
+  const grabX = handle.x + handle.width - 100;
+  await page.mouse.move(grabX, handle.y + handle.height / 2);
   await page.mouse.down();
-  await page.mouse.move(handle.x - 90, handle.y + 68, { steps: 8 });
+  await page.mouse.move(grabX - 90, handle.y + 68, { steps: 8 });
   await page.mouse.up();
 
   const after = await notesWindow.boundingBox();
@@ -796,9 +958,11 @@ test("desktop windows can be dragged upward", async ({ page }) => {
   expect(before).toBeTruthy();
   expect(handle).toBeTruthy();
 
-  await page.mouse.move(handle.x + 48, handle.y + handle.height / 2);
+  // Traffic lights sit in the top-left of the title bar, so grab a neutral area.
+  const grabX = handle.x + handle.width - 100;
+  await page.mouse.move(grabX, handle.y + handle.height / 2);
   await page.mouse.down();
-  await page.mouse.move(handle.x + 64, handle.y - 120, { steps: 8 });
+  await page.mouse.move(grabX + 16, handle.y - 120, { steps: 8 });
   await page.mouse.up();
 
   const after = await plannerWindow.boundingBox();
