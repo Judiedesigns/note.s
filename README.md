@@ -11,9 +11,13 @@ Everything is saved in `localStorage` first, so it still works in the same brows
 ## Features
 
 - Retro desktop UI with draggable desktop icons and movable windows
-- Today, Week, and Month planner views driven by each task's due date
+- Windows can be resized by dragging the left or right edge, the bottom edge, or the bottom corners; the bottom-right grip is always visible and sizes persist across reloads
+- Two-level planner navigation: Today and Calendar, with Week and Month inside Calendar
+- Calendar remembers the last Week or Month mode, and the last destination survives a reload
 - Today shows an agenda grouped into Overdue, Today, and No date
 - Week shows day columns, Month shows a calendar grid with `+N more` expansion
+- The Calendar sidebar count reflects the week or month currently on screen
+- On mobile the sidebar is replaced by a compact Today / Calendar switch
 - Tasks without a date are allowed and collect in the No date tray
 - Quick-capture task bar: type a title and press Enter to save instantly
 - Quick capture in Week or Month defaults to the selected day
@@ -35,7 +39,7 @@ Everything is saved in `localStorage` first, so it still works in the same brows
 - Compact note previews with long notes opening in a retro popup
 - Copy button for notes
 - Generated `README.txt` daily summary with today, done, overdue, weekly, and note counts
-- Persistent desktop icon and window positions
+- Persistent desktop icon and window positions and sizes
 - Offscreen window recovery
 - Responsive desktop, tablet, and mobile layout
 - Backward-compatible loading for older saved note/todo entries

@@ -52,6 +52,20 @@ async function openReadmeSurface(page) {
   }
 }
 
+async function openCalendarView(page, mode = "month") {
+  await page.getByRole("button", { name: "Calendar", exact: true }).click();
+  await page.getByRole("tab", { name: mode === "week" ? "Week" : "Month", exact: true }).click();
+}
+
+async function openTodayView(page) {
+  const sideToday = page.locator('.side-row[data-view="today"]');
+  if (await sideToday.isVisible()) {
+    await sideToday.click();
+  } else {
+    await page.locator('.planner-view-tab[data-planner-view="today"]').click();
+  }
+}
+
 test("planner UI fits the viewport", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Open Planner" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Open Notes" })).toBeVisible();
@@ -60,9 +74,9 @@ test("planner UI fits the viewport", async ({ page }) => {
 
   await page.getByRole("button", { name: "Open Planner" }).click();
   await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Today" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Week" })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Month" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Calendar", exact: true })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Week" })).toBeHidden();
+  await expect(page.getByRole("tab", { name: "Month" })).toBeHidden();
   await expect(page.locator("#task-quick-input")).toBeVisible();
   await expect(page.getByPlaceholder("Add a task", { exact: true })).toBeHidden();
   await page.locator("#task-quick-input").fill("Plan the week");
@@ -289,7 +303,7 @@ test("calendar views place tasks by due date", async ({ page }) => {
   await expect(agenda.getByText("December task", { exact: true })).toBeHidden();
 
   const calendar = page.locator("#calendar-view");
-  await page.getByRole("tab", { name: "Week" }).click();
+  await openCalendarView(page, "week");
   await expect(page.locator("#view-title")).toContainText("2026");
   await expect(calendar.getByRole("button", { name: "Today task" })).toBeVisible();
   await expect(calendar.getByRole("button", { name: "Friday task" })).toBeVisible();
@@ -318,6 +332,52 @@ test("calendar views place tasks by due date", async ({ page }) => {
   await expect(calendar.getByRole("group", { name: "Tasks with no date" })).toContainText("Undated task");
 });
 
+test("calendar destination remembers the last week or month mode", async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 10, 4, 12, 0, 0));
+  await page.evaluate(() => {
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "one", type: "task", title: "Today task", body: "", dueDate: "2026-11-04", done: false, createdAt: Date.now(), updatedAt: Date.now() },
+      { id: "two", type: "task", title: "Friday task", body: "", dueDate: "2026-11-06", done: false, createdAt: Date.now(), updatedAt: Date.now() },
+      { id: "three", type: "task", title: "Next week task", body: "", dueDate: "2026-11-12", done: false, createdAt: Date.now(), updatedAt: Date.now() },
+      { id: "four", type: "task", title: "December task", body: "", dueDate: "2026-12-01", done: false, createdAt: Date.now(), updatedAt: Date.now() }
+    ]));
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+
+  const calendarButton = page.getByRole("button", { name: "Calendar", exact: true });
+  const weekTab = page.getByRole("tab", { name: "Week", exact: true });
+  const monthTab = page.getByRole("tab", { name: "Month", exact: true });
+
+  await expect(weekTab).toBeHidden();
+  await expect(monthTab).toBeHidden();
+  await expect(page.locator('[data-side-count="today"]')).toHaveText("1");
+  await expect(page.locator('[data-side-count="calendar"]')).toHaveText("3");
+
+  await calendarButton.click();
+  await expect(monthTab).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#view-title")).toContainText("November 2026");
+  await expect(page.locator('[data-side-count="calendar"]')).toHaveText("3");
+
+  await weekTab.click();
+  await expect(weekTab).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator('[data-side-count="calendar"]')).toHaveText("2");
+
+  await openTodayView(page);
+  await expect(weekTab).toBeHidden();
+  await expect(page.locator('[data-side-count="calendar"]')).toHaveText("2");
+
+  await calendarButton.click();
+  await expect(weekTab).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#view-title")).not.toContainText("November 2026");
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+  await expect(weekTab).toBeVisible();
+  await expect(weekTab).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#calendar-view")).toBeVisible();
+});
+
 test("month grid supports arrow-key navigation and day popover", async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 10, 4, 12, 0, 0));
   await page.evaluate(() => {
@@ -327,7 +387,7 @@ test("month grid supports arrow-key navigation and day popover", async ({ page }
   });
   await page.reload({ waitUntil: "domcontentloaded" });
   await openPlannerSurface(page);
-  await page.getByRole("tab", { name: "Month" }).click();
+  await openCalendarView(page, "month");
 
   const todayCell = page.locator('.calendar-day[data-date="2026-11-04"]');
   await todayCell.focus();
@@ -349,7 +409,7 @@ test("adding from a calendar day presets the task date", async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 10, 4, 12, 0, 0));
   await page.reload({ waitUntil: "domcontentloaded" });
   await openPlannerSurface(page);
-  await page.getByRole("tab", { name: "Month" }).click();
+  await openCalendarView(page, "month");
 
   await page.locator('.calendar-day[data-date="2026-11-18"] .calendar-day-num').click();
   await page.getByRole("button", { name: "+ Add task" }).click();
@@ -968,4 +1028,166 @@ test("desktop windows can be dragged upward", async ({ page }) => {
   const after = await plannerWindow.boundingBox();
   expect(after.y).toBeLessThan(before.y - 20);
   expect(after.y).toBeGreaterThanOrEqual(0);
+});
+
+test("desktop windows can be resized and keep their size", async ({ page }) => {
+  const viewport = page.viewportSize();
+  if (viewport && viewport.width <= 780) test.skip();
+
+  await page.getByRole("button", { name: "Open Planner" }).click();
+  const plannerWindow = page.getByLabel("Planner app");
+  await expect(plannerWindow).toBeVisible();
+
+  const before = await plannerWindow.boundingBox();
+  const rightGrip = await plannerWindow.locator('.window-resize-handle[data-resize="e"]').boundingBox();
+  const cornerGrip = await plannerWindow.locator('.window-resize-handle[data-resize="se"]').boundingBox();
+  expect(before).toBeTruthy();
+  expect(rightGrip).toBeTruthy();
+  expect(cornerGrip).toBeTruthy();
+
+  // The right edge is the main resize affordance: drag it wider.
+  const rightX = rightGrip.x + rightGrip.width / 2;
+  const rightY = rightGrip.y + rightGrip.height / 2;
+  const rightHit = await page.evaluate(({ x, y }) => {
+    const element = document.elementFromPoint(x, y);
+    return element && element.dataset ? element.dataset.resize : null;
+  }, { x: rightX, y: rightY });
+  expect(rightHit).toBe("e");
+
+  await page.mouse.move(rightX, rightY);
+  await page.mouse.down();
+  await page.mouse.move(rightX + 180, rightY, { steps: 8 });
+  await page.mouse.up();
+
+  const wider = await plannerWindow.boundingBox();
+  expect(wider.width).toBeGreaterThan(before.width + 100);
+
+  // The bottom-right corner still changes the height. Re-query it because the
+  // window (and therefore the grip) moved when it got wider.
+  const movedCorner = await plannerWindow.locator('.window-resize-handle[data-resize="se"]').boundingBox();
+  const cornerX = movedCorner.x + movedCorner.width / 2;
+  const cornerY = movedCorner.y + movedCorner.height / 2;
+  await page.mouse.move(cornerX, cornerY);
+  await page.mouse.down();
+  await page.mouse.move(cornerX, cornerY + 120, { steps: 8 });
+  await page.mouse.up();
+
+  const after = await plannerWindow.boundingBox();
+  expect(after.height).toBeGreaterThan(before.height + 60);
+
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem("random_notes_window_positions_v1")).planner);
+  expect(saved.width).toBeGreaterThan(before.width);
+  expect(saved.height).toBeGreaterThan(before.height);
+
+  // Full screen must ignore the custom height and restore it afterwards.
+  await plannerWindow.getByRole("button", { name: "Full screen Planner" }).click();
+  const fullscreen = await plannerWindow.boundingBox();
+  expect(fullscreen.width).toBeGreaterThan(after.width);
+  await plannerWindow.getByRole("button", { name: "Full screen Planner" }).click();
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Open Planner" }).click();
+  const restored = await page.getByLabel("Planner app").boundingBox();
+  expect(Math.abs(restored.width - after.width)).toBeLessThanOrEqual(3);
+  expect(Math.abs(restored.height - after.height)).toBeLessThanOrEqual(3);
+});
+
+test("calendar and add-task form stay separated in a short window", async ({ page }) => {
+  const viewport = page.viewportSize();
+  if (viewport && viewport.width <= 780) test.skip();
+
+  await page.clock.setFixedTime(new Date(2026, 10, 4, 12, 0, 0));
+  await page.evaluate(() => {
+    localStorage.setItem("random_notes_window_positions_v1", JSON.stringify({
+      planner: { left: 100, top: 90, width: 1000, height: 500 }
+    }));
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+  await openCalendarView(page, "month");
+
+  await page.locator('.calendar-day[data-date="2026-11-28"] .calendar-day-num').click();
+  await page.getByRole("button", { name: "+ Add task" }).click();
+
+  const calendarBox = await page.locator("#calendar-view").boundingBox();
+  const formBox = await page.locator("#task-form").boundingBox();
+  expect(calendarBox).toBeTruthy();
+  expect(formBox).toBeTruthy();
+  expect(formBox.y).toBeGreaterThanOrEqual(calendarBox.y + calendarBox.height - 1);
+  await expect(page.locator("#task-title")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Save" })).toBeVisible();
+});
+
+test("right edge grip stays reachable on short screens", async ({ page }) => {
+  const viewport = page.viewportSize();
+  if (viewport && viewport.width <= 780) test.skip();
+
+  await page.setViewportSize({ width: 1000, height: 768 });
+  await page.getByRole("button", { name: "Open Planner" }).click();
+  const plannerWindow = page.getByLabel("Planner app");
+  await expect(plannerWindow).toBeVisible();
+
+  const before = await plannerWindow.boundingBox();
+  const grip = await plannerWindow.locator('.window-resize-handle[data-resize="e"]').boundingBox();
+  expect(grip).toBeTruthy();
+
+  const x = grip.x + grip.width / 2;
+  const y = grip.y + grip.height / 2;
+  const hit = await page.evaluate(({ pointX, pointY }) => {
+    const element = document.elementFromPoint(pointX, pointY);
+    return element && element.dataset ? element.dataset.resize : null;
+  }, { pointX: x, pointY: y });
+  expect(hit).toBe("e");
+
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 120, y, { steps: 8 });
+  await page.mouse.up();
+
+  const after = await plannerWindow.boundingBox();
+  expect(after.width).toBeGreaterThan(before.width + 80);
+});
+
+test("day popup traps focus and restores it on close", async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 10, 4, 12, 0, 0));
+  await openPlannerSurface(page);
+  await openCalendarView(page, "month");
+
+  const day = page.locator('.calendar-day[data-date="2026-11-04"]');
+  await day.focus();
+  await page.keyboard.press("Enter");
+
+  const popup = page.locator("#day-popup");
+  await expect(popup).toBeVisible();
+  await expect(page.locator("#main-content")).toHaveAttribute("inert", "");
+  await expect(page.locator(".taskbar")).toHaveAttribute("inert", "");
+
+  for (let index = 0; index < 14; index += 1) {
+    await page.keyboard.press("Tab");
+  }
+  const stayedInside = await page.evaluate(() => document.getElementById("day-popup").contains(document.activeElement));
+  expect(stayedInside).toBe(true);
+
+  await page.keyboard.press("Escape");
+  await expect(popup).toBeHidden();
+  await expect(page.locator("#main-content")).not.toHaveAttribute("inert", "");
+  const restoredFocus = await page.evaluate(() => document.activeElement?.dataset?.date);
+  expect(restoredFocus).toBe("2026-11-04");
+});
+
+test("invalid stored dates fall back to today instead of rolling over", async ({ page }) => {
+  const result = await page.evaluate(() => {
+    const valid = parseLocalDate("2026-11-04");
+    const impossible = parseLocalDate("2026-02-31");
+    const today = new Date();
+    return {
+      valid: [valid.getFullYear(), valid.getMonth(), valid.getDate()],
+      impossibleIsToday:
+        impossible.getFullYear() === today.getFullYear() &&
+        impossible.getMonth() === today.getMonth() &&
+        impossible.getDate() === today.getDate()
+    };
+  });
+  expect(result.valid).toEqual([2026, 10, 4]);
+  expect(result.impossibleIsToday).toBe(true);
 });

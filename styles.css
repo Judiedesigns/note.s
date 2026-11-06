@@ -389,6 +389,107 @@ button { cursor: pointer; }
 
 .app-window:focus-within { box-shadow: var(--shadow-window), 0 0 0 3px rgba(0, 122, 255, 0.22); }
 
+.app-window { position: relative; }
+.app-window.readme-window { position: absolute; }
+
+/* Resize grips: bottom edge and bottom-right corner. The right edge is left
+   alone so vertical scrollbars in tall windows stay usable. */
+.window-resize-handles {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.window-resize-handle {
+  position: absolute;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+/* Left and right edges: the primary way to make a window wider. The right
+   grip sits on the frame itself so it stays reachable even when the taskbar
+   covers the bottom corner on shorter screens. */
+.window-resize-handle[data-resize="e"],
+.window-resize-handle[data-resize="w"] {
+  top: 14px;
+  bottom: 26px;
+  width: 7px;
+  cursor: ew-resize;
+}
+
+.window-resize-handle[data-resize="e"] { right: 0; }
+.window-resize-handle[data-resize="w"] { left: 0; }
+
+.window-resize-handle[data-resize="e"]:hover,
+.window-resize-handle[data-resize="w"]:hover {
+  background: linear-gradient(to left, rgba(109, 107, 198, 0.34), rgba(109, 107, 198, 0));
+}
+
+.window-resize-handle[data-resize="s"] {
+  left: 24px;
+  right: 28px;
+  bottom: 0;
+  height: 10px;
+  cursor: ns-resize;
+}
+
+.window-resize-handle[data-resize="s"]:hover {
+  background: linear-gradient(to top, rgba(109, 107, 198, 0.3), rgba(109, 107, 198, 0));
+}
+
+.window-resize-handle[data-resize="se"],
+.window-resize-handle[data-resize="sw"] {
+  bottom: 0;
+  width: 28px;
+  height: 28px;
+}
+
+.window-resize-handle[data-resize="se"] {
+  right: 0;
+  cursor: nwse-resize;
+}
+
+.window-resize-handle[data-resize="sw"] {
+  left: 0;
+  cursor: nesw-resize;
+}
+
+/* Always-visible corner grip, drawn as three diagonal strokes. */
+.window-resize-handle[data-resize="se"]::after {
+  content: "";
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 14px;
+  height: 14px;
+  background: no-repeat right bottom / 14px 14px
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cg fill='none' stroke='%234c4356' stroke-opacity='.42' stroke-width='1.4' stroke-linecap='round'%3E%3Cpath d='M12.5 1.5 1.5 12.5M12.5 6 6 12.5M12.5 10.5 10.5 12.5'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.window-resize-handle[data-resize="se"]:hover::after { opacity: 0.85; }
+
+.app-window.is-resizing { user-select: none; }
+.app-window.is-resizing[data-resize-edge="s"] * { cursor: ns-resize !important; }
+.app-window.is-resizing[data-resize-edge="e"] *,
+.app-window.is-resizing[data-resize-edge="w"] * { cursor: ew-resize !important; }
+.app-window.is-resizing[data-resize-edge="se"] * { cursor: nwse-resize !important; }
+.app-window.is-resizing[data-resize-edge="sw"] * { cursor: nesw-resize !important; }
+
+/* When a window has a user-set height, let its content fill and scroll
+   inside it instead of overflowing the frame. */
+.app-window.window-resized { display: flex; flex-direction: column; }
+.app-window.window-resized > .window-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+.planner-window.window-resized .window-body { min-height: 0; }
+.planner-window.window-resized .main-pane { min-height: 0; }
+.notes-window.window-resized .content-panel { max-height: none; }
+.readme-window.window-resized .readme-panel { overflow: auto; }
+.window-fullscreen .window-resize-handles { display: none; }
+
 .app-window.window-dragged {
   position: absolute;
   grid-area: auto;
@@ -537,6 +638,7 @@ button { cursor: pointer; }
   z-index: 30;
   inset: 40px 0.6rem 1.1rem !important;
   width: auto !important;
+  height: auto !important;
   max-width: none;
   border-radius: 12px;
   transform: none;
@@ -584,6 +686,7 @@ button { cursor: pointer; }
 
 .surface-tab,
 .mode-tab,
+.planner-view-tab,
 .task-filter-toggle,
 .task-filter,
 .calendar-export-btn,
@@ -690,7 +793,7 @@ button { cursor: pointer; }
 
 .mode-tabs {
   display: grid;
-  grid-template-columns: repeat(3, 4.9rem);
+  grid-template-columns: repeat(2, 4.9rem);
   gap: 2px;
   width: max-content;
   max-width: calc(100vw - 6rem);
@@ -1808,6 +1911,8 @@ button { cursor: pointer; }
     width: auto !important;
   }
 
+  .window-resize-handles { display: none; }
+
   .notes-window .window-body,
   .readme-window .window-body {
     display: grid;
@@ -2327,6 +2432,12 @@ body {
   background: rgba(255, 255, 255, 0.6);
 }
 
+/* A resized Planner window should shrink its shell, not keep the 500px
+   minimum and let the calendar spill over the task form. */
+.planner-window.window-resized .window-body.planner-shell {
+  min-height: 0;
+}
+
 .planner-sidebar {
   min-width: 0;
   padding: 18px 12px 14px;
@@ -2479,7 +2590,7 @@ body {
 
 .mode-tabs {
   display: grid;
-  grid-template-columns: repeat(3, minmax(52px, 1fr));
+  grid-template-columns: repeat(2, minmax(52px, 1fr));
   gap: 0;
   width: auto;
   max-width: none;
@@ -2489,6 +2600,43 @@ body {
   border-radius: 8px;
   background: rgba(116, 104, 124, 0.1);
   box-shadow: inset 0 1px 2px rgba(60, 48, 69, 0.12);
+}
+
+/* Compact Today/Calendar switch used when the sidebar is hidden on mobile. */
+.planner-view-tabs {
+  display: none;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  width: auto;
+  margin: 0;
+  padding: 2px;
+  border: 1px solid rgba(75, 66, 86, 0.22);
+  border-radius: 8px;
+  background: rgba(116, 104, 124, 0.1);
+  box-shadow: inset 0 1px 2px rgba(60, 48, 69, 0.12);
+}
+
+.planner-view-tab {
+  min-height: 24px;
+  padding: 0 10px;
+  border-radius: 6px;
+  color: #51505a;
+  font-size: 11px;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+.planner-view-tab.active {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink);
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(55, 45, 67, 0.2);
+}
+
+.mode-tab:focus-visible,
+.planner-view-tab:focus-visible {
+  outline: 2px solid rgba(109, 107, 198, 0.55);
+  outline-offset: 1px;
 }
 
 .mode-tab {
@@ -3215,15 +3363,22 @@ body {
   .main-pane.is-calendar > .panel-head .count { display: none; }
 
   .planner-controls {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
     width: 100%;
     margin: 0 0 0.7rem;
   }
 
-  .mode-tabs { width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .mode-tab { min-height: 28px; font-size: 12px; }
+  .planner-view-tabs { display: grid; }
+  .planner-view-tab { min-height: 28px; font-size: 12px; }
+
+  .mode-tabs { width: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mode-tab { min-height: 28px; padding: 0 12px; font-size: 12px; }
+
+  .planner-tools { margin-left: auto; }
 
   .todo-board .items-list { max-height: 46vh; width: 100%; }
 
@@ -3759,7 +3914,13 @@ body {
 .day-popup-actions { justify-content: space-between; }
 
 /* Calendar mode uses the full pane width so the month title, navigation, and
-   view tabs never fight for the same narrow column. */
+   view tabs never fight for the same narrow column. The calendar gets the
+   remaining height and scrolls inside its own row, so a short window cannot
+   push the month grid underneath the add-task form. */
+.main-pane.is-calendar {
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
+}
+
 .main-pane.is-calendar > .panel-head {
   grid-column: 1 / -1;
   grid-row: 1;
@@ -3773,7 +3934,11 @@ body {
   margin-bottom: 10px;
 }
 
-.main-pane.is-calendar > .calendar-view { grid-row: 3; }
+.main-pane.is-calendar > .calendar-view {
+  grid-row: 3;
+  align-self: stretch;
+  min-height: 0;
+}
 .main-pane.is-calendar > .task-quick-form { grid-row: 4; }
 .main-pane.is-calendar > .task-capture { grid-row: 5; }
 

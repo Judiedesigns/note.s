@@ -19,7 +19,7 @@
 <meta name="twitter:description" content="A private local planner for tasks and quick thoughts.">
 <meta name="twitter:image" content="bg-2.jpg">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="styles.css?v=finder-20261103">
+<link rel="stylesheet" href="styles.css?v=calendar-form-20261106">
 </head>
 <body>
 <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -75,20 +75,15 @@
           <aside class="planner-sidebar" aria-label="Planner navigation">
             <p class="sidebar-label">Plan</p>
             <div class="sidebar-group">
-              <button class="side-row active" type="button" data-view="today">
+              <button class="side-row active" type="button" data-view="today" aria-label="Today">
                 <span class="side-icon sun-icon" aria-hidden="true"></span>
                 <span>Today</span>
-                <span class="side-count" data-side-count="today">0</span>
+                <span class="side-count" data-side-count="today" aria-hidden="true">0</span>
               </button>
-              <button class="side-row" type="button" data-view="week">
+              <button class="side-row" type="button" data-view="calendar" aria-label="Calendar">
                 <span class="side-icon calendar-icon" aria-hidden="true"></span>
-                <span>This week</span>
-                <span class="side-count" data-side-count="week">0</span>
-              </button>
-              <button class="side-row" type="button" data-view="month">
-                <span class="side-icon range-icon" aria-hidden="true"></span>
-                <span>Month</span>
-                <span class="side-count" data-side-count="month">0</span>
+                <span>Calendar</span>
+                <span class="side-count" data-side-count="calendar" aria-hidden="true">0</span>
               </button>
             </div>
             <p class="sidebar-label">Places</p>
@@ -113,16 +108,19 @@
               </div>
               <div class="calendar-nav" id="calendar-nav" hidden>
                 <button class="calendar-nav-btn" id="calendar-prev" type="button" aria-label="Previous month">‹</button>
-                <button class="calendar-nav-btn calendar-nav-today" id="calendar-today" type="button">Today</button>
+                <button class="calendar-nav-btn calendar-nav-today" id="calendar-today" type="button" aria-label="Jump to today in the calendar" title="Jump to today">Today</button>
                 <button class="calendar-nav-btn" id="calendar-next" type="button" aria-label="Next month">›</button>
               </div>
               <p class="count" id="task-count">0 tasks</p>
             </div>
             <div class="planner-controls">
-              <div class="mode-tabs" role="tablist" aria-label="Planner views">
-                <button class="mode-tab active" type="button" data-view="today" role="tab" aria-selected="true">Today</button>
+              <div class="planner-view-tabs" role="group" aria-label="Planner destination">
+                <button class="planner-view-tab active" type="button" data-planner-view="today" aria-current="page">Today</button>
+                <button class="planner-view-tab" type="button" data-planner-view="calendar">Calendar</button>
+              </div>
+              <div class="mode-tabs" id="calendar-mode-tabs" role="tablist" aria-label="Calendar view" hidden>
                 <button class="mode-tab" type="button" data-view="week" role="tab" aria-selected="false">Week</button>
-                <button class="mode-tab" type="button" data-view="month" role="tab" aria-selected="false">Month</button>
+                <button class="mode-tab active" type="button" data-view="month" role="tab" aria-selected="true">Month</button>
               </div>
               <div class="planner-tools">
                 <button class="calendar-export-btn" id="calendar-export" type="button" aria-label="Export tasks to calendar" title="Export tasks to calendar">
@@ -174,6 +172,13 @@
               <span>note.s</span>
             </footer>
           </section>
+        </div>
+        <div class="window-resize-handles" aria-hidden="true">
+          <span class="window-resize-handle" data-resize="w"></span>
+          <span class="window-resize-handle" data-resize="e"></span>
+          <span class="window-resize-handle" data-resize="s"></span>
+          <span class="window-resize-handle" data-resize="sw"></span>
+          <span class="window-resize-handle" data-resize="se"></span>
         </div>
       </section>
 
@@ -270,6 +275,13 @@
             </section>
           </section>
         </div>
+        <div class="window-resize-handles" aria-hidden="true">
+          <span class="window-resize-handle" data-resize="w"></span>
+          <span class="window-resize-handle" data-resize="e"></span>
+          <span class="window-resize-handle" data-resize="s"></span>
+          <span class="window-resize-handle" data-resize="sw"></span>
+          <span class="window-resize-handle" data-resize="se"></span>
+        </div>
       </section>
 
       <section class="app-window readme-window window-closed" data-surface="readme" aria-label="README app">
@@ -286,6 +298,13 @@
           <section class="content-panel readme-panel" aria-live="polite">
             <pre class="readme-text" id="readme-content"></pre>
           </section>
+        </div>
+        <div class="window-resize-handles" aria-hidden="true">
+          <span class="window-resize-handle" data-resize="w"></span>
+          <span class="window-resize-handle" data-resize="e"></span>
+          <span class="window-resize-handle" data-resize="s"></span>
+          <span class="window-resize-handle" data-resize="sw"></span>
+          <span class="window-resize-handle" data-resize="se"></span>
         </div>
       </section>
     </div>
@@ -343,6 +362,7 @@
 const STORAGE_KEY = "random_notes_v1";
 const WINDOW_POSITIONS_KEY = "random_notes_window_positions_v1";
 const ICON_POSITIONS_KEY = "random_notes_icon_positions_v1";
+const PLANNER_VIEW_KEY = "random_notes_planner_view_v1";
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyCBt6sNfoVpKvAjjvdFt1JLAfHQ6_UNjSQ",
   authDomain: "notes-planner-5e410.firebaseapp.com",
@@ -361,6 +381,7 @@ const NOTE_PAGE_SIZE = 10;
 
 let items = [];
 let activeView = "today";
+let lastCalendarMode = "month";
 let activeSurface = "planner";
 let noteQuery = "";
 let noteFilter = "all";
@@ -371,6 +392,7 @@ let toastTimer = null;
 let windowPositions = {};
 let iconPositions = {};
 let dragState = null;
+let resizeState = null;
 let iconDragState = null;
 let windowZIndex = 10;
 let activePopupNoteText = "";
@@ -433,6 +455,7 @@ const taskList = document.getElementById("task-list");
 const calendarView = document.getElementById("calendar-view");
 const plannerPane = document.querySelector(".planner-window .main-pane");
 const calendarNav = document.getElementById("calendar-nav");
+const calendarModeTabs = document.getElementById("calendar-mode-tabs");
 const calendarPrevButton = document.getElementById("calendar-prev");
 const calendarTodayButton = document.getElementById("calendar-today");
 const calendarNextButton = document.getElementById("calendar-next");
@@ -450,6 +473,7 @@ const viewTitle = document.getElementById("view-title");
 const viewSubtitle = document.getElementById("view-subtitle");
 const tabs = Array.from(document.querySelectorAll(".mode-tab"));
 const sideViewButtons = Array.from(document.querySelectorAll(".side-row[data-view]"));
+const plannerViewButtons = Array.from(document.querySelectorAll(".planner-view-tab"));
 const sideOpenButtons = Array.from(document.querySelectorAll("[data-side-open]"));
 const menuClock = document.getElementById("menu-clock");
 const taskFilterButtons = Array.from(document.querySelectorAll(".task-filter"));
@@ -480,6 +504,7 @@ let dayPopupReturnFocus = null;
 loadItems();
 loadWindowPositions();
 loadIconPositions();
+restorePlannerViewState();
 taskDateInput.value = toDateInputValue(new Date());
 updateVisualViewportVars();
 render();
@@ -581,6 +606,8 @@ calendarView.addEventListener("keydown", handleCalendarKeydown);
 dayPopup.addEventListener("click", event => {
   if (event.target === dayPopup) closeDayPopup();
 });
+dayPopup.addEventListener("keydown", event => trapDialogFocus(event, dayPopup));
+notePopup.addEventListener("keydown", event => trapDialogFocus(event, notePopup));
 dayPopupCloseButton.addEventListener("click", closeDayPopup);
 dayPopupDoneButton.addEventListener("click", closeDayPopup);
 dayPopupAddButton.addEventListener("click", () => {
@@ -718,6 +745,12 @@ sideViewButtons.forEach(button => {
   });
 });
 
+plannerViewButtons.forEach(button => {
+  button.addEventListener("click", () => {
+    setPlannerView(button.dataset.plannerView);
+  });
+});
+
 sideOpenButtons.forEach(button => {
   button.addEventListener("click", () => {
     openWindow(button.dataset.sideOpen, true);
@@ -768,6 +801,10 @@ titlebars.forEach(titlebar => {
   titlebar.addEventListener("pointerdown", startWindowDrag);
 });
 
+document.querySelectorAll(".window-resize-handle").forEach(handle => {
+  handle.addEventListener("pointerdown", startWindowResize);
+});
+
 surfaces.forEach(surface => {
   surface.addEventListener("pointerdown", () => {
     const name = surface.dataset.surface;
@@ -780,10 +817,13 @@ surfaces.forEach(surface => {
 });
 
 window.addEventListener("pointermove", moveWindowDrag);
+window.addEventListener("pointermove", moveWindowResize);
 window.addEventListener("pointermove", moveIconDrag);
 window.addEventListener("pointerup", endWindowDrag);
+window.addEventListener("pointerup", endWindowResize);
 window.addEventListener("pointerup", endIconDrag);
 window.addEventListener("pointercancel", endWindowDrag);
+window.addEventListener("pointercancel", endWindowResize);
 window.addEventListener("pointercancel", endIconDrag);
 window.addEventListener("resize", () => {
   updateVisualViewportVars();
@@ -1418,6 +1458,7 @@ function render() {
   taskList.hidden = calendarMode;
   calendarView.hidden = !calendarMode;
   calendarNav.hidden = !calendarMode;
+  calendarModeTabs.hidden = !calendarMode;
   plannerPane.classList.toggle("is-calendar", calendarMode);
 
   if (calendarMode) {
@@ -1529,10 +1570,52 @@ function getQuickCaptureDate() {
   return toDateInputValue(new Date());
 }
 
+function restorePlannerViewState() {
+  let stored = null;
+  try {
+    stored = JSON.parse(localStorage.getItem(PLANNER_VIEW_KEY) || "null");
+  } catch (error) {
+    stored = null;
+  }
+  if (!stored || typeof stored !== "object") return;
+
+  if (stored.calendarMode === "week" || stored.calendarMode === "month") {
+    lastCalendarMode = stored.calendarMode;
+  }
+
+  if (stored.view === "today") {
+    activeView = "today";
+    return;
+  }
+
+  if (stored.view === "calendar" || stored.view === "week" || stored.view === "month") {
+    activeView = stored.view === "week" || stored.view === "month" ? stored.view : lastCalendarMode;
+    lastCalendarMode = activeView;
+  }
+}
+
+function persistPlannerViewState() {
+  const isCalendar = isCalendarView(activeView);
+  try {
+    localStorage.setItem(PLANNER_VIEW_KEY, JSON.stringify({
+      view: isCalendar ? "calendar" : "today",
+      calendarMode: lastCalendarMode
+    }));
+  } catch (error) {
+    // Storage can be unavailable in private mode; navigation still works.
+  }
+}
+
+function isCalendarView(view) {
+  return view === "week" || view === "month";
+}
+
 function setPlannerView(view) {
-  const wasCalendar = activeView === "week" || activeView === "month";
-  activeView = view;
-  if (view === "week" || view === "month") {
+  const wasCalendar = isCalendarView(activeView);
+  const targetView = view === "calendar" ? lastCalendarMode : view;
+  activeView = targetView;
+  if (isCalendarView(targetView)) {
+    lastCalendarMode = targetView;
     if (wasCalendar) {
       // Keep the day the user was looking at when switching Month <-> Week.
       calendarCursor = parseLocalDate(focusedDate || toDateInputValue(new Date()));
@@ -1543,6 +1626,7 @@ function setPlannerView(view) {
     }
     syncFocusedToView();
   }
+  persistPlannerViewState();
   setActiveTab();
   render();
 }
@@ -1743,13 +1827,6 @@ function renderMonthView(allTasks) {
         cell.appendChild(more);
       }
 
-      cell.addEventListener("keydown", event => {
-        if (event.key !== "Enter" && event.key !== " ") return;
-        if (event.target !== cell) return;
-        event.preventDefault();
-        openDayPopup(dateKey);
-      });
-
       row.appendChild(cell);
     }
     monthEl.appendChild(row);
@@ -1899,6 +1976,7 @@ function openDayPopup(dateKey) {
   dayPopupReturnFocus = document.activeElement;
   renderDayPopup(dateKey);
   dayPopup.hidden = false;
+  setBackgroundInert(true);
   dayPopupCloseButton.focus();
 }
 
@@ -1906,6 +1984,7 @@ function closeDayPopup() {
   if (dayPopup.hidden) return;
   dayPopup.hidden = true;
   dayPopupDate = "";
+  if (notePopup.hidden) setBackgroundInert(false);
   const returnFocus = dayPopupReturnFocus;
   dayPopupReturnFocus = null;
   if (returnFocus && returnFocus.isConnected && typeof returnFocus.focus === "function") {
@@ -2224,6 +2303,7 @@ function openNotePopup(text, createdLabel, returnFocusElement) {
   notePopupTitle.textContent = `Note | ${createdLabel}`;
   notePopupText.textContent = text;
   notePopup.hidden = false;
+  setBackgroundInert(true);
   notePopupCloseButton.focus();
 }
 
@@ -2231,6 +2311,7 @@ function closeNotePopup() {
   if (notePopup.hidden) return;
   notePopup.hidden = true;
   activePopupNoteText = "";
+  if (dayPopup.hidden) setBackgroundInert(false);
   if (notePopupReturnFocus && typeof notePopupReturnFocus.focus === "function") {
     notePopupReturnFocus.focus();
   }
@@ -2267,17 +2348,22 @@ function copyTextFallback(text) {
 }
 
 function updateSidebarCounts(noteCount) {
-  const counts = { today: 0, week: 0, month: 0 };
+  const counts = { today: 0, calendar: 0 };
   const now = new Date();
   const today = toDateInputValue(now);
-  const weekStart = toDateInputValue(startOfWeek(now));
-  const weekEnd = toDateInputValue(addDays(startOfWeek(now), 6));
-  const prefix = monthPrefix(now);
+  const periodMode = isCalendarView(activeView) ? activeView : lastCalendarMode;
+  const periodDate = calendarCursor;
+  const weekStart = toDateInputValue(startOfWeek(periodDate));
+  const weekEnd = toDateInputValue(addDays(startOfWeek(periodDate), 6));
+  const prefix = monthPrefix(periodDate);
   items.forEach(item => {
     if (item.type !== "task" || item.deletedAt || item.done || !item.dueDate) return;
     if (item.dueDate <= today) counts.today += 1;
-    if (item.dueDate >= weekStart && item.dueDate <= weekEnd) counts.week += 1;
-    if (item.dueDate.startsWith(prefix)) counts.month += 1;
+    if (periodMode === "week") {
+      if (item.dueDate >= weekStart && item.dueDate <= weekEnd) counts.calendar += 1;
+    } else if (item.dueDate.startsWith(prefix)) {
+      counts.calendar += 1;
+    }
   });
   Object.entries(counts).forEach(([view, count]) => {
     const label = document.querySelector(`[data-side-count="${view}"]`);
@@ -2317,7 +2403,16 @@ function setActiveTab() {
     tab.setAttribute("aria-selected", String(isActive));
   });
   sideViewButtons.forEach(button => {
-    const isActive = button.dataset.view === activeView;
+    const isActive = button.dataset.view === "calendar"
+      ? isCalendarView(activeView)
+      : button.dataset.view === activeView;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-current", isActive ? "page" : "false");
+  });
+  plannerViewButtons.forEach(button => {
+    const isActive = button.dataset.plannerView === "calendar"
+      ? isCalendarView(activeView)
+      : button.dataset.plannerView === activeView;
     button.classList.toggle("active", isActive);
     button.setAttribute("aria-current", isActive ? "page" : "false");
   });
@@ -2421,24 +2516,35 @@ function applyIconPositions() {
   });
 }
 
-function getWindowWidthLimit(name) {
+function getWindowWidthLimit() {
   const viewportLimit = Math.max(0, window.innerWidth - 32);
   const gridLimit = desktopGrid.clientWidth || viewportLimit;
-  const designLimit = {
-    planner: 900,
-    notes: 520,
-    readme: 520
-  }[name] || viewportLimit;
-  return Math.min(viewportLimit, gridLimit, designLimit);
+  return Math.min(viewportLimit, gridLimit);
+}
+
+function getWindowMinSize(name) {
+  return {
+    planner: { width: 360, height: 320 },
+    notes: { width: 280, height: 260 },
+    readme: { width: 260, height: 220 }
+  }[name] || { width: 260, height: 220 };
+}
+
+function getWindowHeightLimit(top = 0) {
+  const gridRect = desktopGrid.getBoundingClientRect();
+  const minTop = Math.min(0, 8 - gridRect.top);
+  const available = window.innerHeight - gridRect.top - Math.max(top, minTop) - 34;
+  return Math.max(240, available);
 }
 
 function applyWindowPositions() {
   surfaces.forEach(surface => {
     if (!canDragWindows()) {
-      surface.classList.remove("window-dragged");
+      surface.classList.remove("window-dragged", "window-resized");
       surface.style.left = "";
       surface.style.top = "";
       surface.style.width = "";
+      surface.style.height = "";
       surface.style.zIndex = "";
       return;
     }
@@ -2447,14 +2553,20 @@ function applyWindowPositions() {
     if (!position) return;
     const name = surface.dataset.surface;
     const savedWidth = Number(position.width) || surface.getBoundingClientRect().width;
-    const width = Math.min(savedWidth, getWindowWidthLimit(name));
+    const width = Math.min(savedWidth, getWindowWidthLimit());
+    const savedHeight = Number(position.height) || 0;
+    const height = savedHeight
+      ? Math.max(getWindowMinSize(name).height, Math.min(savedHeight, getWindowHeightLimit(position.top)))
+      : 0;
     surface.classList.add("window-dragged");
     surface.style.left = `${position.left}px`;
     surface.style.top = `${position.top}px`;
     surface.style.width = `${width}px`;
+    surface.style.height = height ? `${height}px` : "";
+    surface.classList.toggle("window-resized", Boolean(height));
     if (position.zIndex) surface.style.zIndex = position.zIndex;
-    if (width !== savedWidth) {
-      windowPositions[name] = { ...position, width };
+    if (width !== savedWidth || height !== savedHeight) {
+      windowPositions[name] = { ...position, width, ...(height ? { height } : {}) };
       saveWindowPositions();
     }
     keepWindowInView(name);
@@ -2482,12 +2594,16 @@ function keepWindowInView(name) {
   const rect = surface.getBoundingClientRect();
   const minVisible = 120;
   const currentWidth = Number.parseFloat(surface.style.width) || rect.width;
-  const width = Math.min(currentWidth, getWindowWidthLimit(name));
+  const width = Math.min(currentWidth, getWindowWidthLimit());
   const maxLeft = Math.max(0, window.innerWidth - gridRect.left - minVisible);
   const minTop = Math.min(0, 8 - gridRect.top);
   const maxTop = Math.max(minTop, window.innerHeight - gridRect.top - minVisible);
   const currentLeft = Number.parseFloat(surface.style.left) || rect.left - gridRect.left;
   const currentTop = Number.parseFloat(surface.style.top) || rect.top - gridRect.top;
+  const requestedHeight = Number.parseFloat(surface.style.height) || 0;
+  const height = requestedHeight
+    ? Math.max(getWindowMinSize(name).height, Math.min(requestedHeight, getWindowHeightLimit(currentTop)))
+    : 0;
   const isMostlyOutOfView =
     rect.right < gridRect.left + minVisible ||
     rect.left > window.innerWidth - minVisible ||
@@ -2506,16 +2622,19 @@ function keepWindowInView(name) {
   const left = isMostlyOutOfView ? clamp(defaultLeft, 0, maxLeft) : clamp(currentLeft, 0, maxLeft);
   const top = isMostlyOutOfView ? clamp(defaultTop, minTop, maxTop) : clamp(currentTop, minTop, maxTop);
 
-  if (!isMostlyOutOfView && left === currentLeft && top === currentTop && width === currentWidth) return;
+  if (!isMostlyOutOfView && left === currentLeft && top === currentTop && width === currentWidth && height === requestedHeight) return;
 
   surface.classList.add("window-dragged");
+  surface.classList.toggle("window-resized", Boolean(height));
   surface.style.left = `${left}px`;
   surface.style.top = `${top}px`;
   surface.style.width = `${width}px`;
+  surface.style.height = height ? `${height}px` : "";
   windowPositions[name] = {
     left,
     top,
     width,
+    ...(height ? { height } : {}),
     zIndex: surface.style.zIndex
   };
   saveWindowPositions();
@@ -2536,7 +2655,7 @@ function startWindowDrag(event) {
   const rect = surface.getBoundingClientRect();
   const left = rect.left - gridRect.left;
   const top = rect.top - gridRect.top;
-  const width = Math.min(rect.width, getWindowWidthLimit(name));
+  const width = Math.min(rect.width, getWindowWidthLimit());
 
   surface.classList.add("window-dragged", "is-dragging");
   surface.style.left = `${left}px`;
@@ -2577,6 +2696,7 @@ function endWindowDrag(event) {
   const left = Number.parseFloat(surface.style.left) || 0;
   const top = Number.parseFloat(surface.style.top) || 0;
   windowPositions[dragState.name] = {
+    ...windowPositions[dragState.name],
     left,
     top,
     width: dragState.width,
@@ -2586,6 +2706,102 @@ function endWindowDrag(event) {
   surface.classList.remove("is-dragging");
   if (surface.hasPointerCapture(event.pointerId)) surface.releasePointerCapture(event.pointerId);
   dragState = null;
+}
+
+function startWindowResize(event) {
+  if (!canDragWindows()) return;
+  if (event.button !== 0) return;
+
+  const surface = event.currentTarget.closest("[data-surface]");
+  if (!surface || surface.classList.contains("window-fullscreen")) return;
+  const name = surface.dataset.surface;
+  const state = windowState[name];
+  if (!state || !state.open || state.minimized) return;
+
+  const gridRect = desktopGrid.getBoundingClientRect();
+  const rect = surface.getBoundingClientRect();
+  const left = rect.left - gridRect.left;
+  const top = rect.top - gridRect.top;
+
+  surface.classList.add("window-dragged", "window-resized", "is-resizing");
+  surface.style.left = `${left}px`;
+  surface.style.top = `${top}px`;
+  surface.style.width = `${Math.min(rect.width, getWindowWidthLimit())}px`;
+  surface.style.height = `${rect.height}px`;
+  surface.setPointerCapture(event.pointerId);
+
+  activeSurface = name;
+  bringWindowForward(name);
+  setActiveSurface();
+  const edge = event.currentTarget.dataset.resize || "se";
+  surface.dataset.resizeEdge = edge;
+  resizeState = {
+    pointerId: event.pointerId,
+    surface,
+    name,
+    edge,
+    startX: event.clientX,
+    startY: event.clientY,
+    startLeft: left,
+    startTop: top,
+    startWidth: rect.width,
+    startHeight: rect.height
+  };
+  event.preventDefault();
+  event.stopPropagation();
+}
+
+function moveWindowResize(event) {
+  if (!resizeState || event.pointerId !== resizeState.pointerId) return;
+  const { edge, surface, name } = resizeState;
+  const min = getWindowMinSize(name);
+  const maxWidth = getWindowWidthLimit();
+  const deltaX = event.clientX - resizeState.startX;
+  const deltaY = event.clientY - resizeState.startY;
+
+  let width = resizeState.startWidth;
+  let height = resizeState.startHeight;
+  let left = resizeState.startLeft;
+  let top = resizeState.startTop;
+
+  if (edge.includes("e")) {
+    width = clamp(resizeState.startWidth + deltaX, min.width, Math.max(min.width, maxWidth));
+  } else if (edge.includes("w")) {
+    const right = resizeState.startLeft + resizeState.startWidth;
+    width = clamp(resizeState.startWidth - deltaX, min.width, Math.max(min.width, Math.min(maxWidth, right)));
+    left = right - width;
+  }
+
+  if (edge.includes("s")) {
+    height = clamp(resizeState.startHeight + deltaY, min.height, Math.max(min.height, getWindowHeightLimit(top)));
+  }
+
+  surface.style.left = `${left}px`;
+  surface.style.top = `${top}px`;
+  surface.style.width = `${width}px`;
+  surface.style.height = `${height}px`;
+}
+
+function endWindowResize(event) {
+  if (!resizeState || event.pointerId !== resizeState.pointerId) return;
+  const surface = resizeState.surface;
+  const left = Number.parseFloat(surface.style.left) || 0;
+  const top = Number.parseFloat(surface.style.top) || 0;
+  const width = Number.parseFloat(surface.style.width) || resizeState.startWidth;
+  const height = Number.parseFloat(surface.style.height) || resizeState.startHeight;
+  windowPositions[resizeState.name] = {
+    ...windowPositions[resizeState.name],
+    left,
+    top,
+    width,
+    height,
+    zIndex: surface.style.zIndex
+  };
+  saveWindowPositions();
+  surface.classList.remove("is-resizing");
+  delete surface.dataset.resizeEdge;
+  if (surface.hasPointerCapture(event.pointerId)) surface.releasePointerCapture(event.pointerId);
+  resizeState = null;
 }
 
 function startIconDrag(event) {
@@ -2861,6 +3077,34 @@ function isComposing(event) {
   return event.isComposing || event.keyCode === 229;
 }
 
+// Dialogs mark themselves aria-modal, so keep the page behind them inert and
+// stop Tab from walking out into controls the user cannot see.
+function setBackgroundInert(inert) {
+  document.querySelectorAll("#main-content, .taskbar").forEach(element => {
+    element.inert = inert;
+  });
+}
+
+const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function trapDialogFocus(event, dialog) {
+  if (event.key !== "Tab" || dialog.hidden) return;
+  const focusables = Array.from(dialog.querySelectorAll(FOCUSABLE_SELECTOR))
+    .filter(element => element.getClientRects().length > 0);
+  if (!focusables.length) {
+    event.preventDefault();
+    return;
+  }
+  // Drive Tab ourselves: native tab order can leave the dialog on some
+  // mobile/tablet browsers, and we always want focus to cycle in place.
+  const index = focusables.indexOf(document.activeElement);
+  const nextIndex = event.shiftKey
+    ? (index <= 0 ? focusables.length - 1 : index - 1)
+    : (index === -1 || index === focusables.length - 1 ? 0 : index + 1);
+  event.preventDefault();
+  focusables[nextIndex].focus();
+}
+
 // 0 = Sunday, 1 = Monday, taken from the user's locale where supported.
 function getWeekStartsOn() {
   if (cachedWeekStart !== null) return cachedWeekStart;
@@ -2886,9 +3130,19 @@ function toDateInputValue(date) {
 }
 
 function parseLocalDate(value) {
-  const [year, month, day] = String(value || toDateInputValue(new Date())).split("-").map(Number);
-  const date = new Date(year, month - 1, day);
-  return Number.isNaN(date.getTime()) ? new Date() : date;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || "").trim());
+  if (match) {
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const date = new Date(year, month - 1, day);
+    // Reject rolled-over values like 2026-02-31 or 2026-13-01 that Date
+    // would otherwise silently turn into a different day.
+    if (date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day) {
+      return date;
+    }
+  }
+  return new Date();
 }
 
 function startOfWeek(date) {
