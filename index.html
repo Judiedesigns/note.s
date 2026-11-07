@@ -35,9 +35,9 @@
       <span class="menu-item">View</span>
     </div>
     <div class="surface-switch" role="tablist" aria-label="App sections">
-      <button class="surface-tab active" type="button" data-surface-target="planner" role="tab" aria-selected="true">Planner</button>
-      <button class="surface-tab" type="button" data-surface-target="notes" role="tab" aria-selected="false">Notes</button>
-      <button class="surface-tab" type="button" data-surface-target="readme" role="tab" aria-selected="false">README.txt</button>
+      <button class="surface-tab active" type="button" data-surface-target="planner" role="tab" aria-selected="true" aria-controls="planner-window">Planner</button>
+      <button class="surface-tab" type="button" data-surface-target="notes" role="tab" aria-selected="false" aria-controls="notes-window">Notes</button>
+      <button class="surface-tab" type="button" data-surface-target="readme" role="tab" aria-selected="false" aria-controls="readme-window">README.txt</button>
     </div>
     <div class="menu-meta">
       <span class="menu-saved">All saved locally</span>
@@ -61,14 +61,14 @@
     </div>
 
     <div class="desktop-grid">
-      <section class="app-window planner-window active-surface window-closed" data-surface="planner" aria-label="Planner app">
-        <div class="window-titlebar">
-          <span class="window-title"><span class="title-icon" aria-hidden="true"></span>Planner</span>
+      <section class="app-window planner-window active-surface window-closed" id="planner-window" data-surface="planner" aria-label="Planner app">
+        <div class="window-titlebar" tabindex="0" aria-label="Planner window title bar. Use arrow keys to move the window, or Shift plus arrow keys to resize it.">
           <div class="window-controls" aria-label="Planner window controls">
             <button class="window-control minimize-control" type="button" data-window-action="minimize" data-window-target="planner" aria-label="Minimize Planner"></button>
             <button class="window-control fullscreen-control" type="button" data-window-action="fullscreen" data-window-target="planner" aria-label="Full screen Planner"></button>
             <button class="window-control close-control" type="button" data-window-action="close" data-window-target="planner" aria-label="Close Planner"></button>
           </div>
+          <span class="window-title"><span class="title-icon" aria-hidden="true"></span>Planner</span>
           <span class="window-meta">Local</span>
         </div>
         <div class="window-body planner-shell">
@@ -91,7 +91,7 @@
               <button class="side-row" type="button" data-side-open="notes">
                 <span class="side-icon note-icon" aria-hidden="true"></span>
                 <span>Notes</span>
-                <span class="side-count" data-side-count="notes">0</span>
+                <span class="side-count" data-side-count="notes" aria-hidden="true">0</span>
               </button>
               <button class="side-row" type="button" data-side-open="readme">
                 <span class="side-icon book-icon" aria-hidden="true"></span>
@@ -100,7 +100,7 @@
               </button>
             </div>
           </aside>
-          <section class="content-panel todo-board main-pane" aria-live="polite">
+          <section class="content-panel todo-board main-pane">
             <div class="panel-head">
               <div>
                 <h2 class="panel-title" id="view-title">Today</h2>
@@ -119,18 +119,18 @@
                 <button class="planner-view-tab" type="button" data-planner-view="calendar">Calendar</button>
               </div>
               <div class="mode-tabs" id="calendar-mode-tabs" role="tablist" aria-label="Calendar view" hidden>
-                <button class="mode-tab" type="button" data-view="week" role="tab" aria-selected="false">Week</button>
-                <button class="mode-tab active" type="button" data-view="month" role="tab" aria-selected="true">Month</button>
+                <button class="mode-tab" type="button" data-view="week" role="tab" aria-selected="false" aria-controls="calendar-view" tabindex="-1">Week</button>
+                <button class="mode-tab active" type="button" data-view="month" role="tab" aria-selected="true" aria-controls="calendar-view" tabindex="0">Month</button>
               </div>
               <div class="planner-tools">
                 <button class="calendar-export-btn" id="calendar-export" type="button" aria-label="Export tasks to calendar" title="Export tasks to calendar">
                   <span class="calendar-export-icon" aria-hidden="true"></span>
                 </button>
                 <div class="task-filter-menu">
-                  <button class="task-filter-toggle" id="task-filter-toggle" type="button" aria-label="Task status filter" aria-expanded="false" title="Task status filter">
+                  <button class="task-filter-toggle" id="task-filter-toggle" type="button" aria-label="Task status filter" aria-expanded="false" aria-haspopup="true" aria-controls="task-filter-options" title="Task status filter">
                     <span class="task-filter-icon all-icon" aria-hidden="true"></span>
                   </button>
-                  <div class="task-filter-options" role="group" aria-label="Task status filter">
+                  <div class="task-filter-options" id="task-filter-options" role="group" aria-label="Task status filter">
                     <button class="task-filter active" type="button" data-task-filter="all" aria-pressed="true">All</button>
                     <button class="task-filter" type="button" data-task-filter="open" aria-pressed="false">Open</button>
                     <button class="task-filter" type="button" data-task-filter="done" aria-pressed="false">Done</button>
@@ -182,18 +182,18 @@
         </div>
       </section>
 
-      <section class="app-window notes-window window-closed" data-surface="notes" aria-label="Notes app">
-        <div class="window-titlebar">
-          <span class="window-title"><span class="title-icon" aria-hidden="true"></span>Notes</span>
+      <section class="app-window notes-window window-closed" id="notes-window" data-surface="notes" aria-label="Notes app">
+        <div class="window-titlebar" tabindex="0" aria-label="Notes window title bar. Use arrow keys to move the window, or Shift plus arrow keys to resize it.">
           <div class="window-controls" aria-label="Notes window controls">
             <button class="window-control minimize-control" type="button" data-window-action="minimize" data-window-target="notes" aria-label="Minimize Notes"></button>
             <button class="window-control fullscreen-control" type="button" data-window-action="fullscreen" data-window-target="notes" aria-label="Full screen Notes"></button>
             <button class="window-control close-control" type="button" data-window-action="close" data-window-target="notes" aria-label="Close Notes"></button>
           </div>
+          <span class="window-title"><span class="title-icon" aria-hidden="true"></span>Notes</span>
           <span class="window-meta">Local</span>
         </div>
         <div class="window-body">
-          <section class="content-panel" aria-live="polite">
+          <section class="content-panel">
             <div class="notes-topbar">
               <div class="brand">
                 <h1>notes</h1>
@@ -244,7 +244,10 @@
                 <label class="field-label" for="note-body">body</label>
                 <textarea class="body-input" id="note-body" maxlength="1200" placeholder="Drop a thought… ⌘↵ to save"></textarea>
               </div>
-              <button class="add-btn" type="submit">+ Add Note</button>
+              <div class="note-form-actions">
+                <button class="add-btn" id="note-submit" type="submit">+ Add Note</button>
+                <button class="secondary-btn" id="note-cancel-edit" type="button" hidden>Cancel</button>
+              </div>
             </form>
 
             <section class="notes-archive" aria-label="Saved notes">
@@ -284,18 +287,18 @@
         </div>
       </section>
 
-      <section class="app-window readme-window window-closed" data-surface="readme" aria-label="README app">
-        <div class="window-titlebar">
-          <span class="window-title"><span class="title-icon" aria-hidden="true"></span>README.txt</span>
+      <section class="app-window readme-window window-closed" id="readme-window" data-surface="readme" aria-label="README app">
+        <div class="window-titlebar" tabindex="0" aria-label="README window title bar. Use arrow keys to move the window, or Shift plus arrow keys to resize it.">
           <div class="window-controls" aria-label="README window controls">
             <button class="window-control minimize-control" type="button" data-window-action="minimize" data-window-target="readme" aria-label="Minimize README"></button>
             <button class="window-control fullscreen-control" type="button" data-window-action="fullscreen" data-window-target="readme" aria-label="Full screen README"></button>
             <button class="window-control close-control" type="button" data-window-action="close" data-window-target="readme" aria-label="Close README"></button>
           </div>
+          <span class="window-title"><span class="title-icon" aria-hidden="true"></span>README.txt</span>
           <span class="window-meta">Local</span>
         </div>
         <div class="window-body">
-          <section class="content-panel readme-panel" aria-live="polite">
+          <section class="content-panel readme-panel">
             <pre class="readme-text" id="readme-content"></pre>
           </section>
         </div>
@@ -327,8 +330,8 @@
 <div class="note-popup-backdrop" id="note-popup" hidden>
   <section class="note-popup-window" role="dialog" aria-modal="true" aria-labelledby="note-popup-title">
     <div class="window-titlebar note-popup-titlebar">
-      <span class="window-title"><span class="title-icon" aria-hidden="true"></span><span id="note-popup-title">Note</span></span>
       <button class="window-control close-control" id="note-popup-close" type="button" aria-label="Close full note"></button>
+      <span class="window-title"><span class="title-icon" aria-hidden="true"></span><span id="note-popup-title">Note</span></span>
     </div>
     <div class="note-popup-body">
       <pre class="note-popup-text" id="note-popup-text"></pre>
@@ -343,8 +346,8 @@
 <div class="day-popup-backdrop" id="day-popup" hidden>
   <section class="day-popup-window" role="dialog" aria-modal="true" aria-labelledby="day-popup-title">
     <div class="window-titlebar day-popup-titlebar">
-      <span class="window-title"><span class="title-icon" aria-hidden="true"></span><span id="day-popup-title">Day</span></span>
       <button class="window-control close-control" id="day-popup-close" type="button" aria-label="Close day"></button>
+      <span class="window-title"><span class="title-icon" aria-hidden="true"></span><span id="day-popup-title">Day</span></span>
     </div>
     <div class="day-popup-body">
       <div class="day-popup-list" id="day-popup-list"></div>
@@ -360,6 +363,13 @@
 
 <script>
 const STORAGE_KEY = "random_notes_v1";
+
+// Dates and times follow the browser locale, so keep the document language in
+// sync with it instead of always advertising English.
+const browserLanguage = String(navigator.language || "").trim();
+if (/^[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})*$/.test(browserLanguage)) {
+  document.documentElement.lang = browserLanguage;
+}
 const WINDOW_POSITIONS_KEY = "random_notes_window_positions_v1";
 const ICON_POSITIONS_KEY = "random_notes_icon_positions_v1";
 const PLANNER_VIEW_KEY = "random_notes_planner_view_v1";
@@ -388,6 +398,7 @@ let noteFilter = "all";
 let visibleNoteLimit = NOTE_PAGE_SIZE;
 let taskFilter = "all";
 let editingTaskId = null;
+let editingNoteId = null;
 let toastTimer = null;
 let windowPositions = {};
 let iconPositions = {};
@@ -402,6 +413,7 @@ let syncUser = null;
 let syncReady = false;
 let syncConfigured = false;
 let syncSaving = false;
+let syncDirty = false;
 let syncSaveTimer = null;
 let syncCompleted = false;
 let syncLastCloudCount = null;
@@ -427,6 +439,8 @@ const calendarExportButton = document.getElementById("calendar-export");
 const taskFilterToggle = document.getElementById("task-filter-toggle");
 const noteForm = document.getElementById("note-form");
 const noteBodyInput = document.getElementById("note-body");
+const noteSubmitButton = document.getElementById("note-submit");
+const noteCancelEditButton = document.getElementById("note-cancel-edit");
 const noteSearchInput = document.getElementById("note-search");
 const noteFilterToggle = document.getElementById("note-filter-toggle");
 const noteFilterLabel = document.getElementById("note-filter-label");
@@ -476,6 +490,8 @@ const sideViewButtons = Array.from(document.querySelectorAll(".side-row[data-vie
 const plannerViewButtons = Array.from(document.querySelectorAll(".planner-view-tab"));
 const sideOpenButtons = Array.from(document.querySelectorAll("[data-side-open]"));
 const menuClock = document.getElementById("menu-clock");
+const taskFilterOptions = document.getElementById("task-filter-options");
+const noteFilterOptions = document.getElementById("note-filter-options");
 const taskFilterButtons = Array.from(document.querySelectorAll(".task-filter"));
 const noteFilterButtons = Array.from(document.querySelectorAll(".note-filter"));
 const surfaceTabs = Array.from(document.querySelectorAll(".surface-tab"));
@@ -487,11 +503,20 @@ const windowControls = Array.from(document.querySelectorAll("[data-window-action
 const taskbarButtons = Array.from(document.querySelectorAll("[data-taskbar-window]"));
 const taskbarStartButton = document.querySelector("[data-taskbar-start]");
 
-// Keyboard hint should name the correct modifier per platform.
+// Keyboard hint should name the correct modifier per platform. Touch-first
+// devices have no Command key, so point them at the ⋯ control instead.
 const isMacPlatform = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
+const usesTouchInput = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
 const dateShortcutLabel = isMacPlatform ? "⌘↵" : "Ctrl+↵";
-taskQuickInput.placeholder = `Add a task… (↵ save · ${dateShortcutLabel} for date)`;
-taskQuickOptsBtn.title = `Set date (${dateShortcutLabel})`;
+taskQuickInput.placeholder = usesTouchInput
+  ? "Add a task…"
+  : `Add a task… (↵ save · ${dateShortcutLabel} for date)`;
+taskQuickOptsBtn.title = usesTouchInput ? "Set date" : `Set date (${dateShortcutLabel})`;
+if (usesTouchInput) {
+  const quickHint = document.getElementById("task-quick-hint");
+  if (quickHint) quickHint.textContent = "Press Enter to save, or use the More options button to set a date.";
+  noteBodyInput.placeholder = "Drop a thought…";
+}
 
 let currentDayStamp = toDateInputValue(new Date());
 let cachedWeekStart = null;
@@ -517,9 +542,22 @@ updateMenuClock();
 window.setInterval(updateMenuClock, 30000);
 initSync();
 
+// Offline app shell (not just local data): the service worker serves the page
+// and assets from cache when the network is unavailable.
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js").catch(error => {
+    console.warn("Offline shell unavailable:", error);
+  });
+}
+
 taskForm.addEventListener("submit", event => {
   event.preventDefault();
   addTask();
+});
+
+taskForm.addEventListener("keydown", event => {
+  // Enter submits the full form, but never while an IME candidate is open.
+  if (event.key === "Enter" && isComposing(event)) event.preventDefault();
 });
 
 // Quick-capture form: Enter to save immediately. In a calendar view the focused
@@ -528,8 +566,8 @@ taskQuickForm.addEventListener("submit", event => {
   event.preventDefault();
   const title = taskQuickInput.value.trim();
   if (!title) { taskQuickInput.focus(); return; }
-  items.unshift({
-    id: String(Date.now()) + Math.random().toString(16).slice(2),
+  const task = {
+    id: createItemId(),
     type: "task",
     title,
     body: "",
@@ -537,12 +575,14 @@ taskQuickForm.addEventListener("submit", event => {
     done: false,
     createdAt: Date.now(),
     updatedAt: Date.now()
-  });
+  };
+  items.unshift(task);
   saveItems();
   taskQuickInput.value = "";
   render();
-  announce("Task added.");
-  showToast("Task added.");
+  const message = describeTaskVisibility(task, "Task added.");
+  announce(message);
+  showToast(message);
   taskQuickInput.focus();
 });
 
@@ -618,12 +658,31 @@ dayPopupAddButton.addEventListener("click", () => {
 
 taskFilterToggle.addEventListener("click", () => {
   const open = taskFilterToggle.getAttribute("aria-expanded") === "true";
-  setTaskFilterMenuOpen(!open);
+  setTaskFilterMenuOpen(!open, !open);
+});
+
+taskFilterToggle.addEventListener("keydown", event => {
+  if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+  event.preventDefault();
+  setTaskFilterMenuOpen(true, true);
+  const options = taskFilterButtons;
+  if (event.key === "ArrowUp" && options.length) options[options.length - 1].focus();
+});
+
+taskFilterOptions.addEventListener("keydown", event => {
+  handleFilterMenuKeys(event, taskFilterButtons, () => setTaskFilterMenuOpen(false), taskFilterToggle);
 });
 
 noteForm.addEventListener("submit", event => {
   event.preventDefault();
   addNote();
+});
+
+noteCancelEditButton.addEventListener("click", () => {
+  clearNoteEditMode();
+  noteBodyInput.value = "";
+  noteBodyInput.focus();
+  announce("Note edit canceled.");
 });
 
 // Cmd+Enter / Ctrl+Enter submits note from textarea
@@ -643,7 +702,19 @@ noteSearchInput.addEventListener("input", () => {
 
 noteFilterToggle.addEventListener("click", () => {
   const open = noteFilterToggle.getAttribute("aria-expanded") === "true";
-  setNoteFilterMenuOpen(!open);
+  setNoteFilterMenuOpen(!open, !open);
+});
+
+noteFilterToggle.addEventListener("keydown", event => {
+  if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+  event.preventDefault();
+  setNoteFilterMenuOpen(true, true);
+  const options = noteFilterButtons;
+  if (event.key === "ArrowUp" && options.length) options[options.length - 1].focus();
+});
+
+noteFilterOptions.addEventListener("keydown", event => {
+  handleFilterMenuKeys(event, noteFilterButtons, () => setNoteFilterMenuOpen(false), noteFilterToggle);
 });
 
 noteFilterButtons.forEach(button => {
@@ -653,6 +724,7 @@ noteFilterButtons.forEach(button => {
     setNoteFilter();
     setNoteFilterMenuOpen(false);
     render();
+    noteFilterToggle.focus();
   });
 });
 
@@ -681,7 +753,14 @@ document.addEventListener("keydown", event => {
         taskQuickInput.focus();
       }
     }
+    if (editingNoteId) {
+      clearNoteEditMode();
+      noteBodyInput.value = "";
+    }
   }
+
+  // Never let page shortcuts open windows behind an open modal dialog.
+  if (!notePopup.hidden || !dayPopup.hidden) return;
 
   // Global keyboard shortcuts — only when not focused in an input
   const tag = document.activeElement && document.activeElement.tagName;
@@ -763,7 +842,17 @@ taskFilterButtons.forEach(button => {
     setTaskFilter();
     setTaskFilterMenuOpen(false);
     render();
+    taskFilterToggle.focus();
   });
+});
+
+const surfaceTablist = document.querySelector(".surface-switch");
+surfaceTablist.addEventListener("keydown", event => {
+  handleTablistKeys(event, surfaceTablist, surfaceTabs);
+});
+
+calendarModeTabs.addEventListener("keydown", event => {
+  handleTablistKeys(event, calendarModeTabs, tabs, tab => setPlannerView(tab.dataset.view));
 });
 
 surfaceTabs.forEach(button => {
@@ -799,6 +888,7 @@ windowControls.forEach(button => {
 
 titlebars.forEach(titlebar => {
   titlebar.addEventListener("pointerdown", startWindowDrag);
+  titlebar.addEventListener("keydown", handleTitlebarKeys);
 });
 
 document.querySelectorAll(".window-resize-handle").forEach(handle => {
@@ -867,7 +957,7 @@ function normalizeItem(item) {
   if (legacyTodo) {
     const hasTodo = Boolean(String(item.todo || "").trim());
     return {
-      id: String(item.id || Date.now()),
+      id: String(item.id || createItemId()),
       type: hasTodo ? "task" : "note",
       title: String((hasTodo ? item.todo : item.note) || "Untitled"),
       body: hasTodo ? String(item.note || "") : "",
@@ -880,11 +970,11 @@ function normalizeItem(item) {
     };
   }
   return {
-    id: String(item.id || Date.now()),
+    id: String(item.id || createItemId()),
     type: item.type === "note" ? "note" : "task",
     title: String(item.title || "Untitled"),
     body: String(item.body || ""),
-    dueDate: item.type === "note" ? "" : String(item.dueDate || ""),
+    dueDate: item.type === "note" ? "" : normalizeDueDate(item.dueDate),
     planView: item.type === "note" ? "" : normalizePlanView(item.planView),
     done: Boolean(item.done),
     createdAt: Number(item.createdAt) || Date.now(),
@@ -893,17 +983,45 @@ function normalizeItem(item) {
   };
 }
 
+// Accept the browser's padded YYYY-MM-DD value, plus slightly malformed
+// backups such as 2026-2-3, but never hand a rolled-over date to the calendar.
+function normalizeDueDate(value) {
+  const match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(String(value || "").trim());
+  if (!match) return "";
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return "";
+  return toDateInputValue(date);
+}
+
 function normalizePlanView(value) {
   return ["today", "week", "month"].includes(value) ? value : "today";
 }
 
 function saveItems() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  writeLocalItems();
   queueCloudSave();
 }
 
 function saveLocalItems() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  writeLocalItems();
+}
+
+function writeLocalItems() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+  } catch (error) {
+    // Private mode and full quotas both throw here; keep the in-memory copy
+    // usable instead of letting a save failure break the interaction.
+    showToast("Could not save in this browser.");
+    announce("Could not save in this browser.");
+  }
+}
+
+function createItemId() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function getSyncConfig() {
@@ -1052,13 +1170,21 @@ async function signOutOfSync() {
 
 function queueCloudSave() {
   if (!syncReady || !syncUser || !syncDb) return;
+  syncDirty = true;
   clearTimeout(syncSaveTimer);
   syncSaveTimer = setTimeout(() => pushCloudItems({ silent: true }), 500);
 }
 
 async function pushCloudItems({ silent = false } = {}) {
-  if (!syncReady || !syncUser || !syncDb || syncSaving) return;
+  if (!syncReady || !syncUser || !syncDb) return;
+  if (syncSaving) {
+    // A change arrived while the previous write was in flight. Remember it and
+    // push again when the current write finishes instead of dropping it.
+    syncDirty = true;
+    return;
+  }
   syncSaving = true;
+  syncDirty = false;
   updateSyncUi("Syncing...");
   try {
     await getUserSyncRef().set({
@@ -1080,6 +1206,10 @@ async function pushCloudItems({ silent = false } = {}) {
     if (!silent) showToast("Sync failed.");
   } finally {
     syncSaving = false;
+    if (syncDirty && syncReady && syncUser && syncDb) {
+      clearTimeout(syncSaveTimer);
+      syncSaveTimer = setTimeout(() => pushCloudItems({ silent: true }), 0);
+    }
   }
 }
 
@@ -1227,6 +1357,7 @@ function saveIconPositions() {
 function addTask() {
   const title = taskTitleInput.value.trim();
   const body = taskBodyInput.value.trim();
+  const dueDate = normalizeDueDate(taskDateInput.value);
 
   if (!title && !body) {
     showToast("Write a task first.");
@@ -1240,16 +1371,16 @@ function addTask() {
       ...item,
       title: title || body.split("\n")[0].slice(0, 80) || "Untitled",
       body: title ? body : "",
-      dueDate: taskDateInput.value || "",
+      dueDate,
       updatedAt: Date.now()
     } : item);
   } else {
     items.unshift({
-      id: String(Date.now()) + Math.random().toString(16).slice(2),
+      id: createItemId(),
       type: "task",
       title: title || body.split("\n")[0].slice(0, 80) || "Untitled",
       body: title ? body : "",
-      dueDate: taskDateInput.value || "",
+      dueDate,
       done: false,
       createdAt: Date.now(),
       updatedAt: Date.now()
@@ -1258,12 +1389,40 @@ function addTask() {
 
   saveItems();
   const wasEditing = Boolean(editingTaskId);
+  const savedTask = editingTaskId
+    ? items.find(item => item.id === editingTaskId)
+    : items[0];
   clearTaskEditMode();
   setTaskFormOpen(false);
   render();
-  announce(wasEditing ? "Task updated." : "Task added.");
-  showToast(wasEditing ? "Task updated." : "Task added.");
+  const message = describeTaskVisibility(
+    savedTask,
+    wasEditing ? "Task updated." : "Task added.",
+    wasEditing ? "updated" : "added"
+  );
+  announce(message);
+  showToast(message);
   taskQuickInput.focus();
+}
+
+// A quick-add can succeed while the new row is not visible: the Done filter
+// may hide an open task, or a future date may be outside Today. Say so instead
+// of leaving the user to wonder where the task went.
+function describeTaskVisibility(task, baseMessage, verb = "added") {
+  if (!task) return baseMessage;
+  const rendered = [...taskList.querySelectorAll("[data-id]"), ...calendarView.querySelectorAll("[data-id]")]
+    .some(node => node.dataset.id === task.id);
+  if (rendered) return baseMessage;
+  if (taskFilter !== "all") {
+    return `Task ${verb}, but the ${capitalize(taskFilter)} filter hides it.`;
+  }
+  if (task.dueDate) {
+    const dateLabel = formatDateLabel(task.dueDate);
+    return isCalendarView(activeView)
+      ? `Task ${verb} for ${dateLabel}, outside the calendar you are viewing.`
+      : `Task ${verb} for ${dateLabel}. It will appear in Today on that date.`;
+  }
+  return baseMessage;
 }
 
 function addNote() {
@@ -1275,8 +1434,26 @@ function addNote() {
     return;
   }
 
+  if (editingNoteId) {
+    const targetId = editingNoteId;
+    items = items.map(item => item.id === targetId ? {
+      ...item,
+      title: makeNotePreview(body),
+      body,
+      updatedAt: Date.now()
+    } : item);
+    saveItems();
+    noteBodyInput.value = "";
+    clearNoteEditMode();
+    render();
+    announce("Note updated.");
+    showToast("Note updated.");
+    noteBodyInput.focus();
+    return;
+  }
+
   items.unshift({
-    id: String(Date.now()) + Math.random().toString(16).slice(2),
+    id: createItemId(),
     type: "note",
     title: makeNotePreview(body),
     body,
@@ -1426,15 +1603,27 @@ function escapeCalendarText(value) {
     .replace(/;/g, "\\;");
 }
 
+// RFC 5545 folds at 75 octets, not 75 JavaScript characters. Count UTF-8
+// bytes so emoji and CJK text do not split mid-character or exceed the limit.
 function foldCalendarLines(lines) {
+  const encoder = new TextEncoder();
   return lines.flatMap(line => {
     const chunks = [];
-    let remaining = line;
-    while (remaining.length > 75) {
-      chunks.push(remaining.slice(0, 75));
-      remaining = ` ${remaining.slice(75)}`;
+    let current = "";
+    let bytes = 0;
+    for (const character of String(line)) {
+      const characterBytes = encoder.encode(character).length;
+      if (bytes + characterBytes > 75) {
+        chunks.push(current);
+        // Continuation lines start with a space, which counts toward the limit.
+        current = ` ${character}`;
+        bytes = 1 + characterBytes;
+      } else {
+        current += character;
+        bytes += characterBytes;
+      }
     }
-    chunks.push(remaining);
+    chunks.push(current);
     return chunks;
   });
 }
@@ -1774,6 +1963,18 @@ function renderMonthView(allTasks) {
       cell.setAttribute("role", "gridcell");
       cell.setAttribute("aria-label", `${formatFullDate(date)}${tasks.length ? `, ${tasks.length} task${tasks.length === 1 ? "" : "s"}` : ", no tasks"}`);
       cell.tabIndex = dateKey === focusedDate ? 0 : -1;
+      cell.addEventListener("focus", () => {
+        if (focusedDate === dateKey) return;
+        focusedDate = dateKey;
+        calendarView.querySelectorAll(".calendar-day").forEach(day => {
+          day.tabIndex = day === cell ? 0 : -1;
+        });
+      });
+      // The whole cell is the tap target, not just the tiny day number.
+      cell.addEventListener("click", () => {
+        focusedDate = dateKey;
+        openDayPopup(dateKey);
+      });
 
       const num = document.createElement("button");
       num.type = "button";
@@ -1849,20 +2050,44 @@ function renderWeekView(allTasks) {
     const dateKey = toDateInputValue(date);
     const tasks = tasksByDate.get(dateKey) || [];
     const column = document.createElement("div");
-    column.className = `calendar-week-col${dateKey === todayKey ? " is-today" : ""}`;
+    column.className = `calendar-week-col${dateKey === todayKey ? " is-today" : ""}${dateKey === focusedDate ? " is-focused" : ""}`;
+    column.dataset.date = dateKey;
     column.setAttribute("role", "listitem");
     column.setAttribute("aria-label", formatFullDate(date));
 
     const head = document.createElement("button");
     head.type = "button";
     head.className = "calendar-week-head";
+    head.tabIndex = dateKey === focusedDate ? 0 : -1;
     head.setAttribute("aria-label", `Open ${formatFullDate(date)}`);
     head.innerHTML = `<span class="calendar-week-day">${escapeHtml(new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(date))}</span><span class="calendar-week-num">${date.getDate()}</span>`;
+    head.addEventListener("focus", () => {
+      if (focusedDate === dateKey) return;
+      focusedDate = dateKey;
+      calendarView.querySelectorAll(".calendar-week-col").forEach(weekColumn => {
+        weekColumn.classList.toggle("is-focused", weekColumn === column);
+        const weekHead = weekColumn.querySelector(".calendar-week-head");
+        if (weekHead) weekHead.tabIndex = weekColumn === column ? 0 : -1;
+      });
+    });
     head.addEventListener("click", () => {
       focusedDate = dateKey;
       openDayPopup(dateKey);
     });
     column.appendChild(head);
+
+    // Clicking the empty part of a day column selects it for quick capture.
+    column.addEventListener("click", event => {
+      if (event.target.closest("button")) return;
+      focusedDate = dateKey;
+      calendarView.querySelectorAll(".calendar-week-col").forEach(weekColumn => {
+        weekColumn.classList.toggle("is-focused", weekColumn === column);
+        const weekHead = weekColumn.querySelector(".calendar-week-head");
+        if (weekHead) weekHead.tabIndex = weekColumn === column ? 0 : -1;
+      });
+      head.focus();
+      announce(`${formatFullDate(date)} selected for quick capture.`);
+    });
 
     const body = document.createElement("div");
     body.className = "calendar-week-body";
@@ -1997,7 +2222,6 @@ function closeDayPopup() {
 function startTaskForDate(dateKey) {
   const date = dateKey || toDateInputValue(new Date());
   focusedDate = date;
-  calendarCursor = parseLocalDate(date);
   openWindow("planner");
   clearTaskEditMode();
   setTaskFormOpen(true);
@@ -2017,9 +2241,15 @@ function focusDay(dateKey) {
 function handleCalendarKeydown(event) {
   if (event.metaKey || event.ctrlKey || event.altKey) return;
   const cell = event.target.closest(".calendar-day");
-  if (!cell || !cell.dataset.date) return;
+  const weekHeading = event.target.closest(".calendar-week-head");
+  const anchor = cell || weekHeading;
+  if (!anchor) return;
+  const dateKey = cell
+    ? cell.dataset.date
+    : (weekHeading.closest(".calendar-week-col") && weekHeading.closest(".calendar-week-col").dataset.date);
+  if (!dateKey) return;
 
-  const current = parseLocalDate(cell.dataset.date);
+  const current = parseLocalDate(dateKey);
   let next = null;
 
   if (event.key === "ArrowLeft") next = addDays(current, -1);
@@ -2031,8 +2261,12 @@ function handleCalendarKeydown(event) {
   else if (event.key === "PageUp") next = addMonths(current, -1);
   else if (event.key === "PageDown") next = addMonths(current, 1);
   else if (event.key === "Enter" || event.key === " ") {
-    event.preventDefault();
-    openDayPopup(cell.dataset.date);
+    // The week heading is already a button; let its click handler open the
+    // popup so Enter and Space behave like every other button.
+    if (cell) {
+      event.preventDefault();
+      openDayPopup(dateKey);
+    }
     return;
   } else {
     return;
@@ -2053,8 +2287,17 @@ function handleCalendarKeydown(event) {
   }
 
   render();
-  focusDay(nextKey);
+  if (activeView === "week") focusWeekDay(nextKey);
+  else focusDay(nextKey);
   announce(formatFullDate(next));
+}
+
+function focusWeekDay(dateKey) {
+  if (!dateKey) return;
+  requestAnimationFrame(() => {
+    const head = calendarView.querySelector(`.calendar-week-col[data-date="${dateKey}"] .calendar-week-head`);
+    if (head) head.focus();
+  });
 }
 
 function createShowMoreNotesButton(remaining) {
@@ -2065,9 +2308,23 @@ function createShowMoreNotesButton(remaining) {
   button.type = "button";
   button.textContent = `Show ${Math.min(NOTE_PAGE_SIZE, remaining)} more`;
   button.addEventListener("click", () => {
+    const previousLimit = visibleNoteLimit;
     visibleNoteLimit += NOTE_PAGE_SIZE;
     render();
-    button.focus();
+    const nextMoreButton = noteList.querySelector(".notes-more-btn");
+    if (nextMoreButton) {
+      nextMoreButton.focus();
+      return;
+    }
+    // No batch button left: keep focus in the archive, on the first newly
+    // revealed note. Short notes are not normally tabbable, so allow a
+    // one-off programmatic focus rather than dropping focus to the body.
+    const cards = Array.from(noteList.querySelectorAll(".note-card"));
+    const firstNew = cards[previousLimit] || cards[cards.length - 1];
+    if (firstNew) {
+      if (!firstNew.hasAttribute("tabindex")) firstNew.tabIndex = -1;
+      firstNew.focus();
+    }
   });
   wrapper.appendChild(button);
   return wrapper;
@@ -2084,7 +2341,7 @@ function createCard(item) {
     const canExpandNote = isExpandableNote(noteText, previewText);
     card.classList.add("note-card");
     card.setAttribute("role", "group");
-    card.setAttribute("aria-label", "Note preview");
+    card.setAttribute("aria-label", `Note preview: ${previewText}`);
     if (canExpandNote) {
       card.tabIndex = 0;
     }
@@ -2097,9 +2354,9 @@ function createCard(item) {
         </div>
       </div>
       <span class="actions note-actions">
-        <button class="icon-btn copy-btn" type="button" aria-label="Copy note" title="Copy note"><span class="action-icon copy-icon" aria-hidden="true"></span></button>
-        <button class="icon-btn edit-btn" type="button" aria-label="Edit note" title="Edit note"><span class="action-icon edit-icon" aria-hidden="true"></span></button>
-        <button class="icon-btn delete-btn" type="button" aria-label="Delete note" title="Delete note"><span class="action-icon delete-icon" aria-hidden="true"></span></button>
+        <button class="icon-btn copy-btn" type="button" aria-label="Copy note: ${escapeHtml(previewText)}" title="Copy note"><span class="action-icon copy-icon" aria-hidden="true"></span></button>
+        <button class="icon-btn edit-btn" type="button" aria-label="Edit note: ${escapeHtml(previewText)}" title="Edit note"><span class="action-icon edit-icon" aria-hidden="true"></span></button>
+        <button class="icon-btn delete-btn" type="button" aria-label="Delete note: ${escapeHtml(previewText)}" title="Delete note"><span class="action-icon delete-icon" aria-hidden="true"></span></button>
       </span>
     `;
 
@@ -2136,7 +2393,7 @@ function createCard(item) {
     card.setAttribute("aria-label", `Task ${item.title}`);
   }
 
-  const checkbox = `<input class="check" type="checkbox" ${item.done ? "checked" : ""} aria-label="Mark task as ${item.done ? "open" : "done"}">`;
+  const checkbox = `<input class="check" type="checkbox" ${item.done ? "checked" : ""} aria-label="Mark task as ${item.done ? "open" : "done"}: ${escapeHtml(item.title)}">`;
   const dateLabel = formatDateLabel(item.dueDate);
   const todayStamp = toDateInputValue(new Date());
   const overdue = !item.done && Boolean(item.dueDate) && item.dueDate < todayStamp;
@@ -2154,8 +2411,8 @@ function createCard(item) {
     </p>
     <div class="actions">
       <button class="icon-btn task-calendar-btn" type="button" aria-label="Add ${escapeHtml(item.title)} to calendar" title="Add to calendar"><span class="action-icon task-calendar-icon" aria-hidden="true"></span></button>
-      <button class="icon-btn edit-btn" type="button" aria-label="Edit ${item.type}" title="Edit ${item.type}"><span class="action-icon edit-icon" aria-hidden="true"></span></button>
-      <button class="icon-btn delete-btn" type="button" aria-label="Delete ${item.type}" title="Delete ${item.type}"><span class="action-icon delete-icon" aria-hidden="true"></span></button>
+      <button class="icon-btn edit-btn" type="button" aria-label="Edit task: ${escapeHtml(item.title)}" title="Edit ${item.type}"><span class="action-icon edit-icon" aria-hidden="true"></span></button>
+      <button class="icon-btn delete-btn" type="button" aria-label="Delete task: ${escapeHtml(item.title)}" title="Delete ${item.type}"><span class="action-icon delete-icon" aria-hidden="true"></span></button>
     </div>
   `;
 
@@ -2220,8 +2477,10 @@ function getAgendaTasks(tasks) {
 function getCalendarTasks(tasks) {
   const filtered = tasks || getFilteredTasks();
   if (activeView === "month") {
-    const prefix = monthPrefix(calendarCursor);
-    return filtered.filter(item => item.dueDate && item.dueDate.startsWith(prefix));
+    // Match what the grid actually renders, including the neighbouring days
+    // that fill out complete weeks.
+    const { start, end } = getMonthGridRange(calendarCursor);
+    return filtered.filter(item => item.dueDate && item.dueDate >= start && item.dueDate <= end);
   }
   if (activeView === "week") {
     const start = toDateInputValue(startOfWeek(calendarCursor));
@@ -2256,8 +2515,23 @@ function toggleDone(id, done) {
   items = items.map(item => item.id === id ? { ...item, done, updatedAt: Date.now() } : item);
   saveItems();
   render();
+  restoreFocusAfterToggle(id);
   announce(done ? "Task completed." : "Task reopened.");
   showToast(done ? "Task completed." : "Task reopened.");
+}
+
+function restoreFocusAfterToggle(id) {
+  requestAnimationFrame(() => {
+    if (!dayPopup.hidden) return;
+    const visible = element => Boolean(element && element.getClientRects().length);
+    const cards = Array.from(taskList.querySelectorAll(".task-card"));
+    const current = cards.find(card => card.dataset.id === id);
+    const currentCheck = current && current.querySelector(".check");
+    if (visible(currentCheck)) { currentCheck.focus(); return; }
+    const nextCheck = cards.map(card => card.querySelector(".check")).find(visible);
+    if (nextCheck) { nextCheck.focus(); return; }
+    if (visible(taskQuickInput)) taskQuickInput.focus();
+  });
 }
 
 function editItem(id) {
@@ -2265,22 +2539,17 @@ function editItem(id) {
   if (!item) return;
   if (item.type === "note") {
     openWindow("notes");
-    noteBodyInput.value = item.body || item.title;
-  } else {
-    openWindow("planner");
-    setTaskEditMode(item);
-    render();
-    taskTitleInput.focus();
-    announce("Task ready to edit.");
-    showToast("Editing task.");
+    setNoteEditMode(item);
+    announce("Note ready to edit.");
+    showToast("Editing note.");
     return;
   }
-  items = items.map(entry => entry.id === id ? { ...entry, deletedAt: Date.now(), updatedAt: Date.now() } : entry);
-  saveItems();
+  openWindow("planner");
+  setTaskEditMode(item);
   render();
-  (item.type === "note" ? noteBodyInput : taskTitleInput).focus();
-  announce(`${item.type === "note" ? "Note" : "Task"} ready to edit.`);
-  showToast("Edit it, then add again.");
+  taskTitleInput.focus();
+  announce("Task ready to edit.");
+  showToast("Editing task.");
 }
 
 function deleteItem(id) {
@@ -2291,10 +2560,36 @@ function deleteItem(id) {
     return;
   }
   items = items.map(entry => entry.id === id ? { ...entry, deletedAt: Date.now(), updatedAt: Date.now() } : entry);
+  if (id === editingTaskId) {
+    clearTaskEditMode();
+    setTaskFormOpen(false);
+  }
+  if (id === editingNoteId) {
+    clearNoteEditMode();
+    noteBodyInput.value = "";
+  }
   saveItems();
   render();
+  restoreFocusAfterDelete();
   announce("Item deleted.");
   showToast("Item deleted.");
+}
+
+function restoreFocusAfterDelete() {
+  requestAnimationFrame(() => {
+    const visible = element => Boolean(element && element.getClientRects().length);
+    if (!dayPopup.hidden) {
+      const nextCheck = dayPopupList.querySelector(".day-popup-row .check");
+      (visible(nextCheck) ? nextCheck : dayPopupCloseButton).focus();
+      return;
+    }
+    const taskCheck = Array.from(taskList.querySelectorAll(".task-card .check")).find(visible);
+    if (taskCheck) { taskCheck.focus(); return; }
+    const noteAction = Array.from(noteList.querySelectorAll(".note-card .copy-btn")).find(visible);
+    if (noteAction) { noteAction.focus(); return; }
+    const composer = activeSurface === "notes" ? noteBodyInput : taskQuickInput;
+    if (visible(composer)) composer.focus();
+  });
 }
 
 function openNotePopup(text, createdLabel, returnFocusElement) {
@@ -2347,27 +2642,42 @@ function copyTextFallback(text) {
   field.remove();
 }
 
+function getMonthGridRange(date) {
+  const first = startOfMonth(date);
+  const offset = (first.getDay() - getWeekStartsOn() + 7) % 7;
+  const daysInMonth = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  const cellCount = Math.ceil((offset + daysInMonth) / 7) * 7;
+  return {
+    start: toDateInputValue(addDays(first, -offset)),
+    end: toDateInputValue(addDays(first, -offset + cellCount - 1))
+  };
+}
+
 function updateSidebarCounts(noteCount) {
   const counts = { today: 0, calendar: 0 };
   const now = new Date();
   const today = toDateInputValue(now);
-  const periodMode = isCalendarView(activeView) ? activeView : lastCalendarMode;
-  const periodDate = calendarCursor;
-  const weekStart = toDateInputValue(startOfWeek(periodDate));
-  const weekEnd = toDateInputValue(addDays(startOfWeek(periodDate), 6));
-  const prefix = monthPrefix(periodDate);
+  const weekStart = toDateInputValue(startOfWeek(calendarCursor));
+  const weekEnd = toDateInputValue(addDays(startOfWeek(calendarCursor), 6));
+  const monthGrid = getMonthGridRange(calendarCursor);
   items.forEach(item => {
-    if (item.type !== "task" || item.deletedAt || item.done || !item.dueDate) return;
-    if (item.dueDate <= today) counts.today += 1;
-    if (periodMode === "week") {
+    if (item.type !== "task" || item.deletedAt || item.done) return;
+    if (!item.dueDate || item.dueDate <= today) counts.today += 1;
+    if (!item.dueDate) return;
+    if (activeView === "week") {
       if (item.dueDate >= weekStart && item.dueDate <= weekEnd) counts.calendar += 1;
-    } else if (item.dueDate.startsWith(prefix)) {
-      counts.calendar += 1;
+    } else if (activeView === "month") {
+      // The month grid also shows chips from the neighbouring days needed to
+      // fill complete weeks, so its badge should count those too.
+      if (item.dueDate >= monthGrid.start && item.dueDate <= monthGrid.end) counts.calendar += 1;
     }
   });
   Object.entries(counts).forEach(([view, count]) => {
     const label = document.querySelector(`[data-side-count="${view}"]`);
-    if (label) label.textContent = String(count);
+    if (!label) return;
+    const shouldShow = view === "today" || isCalendarView(activeView);
+    label.hidden = !shouldShow;
+    label.textContent = String(count);
   });
   const noteLabel = document.querySelector('[data-side-count="notes"]');
   if (noteLabel) noteLabel.textContent = String(noteCount || 0);
@@ -2401,6 +2711,7 @@ function setActiveTab() {
     const isActive = tab.dataset.view === activeView;
     tab.classList.toggle("active", isActive);
     tab.setAttribute("aria-selected", String(isActive));
+    tab.tabIndex = isActive ? 0 : -1;
   });
   sideViewButtons.forEach(button => {
     const isActive = button.dataset.view === "calendar"
@@ -2440,7 +2751,7 @@ function setTaskFilter() {
 function setTaskEditMode(item) {
   editingTaskId = item.id;
   taskTitleInput.value = item.title;
-  taskBodyInput.value = "";
+  taskBodyInput.value = item.body || "";
   taskDateInput.value = item.dueDate || "";
   taskSubmitButton.textContent = "Update Task";
   taskForm.setAttribute("aria-label", "Edit task");
@@ -2456,6 +2767,23 @@ function clearTaskEditMode() {
   taskForm.setAttribute("aria-label", "Add task");
 }
 
+function setNoteEditMode(item) {
+  editingNoteId = item.id;
+  noteBodyInput.value = item.body || item.title;
+  noteSubmitButton.textContent = "Update Note";
+  noteForm.setAttribute("aria-label", "Edit note");
+  noteCancelEditButton.hidden = false;
+  noteBodyInput.focus();
+  noteBodyInput.setSelectionRange(noteBodyInput.value.length, noteBodyInput.value.length);
+}
+
+function clearNoteEditMode() {
+  editingNoteId = null;
+  noteSubmitButton.textContent = "+ Add Note";
+  noteForm.setAttribute("aria-label", "Add note");
+  noteCancelEditButton.hidden = true;
+}
+
 function setTaskFormOpen(open) {
   taskForm.hidden = !open;
   // Hide quick form when full form is open (edit mode), show it otherwise
@@ -2465,12 +2793,102 @@ function setTaskFormOpen(open) {
   taskAddToggle.setAttribute("aria-expanded", String(open));
 }
 
-function setNoteFilterMenuOpen(open) {
-  noteFilterToggle.setAttribute("aria-expanded", String(open));
+// The windows clip their contents, so a popover that always opens downward can
+// be cut off near the bottom edge. Flip it above the trigger when there is no
+// room below.
+function positionFilterMenu(popover, toggle) {
+  popover.classList.remove("opens-up");
+  const windowEl = popover.closest(".app-window");
+  if (!windowEl) return;
+  const windowRect = windowEl.getBoundingClientRect();
+  const toggleRect = toggle.getBoundingClientRect();
+  const menuHeight = popover.getBoundingClientRect().height;
+  const spaceBelow = windowRect.bottom - toggleRect.bottom;
+  const spaceAbove = toggleRect.top - windowRect.top;
+  if (spaceBelow < menuHeight + 8 && spaceAbove > spaceBelow) {
+    popover.classList.add("opens-up");
+  }
 }
 
-function setTaskFilterMenuOpen(open) {
+function setNoteFilterMenuOpen(open, focusOption = false) {
+  noteFilterToggle.setAttribute("aria-expanded", String(open));
+  if (open) {
+    positionFilterMenu(noteFilterOptions, noteFilterToggle);
+  } else {
+    noteFilterOptions.classList.remove("opens-up");
+  }
+  if (open && focusOption) {
+    const selected = noteFilterButtons.find(button => button.dataset.noteFilter === noteFilter) || noteFilterButtons[0];
+    if (selected) selected.focus();
+  }
+}
+
+function setTaskFilterMenuOpen(open, focusOption = false) {
   taskFilterToggle.setAttribute("aria-expanded", String(open));
+  if (open) {
+    positionFilterMenu(taskFilterOptions, taskFilterToggle);
+  } else {
+    taskFilterOptions.classList.remove("opens-up");
+  }
+  if (open && focusOption) {
+    const selected = taskFilterButtons.find(button => button.classList.contains("active")) || taskFilterButtons[0];
+    if (selected) selected.focus();
+  }
+}
+
+function handleFilterMenuKeys(event, buttons, closeMenu, returnFocus) {
+  const index = buttons.indexOf(document.activeElement);
+  if (index === -1) return;
+  if (event.key === "Escape") {
+    event.preventDefault();
+    event.stopPropagation();
+    closeMenu();
+    returnFocus.focus();
+    return;
+  }
+  if (event.key === "Tab") {
+    // Move focus out before the menu is hidden so Tab continues from the
+    // toggle rather than from a now-hidden item.
+    closeMenu();
+    returnFocus.focus();
+    return;
+  }
+  let nextIndex = null;
+  if (event.key === "ArrowDown" || event.key === "ArrowRight") {
+    nextIndex = index === buttons.length - 1 ? 0 : index + 1;
+  } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
+    nextIndex = index === 0 ? buttons.length - 1 : index - 1;
+  } else if (event.key === "Home") {
+    nextIndex = 0;
+  } else if (event.key === "End") {
+    nextIndex = buttons.length - 1;
+  }
+  if (nextIndex === null) return;
+  event.preventDefault();
+  buttons[nextIndex].focus();
+}
+
+// Roving-tab keyboard support for ARIA tablists. `activate` is optional; when
+// omitted (window tabs), arrows only move focus and Enter/Space activates.
+function handleTablistKeys(event, tablist, buttons, activate) {
+  if (!tablist.contains(document.activeElement)) return;
+  const index = buttons.indexOf(document.activeElement);
+  if (index === -1) return;
+  let nextIndex = null;
+  if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+    nextIndex = index === buttons.length - 1 ? 0 : index + 1;
+  } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+    nextIndex = index === 0 ? buttons.length - 1 : index - 1;
+  } else if (event.key === "Home") {
+    nextIndex = 0;
+  } else if (event.key === "End") {
+    nextIndex = buttons.length - 1;
+  }
+  if (nextIndex === null) return;
+  event.preventDefault();
+  const nextTab = buttons[nextIndex];
+  nextTab.focus();
+  if (activate) activate(nextTab);
 }
 
 function setSyncPanelOpen(open) {
@@ -2530,9 +2948,22 @@ function getWindowMinSize(name) {
   }[name] || { width: 260, height: 220 };
 }
 
+// The menu bar is fixed above the desktop, so a window dragged to the top must
+// stop below it. Otherwise its title bar and traffic lights hide underneath and
+// the window can only be rescued with the keyboard.
+function getWindowTopInset() {
+  const menu = document.querySelector(".menu-bar");
+  const menuBottom = menu ? menu.getBoundingClientRect().bottom : 0;
+  return Math.max(8, menuBottom + 8);
+}
+
+function getMinWindowTop(gridRect) {
+  return Math.min(0, getWindowTopInset() - gridRect.top);
+}
+
 function getWindowHeightLimit(top = 0) {
   const gridRect = desktopGrid.getBoundingClientRect();
-  const minTop = Math.min(0, 8 - gridRect.top);
+  const minTop = getMinWindowTop(gridRect);
   const available = window.innerHeight - gridRect.top - Math.max(top, minTop) - 34;
   return Math.max(240, available);
 }
@@ -2596,7 +3027,7 @@ function keepWindowInView(name) {
   const currentWidth = Number.parseFloat(surface.style.width) || rect.width;
   const width = Math.min(currentWidth, getWindowWidthLimit());
   const maxLeft = Math.max(0, window.innerWidth - gridRect.left - minVisible);
-  const minTop = Math.min(0, 8 - gridRect.top);
+  const minTop = getMinWindowTop(gridRect);
   const maxTop = Math.max(minTop, window.innerHeight - gridRect.top - minVisible);
   const currentLeft = Number.parseFloat(surface.style.left) || rect.left - gridRect.left;
   const currentTop = Number.parseFloat(surface.style.top) || rect.top - gridRect.top;
@@ -2682,7 +3113,7 @@ function moveWindowDrag(event) {
   const gridRect = desktopGrid.getBoundingClientRect();
   const rect = dragState.surface.getBoundingClientRect();
   const maxLeft = Math.max(0, desktopGrid.clientWidth - rect.width);
-  const minTop = Math.min(0, 8 - gridRect.top);
+  const minTop = getMinWindowTop(gridRect);
   const maxTop = Math.max(minTop, window.innerHeight - gridRect.top - 34);
   const left = clamp(event.clientX - gridRect.left - dragState.offsetX, 0, maxLeft);
   const top = clamp(event.clientY - gridRect.top - dragState.offsetY, minTop, maxTop);
@@ -2804,6 +3235,81 @@ function endWindowResize(event) {
   resizeState = null;
 }
 
+// Keyboard parity for dragging/resizing: focus a window title bar and use the
+// arrow keys to move it, or Shift plus arrows to resize it.
+function handleTitlebarKeys(event) {
+  if (event.target !== event.currentTarget) return;
+  if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
+  const surface = event.currentTarget.closest("[data-surface]");
+  if (!surface || !canDragWindows() || surface.classList.contains("window-fullscreen")) return;
+  const name = surface.dataset.surface;
+  const state = windowState[name];
+  if (!state || !state.open || state.minimized) return;
+
+  event.preventDefault();
+  const gridRect = desktopGrid.getBoundingClientRect();
+  const rect = surface.getBoundingClientRect();
+  const step = event.shiftKey ? 24 : 12;
+  const left = Number.parseFloat(surface.style.left) || rect.left - gridRect.left;
+  const top = Number.parseFloat(surface.style.top) || rect.top - gridRect.top;
+  const width = Number.parseFloat(surface.style.width) || rect.width;
+  const height = Number.parseFloat(surface.style.height) || rect.height;
+  surface.classList.add("window-dragged");
+
+  if (event.shiftKey) {
+    const min = getWindowMinSize(name);
+    let nextWidth = width;
+    let nextHeight = Math.max(height, min.height);
+    if (event.key === "ArrowRight") nextWidth += step;
+    else if (event.key === "ArrowLeft") nextWidth -= step;
+    else if (event.key === "ArrowDown") nextHeight += step;
+    else if (event.key === "ArrowUp") nextHeight -= step;
+    nextWidth = clamp(nextWidth, min.width, getWindowWidthLimit());
+    nextHeight = clamp(nextHeight, min.height, getWindowHeightLimit(top));
+    surface.classList.add("window-resized");
+    surface.style.left = `${left}px`;
+    surface.style.top = `${top}px`;
+    surface.style.width = `${nextWidth}px`;
+    surface.style.height = `${nextHeight}px`;
+    windowPositions[name] = {
+      ...windowPositions[name],
+      left,
+      top,
+      width: nextWidth,
+      height: nextHeight,
+      zIndex: surface.style.zIndex || windowPositions[name]?.zIndex
+    };
+    saveWindowPositions();
+    announce(`Window resized to ${Math.round(nextWidth)} by ${Math.round(nextHeight)} pixels.`);
+    return;
+  }
+
+  let nextLeft = left;
+  let nextTop = top;
+  if (event.key === "ArrowLeft") nextLeft -= step;
+  else if (event.key === "ArrowRight") nextLeft += step;
+  else if (event.key === "ArrowUp") nextTop -= step;
+  else if (event.key === "ArrowDown") nextTop += step;
+
+  const maxLeft = Math.max(0, desktopGrid.clientWidth - width);
+  const minTop = getMinWindowTop(gridRect);
+  const maxTop = Math.max(minTop, window.innerHeight - gridRect.top - 34);
+  nextLeft = clamp(nextLeft, 0, maxLeft);
+  nextTop = clamp(nextTop, minTop, maxTop);
+  surface.style.left = `${nextLeft}px`;
+  surface.style.top = `${nextTop}px`;
+  surface.style.width = `${width}px`;
+  windowPositions[name] = {
+    ...windowPositions[name],
+    left: nextLeft,
+    top: nextTop,
+    width,
+    zIndex: surface.style.zIndex || windowPositions[name]?.zIndex
+  };
+  saveWindowPositions();
+  announce("Window moved.");
+}
+
 function startIconDrag(event) {
   if (!canDragWindows()) return;
   if (event.button !== 0) return;
@@ -2868,6 +3374,7 @@ function setActiveSurface() {
     tab.classList.toggle("active", isActive);
     tab.classList.toggle("minimized", state.minimized);
     tab.setAttribute("aria-selected", String(isActive));
+    tab.tabIndex = isActive ? 0 : -1;
     tab.title = `${tab.textContent} ${state.minimized ? "minimized" : state.open ? "open" : "closed"}`;
   });
   taskbarButtons.forEach(button => {

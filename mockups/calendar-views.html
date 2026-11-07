@@ -75,9 +75,10 @@
   }
 
   .window-titlebar {
-    display: flex;
+    display: grid;
+    grid-template-columns: 74px minmax(0, 1fr) 74px;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     height: 38px;
     padding: 0 12px;
     background: linear-gradient(#fbfbfd, #f2f2f5);
@@ -85,6 +86,7 @@
     user-select: none;
   }
   .window-title {
+    justify-self: center;
     display: flex; align-items: center; gap: 7px;
     font-size: 12.5px; font-weight: 600; color: var(--ink-soft);
   }
@@ -93,12 +95,16 @@
     background: linear-gradient(160deg, #4facfe, #007aff);
     box-shadow: inset 0 0.5px 0 rgba(255,255,255,.5);
   }
-  .window-meta { margin-left: auto; font-size: 10.5px; color: var(--muted-2); letter-spacing: .02em; }
-  .window-controls { display: flex; gap: 6px; margin-left: 10px; }
-  .wc { width: 11px; height: 11px; border-radius: 50%; border: 0.5px solid rgba(0,0,0,.12); }
-  .wc.min { background: #febc2e; }
-  .wc.full { background: #28c840; }
-  .wc.close { background: #ff5f57; }
+  .window-meta { justify-self: end; font-size: 10.5px; color: var(--muted-2); letter-spacing: .02em; }
+  .window-controls { display: flex; gap: 8px; }
+  .wc {
+    width: 12px; height: 12px; border-radius: 50%;
+    border: 1px solid rgba(73, 45, 60, 0.32);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.72), 0 1px 1px rgba(71, 53, 74, 0.18);
+  }
+  .wc.min { background: #e8bf65; }
+  .wc.full { background: #76bd78; }
+  .wc.close { background: #ed7880; }
 
   .window-body { display: grid; grid-template-columns: 196px 1fr; min-height: 620px; }
 
@@ -308,11 +314,11 @@
   <div>
     <section class="app-window" aria-label="Planner calendar mockup">
       <div class="window-titlebar">
+        <div class="window-controls" aria-hidden="true">
+          <span class="wc close"></span><span class="wc min"></span><span class="wc full"></span>
+        </div>
         <span class="window-title"><span class="title-dot"></span>Planner</span>
         <span class="window-meta">Local</span>
-        <div class="window-controls" aria-hidden="true">
-          <span class="wc min"></span><span class="wc full"></span><span class="wc close"></span>
-        </div>
       </div>
 
       <div class="window-body">

@@ -564,6 +564,11 @@ button { cursor: pointer; }
   .window-control:hover { filter: brightness(0.94); }
 }
 
+.window-control:focus-visible {
+  outline: 2px solid rgba(10, 132, 255, 0.9);
+  outline-offset: -4px;
+}
+
 .minimize-control { order: 2; background: #febc2e; }
 .fullscreen-control { order: 3; background: #28c840; }
 .close-control { order: 1; background: #ff5f57; }
@@ -869,6 +874,12 @@ button { cursor: pointer; }
   width: 28px;
 }
 
+/* The note popover is absolutely positioned, so its trigger must establish the
+   containing block; otherwise it anchors to the notes list far below. */
+.note-filter-menu {
+  position: relative;
+}
+
 .task-filter-icon {
   display: block;
   width: 16px;
@@ -919,6 +930,13 @@ button { cursor: pointer; }
 .note-filter-toggle[aria-expanded="true"] + .note-filter-options {
   display: grid;
   gap: 1px;
+}
+
+/* Open upward when the window does not have room below the trigger. */
+.task-filter-options.opens-up,
+.note-filter-options.opens-up {
+  top: auto;
+  bottom: calc(100% + 6px);
 }
 
 .task-filter,
@@ -1197,6 +1215,12 @@ button { cursor: pointer; }
   margin-bottom: 0.65rem;
   padding-bottom: 0.7rem;
   border-bottom: 0.5px solid var(--hairline);
+}
+
+.note-form-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
 }
 
 .notes-archive {
@@ -1747,6 +1771,13 @@ button { cursor: pointer; }
 .note-popup-titlebar {
   cursor: default;
   background: rgba(246, 246, 248, 0.75);
+}
+
+.note-popup-titlebar .close-control,
+.day-popup-titlebar .close-control {
+  order: 0;
+  justify-self: start;
+  margin-left: -4px;
 }
 
 .note-popup-body {
@@ -2379,6 +2410,12 @@ body {
   color: var(--ink);
   cursor: grab;
   font-weight: 500;
+  touch-action: none;
+}
+
+.window-titlebar:focus-visible {
+  outline: 2px solid rgba(10, 132, 255, 0.9);
+  outline-offset: -3px;
 }
 
 .window-title {
@@ -2406,20 +2443,35 @@ body {
   justify-self: start;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 0;
+  margin-left: -4px;
   transform: none;
 }
 
 .window-control {
-  width: 12px;
-  height: 12px;
-  border: 1px solid rgba(73, 45, 60, 0.32);
-  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.72), 0 1px 1px rgba(71, 53, 74, 0.18);
+  width: 20px;
+  height: 20px;
+  border: 4px solid transparent;
+  background-clip: padding-box;
+  box-shadow:
+    inset 0 0 0 1px rgba(73, 45, 60, 0.32),
+    inset 0 1px 1px rgba(255, 255, 255, 0.72);
+  filter: drop-shadow(0 1px 1px rgba(71, 53, 74, 0.18));
 }
 
-.close-control { background: #ed7880; }
-.minimize-control { background: #e8bf65; }
-.fullscreen-control { background: #76bd78; }
+.close-control { background-color: #ed7880; }
+.minimize-control { background-color: #e8bf65; }
+.fullscreen-control { background-color: #76bd78; }
+
+.window-control:active {
+  filter: drop-shadow(0 1px 1px rgba(71, 53, 74, 0.18)) brightness(0.88);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .window-control:hover {
+    filter: drop-shadow(0 1px 1px rgba(71, 53, 74, 0.18)) brightness(0.94);
+  }
+}
 
 .window-body { background: var(--surface); }
 
@@ -3697,6 +3749,8 @@ body {
 
 .calendar-week-col:last-child { border-right: 0; }
 .calendar-week-col.is-today { background: rgba(0, 122, 255, 0.04); }
+.calendar-week-col.is-focused { box-shadow: inset 0 0 0 2px rgba(109, 107, 198, 0.5); }
+.calendar-week-col.is-focused .calendar-week-head { background: rgba(109, 107, 198, 0.14); }
 
 .calendar-week-head {
   display: flex;
@@ -4007,4 +4061,53 @@ body {
 @media (hover: none) and (pointer: coarse) {
   .calendar-add-mini,
   .day-popup-delete { opacity: 1; }
+}
+
+/* ------------------------------------------------------------------ */
+/* Windows High Contrast / forced-colors                              */
+/* Keep selection, focus, and overdue cues visible when the OS replaces */
+/* the palette; the traffic lights keep their 20px hit target.         */
+/* ------------------------------------------------------------------ */
+@media (forced-colors: active) {
+  .window-control {
+    background-color: ButtonFace;
+    outline: 1px solid ButtonText;
+    outline-offset: -3px;
+    box-shadow: none;
+  }
+
+  .window-control::before,
+  .window-control::after {
+    background: ButtonText;
+    border-color: ButtonText;
+  }
+
+  .surface-tab.active,
+  .mode-tab.active,
+  .planner-view-tab.active,
+  .task-filter.active,
+  .note-filter.active,
+  .side-row.active,
+  .calendar-day.is-today,
+  .task-card.is-overdue {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+
+  .calendar-chip.is-overdue,
+  .task-card.is-overdue .task-date {
+    color: LinkText;
+  }
+
+  .calendar-chip.is-overdue .calendar-chip-dot,
+  .task-card.is-overdue .task-date::before {
+    background: LinkText;
+  }
+
+  .window-titlebar:focus-visible,
+  button:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
 }

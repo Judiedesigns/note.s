@@ -12,18 +12,22 @@ Everything is saved in `localStorage` first, so it still works in the same brows
 
 - Retro desktop UI with draggable desktop icons and movable windows
 - Windows can be resized by dragging the left or right edge, the bottom edge, or the bottom corners; the bottom-right grip is always visible and sizes persist across reloads
+- Keyboard window control: focus a title bar and use arrow keys to move, or Shift plus arrow keys to resize
 - Two-level planner navigation: Today and Calendar, with Week and Month inside Calendar
 - Calendar remembers the last Week or Month mode, and the last destination survives a reload
 - Today shows an agenda grouped into Overdue, Today, and No date
 - Week shows day columns, Month shows a calendar grid with `+N more` expansion
-- The Calendar sidebar count reflects the week or month currently on screen
+- The Calendar sidebar count matches the week or month grid currently on screen, and is hidden while Today is showing
 - On mobile the sidebar is replaced by a compact Today / Calendar switch
+- Tab lists and filter menus support arrow keys, Home/End, and Escape
 - Tasks without a date are allowed and collect in the No date tray
 - Quick-capture task bar: type a title and press Enter to save instantly
+- If a new task is hidden by a filter or a future date, the toast explains where it went
 - Quick capture in Week or Month defaults to the selected day
 - Click a Month day (or press Enter on it) to open a day popover listing that day's tasks
-- Month grid supports arrow keys, Home/End, and PageUp/PageDown navigation
+- Week and Month support arrow-key day navigation, Home/End, and PageUp/PageDown
 - On mobile, Month view collapses tasks to dots; tap a day to see its tasks
+- Notes can be edited in place; Cancel keeps the original note untouched
 - Press Cmd/Ctrl+Enter (or the `⋯` button) from the task bar to set a custom date, then Escape or Cancel to return
 - Notes composer focuses automatically when the window opens; save with Cmd/Ctrl+Enter
 - Keyboard shortcuts: `T` jumps to task capture, `N` jumps to a new note
@@ -34,6 +38,8 @@ Everything is saved in `localStorage` first, so it still works in the same brows
 - Task completion, edit, delete, and status filtering
 - `.ics` calendar export with confirmation before download
 - Per-task `.ics` calendar export for adding one task to a calendar
+- UTF-8-safe `.ics` line folding for long non-ASCII titles
+- Offline app shell (service worker) so the page itself reloads without a network; requires HTTPS or localhost
 - Notes window for loose thoughts separate from tasks
 - Note search and timeline filters
 - Compact note previews with long notes opening in a retro popup
@@ -41,8 +47,9 @@ Everything is saved in `localStorage` first, so it still works in the same brows
 - Generated `README.txt` daily summary with today, done, overdue, weekly, and note counts
 - Persistent desktop icon and window positions and sizes
 - Offscreen window recovery
-- Responsive desktop, tablet, and mobile layout
-- Backward-compatible loading for older saved note/todo entries
+- Responsive desktop, tablet, and mobile layout, including 200% zoom and forced-colors modes
+- Document language follows the browser locale used for dates
+- Backward-compatible loading for older saved note/todo entries, with malformed dates repaired or treated as undated
 - JSON backup export and non-destructive backup import
 - Local-first storage with optional Firebase Google account sync
 

@@ -352,12 +352,16 @@ test("calendar destination remembers the last week or month mode", async ({ page
   await expect(weekTab).toBeHidden();
   await expect(monthTab).toBeHidden();
   await expect(page.locator('[data-side-count="today"]')).toHaveText("1");
-  await expect(page.locator('[data-side-count="calendar"]')).toHaveText("3");
+  // The Calendar badge describes the period on screen, so it is hidden while
+  // Today is the visible destination.
+  await expect(page.locator('[data-side-count="calendar"]')).toBeHidden();
 
   await calendarButton.click();
   await expect(monthTab).toHaveAttribute("aria-selected", "true");
   await expect(page.locator("#view-title")).toContainText("November 2026");
-  await expect(page.locator('[data-side-count="calendar"]')).toHaveText("3");
+  // The November grid also shows 1 Dec in its last cell, so all four dates
+  // visible in the grid are counted.
+  await expect(page.locator('[data-side-count="calendar"]')).toHaveText("4");
 
   await weekTab.click();
   await expect(weekTab).toHaveAttribute("aria-selected", "true");
@@ -365,7 +369,7 @@ test("calendar destination remembers the last week or month mode", async ({ page
 
   await openTodayView(page);
   await expect(weekTab).toBeHidden();
-  await expect(page.locator('[data-side-count="calendar"]')).toHaveText("2");
+  await expect(page.locator('[data-side-count="calendar"]')).toBeHidden();
 
   await calendarButton.click();
   await expect(weekTab).toHaveAttribute("aria-selected", "true");
@@ -464,7 +468,7 @@ test("notes view captures loose thoughts separately", async ({ page }) => {
   await openNotesSurface(page);
   await expect(page.getByRole("heading", { name: "notes", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "saved notes", exact: true })).toBeVisible();
-  await expect(page.getByPlaceholder("Drop a thought… ⌘↵ to save")).toBeVisible();
+  await expect(page.locator("#note-body")).toBeVisible();
   await expect(page.getByRole("button", { name: "+ Add Note" })).toBeVisible();
 
   await page.getByRole("textbox", { name: "body" }).fill("Hook idea\nTry a softer intro before the task list.");
@@ -604,6 +608,11 @@ test("notes list reveals large archives in batches", async ({ page }) => {
   await notesWindow.getByRole("button", { name: "Show 10 more" }).click();
   await expect(notesWindow.locator(".note-card")).toHaveCount(20);
   await expect(notesWindow.getByRole("button", { name: "Show 5 more" })).toBeVisible();
+  expect(await page.evaluate(() => document.getElementById("note-list").contains(document.activeElement))).toBe(true);
+
+  await notesWindow.getByRole("button", { name: "Show 5 more" }).click();
+  await expect(notesWindow.locator(".note-card")).toHaveCount(25);
+  expect(await page.evaluate(() => document.getElementById("note-list").contains(document.activeElement))).toBe(true);
 
   await notesWindow.getByRole("searchbox", { name: "Search notes" }).fill("Deep archive keyword");
   await expect(notesWindow.getByText("1 of 25 notes")).toBeVisible();
@@ -853,6 +862,43 @@ test("desktop window controls open, minimize, close, and full screen", async ({ 
 
   await page.getByRole("button", { name: "Open Planner" }).click();
   await expect(plannerWindow).toBeVisible();
+});
+
+test("traffic light targets extend beyond the visible dot", async ({ page }) => {
+  await page.getByRole("button", { name: "Open Planner" }).click();
+  const plannerWindow = page.getByLabel("Planner app");
+  await expect(plannerWindow).toBeVisible();
+
+  const close = page.getByRole("button", { name: "Close Planner" });
+  const box = await close.boundingBox();
+  expect(box.width).toBeGreaterThanOrEqual(20);
+  expect(box.height).toBeGreaterThanOrEqual(20);
+
+  // Click just inside the transparent edge of the target, outside the visible dot.
+  await page.mouse.click(box.x + 1, box.y + box.height / 2);
+  await expect(plannerWindow).toBeHidden();
+});
+
+test("window controls sit before the centered window title", async ({ page }) => {
+  await page.getByRole("button", { name: "Open Planner" }).click();
+  const plannerWindow = page.getByLabel("Planner app");
+  await expect(plannerWindow).toBeVisible();
+
+  const layout = await plannerWindow.evaluate(windowEl => {
+    const titlebar = windowEl.querySelector(".window-titlebar");
+    const controls = titlebar.querySelector(".window-controls");
+    const title = titlebar.querySelector(".window-title");
+    const barRect = titlebar.getBoundingClientRect();
+    const controlsRect = controls.getBoundingClientRect();
+    const titleRect = title.getBoundingClientRect();
+    return {
+      controlsBeforeTitle: controlsRect.right <= titleRect.left,
+      titleCentered: Math.abs((titleRect.left + titleRect.width / 2) - (barRect.left + barRect.width / 2)) < 2
+    };
+  });
+
+  expect(layout.controlsBeforeTitle).toBe(true);
+  expect(layout.titleCentered).toBe(true);
 });
 
 test("taskbar buttons open windows and start shows desktop", async ({ page }) => {
@@ -1190,4 +1236,398 @@ test("invalid stored dates fall back to today instead of rolling over", async ({
   });
   expect(result.valid).toEqual([2026, 10, 4]);
   expect(result.impossibleIsToday).toBe(true);
+});
+
+test("editing a task keeps its details", async ({ page }) => {
+  await page.evaluate(today => {
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "one", type: "task", title: "Keep details", body: "Tighten copy", dueDate: today, done: false, createdAt: Date.now(), updatedAt: Date.now() }
+    ]));
+  }, todayValue());
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+
+  await page.getByRole("button", { name: "Edit task" }).click();
+  await page.getByRole("textbox", { name: "Task", exact: true }).fill("Keep details edited");
+  await page.getByRole("button", { name: "Update Task" }).click();
+
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("random_notes_v1"))[0]);
+  expect(stored.body).toBe("Tighten copy");
+  await expect(page.getByLabel("Saved tasks").getByRole("button", { name: "Show task details" })).toBeVisible();
+});
+
+test("editing a note updates it in place and can be canceled", async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "note-one", type: "note", title: "Original body", body: "Original body", dueDate: "", done: false, createdAt: 1700000000000, updatedAt: 1700000000000 }
+    ]));
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openNotesSurface(page);
+
+  const note = page.getByLabel("Notes app").locator(".note-card").first();
+  await note.getByRole("button", { name: "Edit note" }).click();
+  await expect(page.locator("#note-body")).toHaveValue("Original body");
+  await expect(page.getByRole("button", { name: "Update Note" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Cancel" }).click();
+  await expect(note).toBeVisible();
+  let stored = await page.evaluate(() => JSON.parse(localStorage.getItem("random_notes_v1")));
+  expect(stored).toHaveLength(1);
+  expect(stored[0].body).toBe("Original body");
+
+  await note.getByRole("button", { name: "Edit note" }).click();
+  await page.locator("#note-body").fill("Updated body");
+  await page.getByRole("button", { name: "Update Note" }).click();
+  await expect(page.locator("#toast")).toHaveText("Note updated.");
+
+  stored = await page.evaluate(() => JSON.parse(localStorage.getItem("random_notes_v1")));
+  expect(stored).toHaveLength(1);
+  expect(stored[0].body).toBe("Updated body");
+  expect(stored[0].deletedAt).toBe(0);
+  await expect(page.getByLabel("Notes app").locator(".note-card", { hasText: "Updated body" })).toBeVisible();
+});
+
+test("malformed backup dates are repaired or treated as undated", async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 1, 10, 12, 0, 0));
+  await page.evaluate(() => {
+    const now = Date.now();
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "repair", type: "task", title: "Repaired date task", body: "", dueDate: "2026-2-3", done: false, createdAt: now, updatedAt: now },
+      { id: "fallback", type: "task", title: "No-date fallback task", body: "", dueDate: "2026-02-31", done: false, createdAt: now - 1, updatedAt: now - 1 }
+    ]));
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+
+  const agenda = page.getByLabel("Saved tasks");
+  await expect(agenda.getByText("Repaired date task")).toBeVisible();
+  await expect(agenda.getByText("No-date fallback task")).toBeVisible();
+
+  await openCalendarView(page, "month");
+  await expect(page.locator("#view-title")).toContainText("February 2026");
+  await expect(page.locator('.calendar-day[data-date="2026-02-03"]').getByRole("button", { name: "Repaired date task" })).toBeVisible();
+  await expect(page.locator(".calendar-tray")).toContainText("No-date fallback task");
+});
+
+test("global shortcuts do not open windows behind a modal", async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 10, 4, 12, 0, 0));
+  await openPlannerSurface(page);
+  await openCalendarView(page, "month");
+
+  await page.locator('.calendar-day[data-date="2026-11-04"] .calendar-day-num').click();
+  const popup = page.locator("#day-popup");
+  await expect(popup).toBeVisible();
+
+  await page.keyboard.press("n");
+  await expect(popup).toBeVisible();
+  await expect(page.getByLabel("Notes app")).toBeHidden();
+  expect(await page.evaluate(() => document.getElementById("day-popup").contains(document.activeElement))).toBe(true);
+});
+
+test("month cells are full tap targets and set the quick-capture day", async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 10, 4, 12, 0, 0));
+  await openPlannerSurface(page);
+  await openCalendarView(page, "month");
+
+  const cell = page.locator('.calendar-day[data-date="2026-11-18"]');
+  const box = await cell.boundingBox();
+  expect(box).toBeTruthy();
+  await page.mouse.click(box.x + 8, box.y + box.height - 8);
+  await expect(page.locator("#day-popup")).toBeVisible();
+  await expect(page.locator("#day-popup-title")).toContainText("18");
+
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#day-popup")).toBeHidden();
+  await page.locator("#task-quick-input").fill("Selected day task");
+  await page.keyboard.press("Enter");
+
+  const dueDate = await page.evaluate(() => {
+    const item = JSON.parse(localStorage.getItem("random_notes_v1")).find(entry => entry.title === "Selected day task");
+    return item && item.dueDate;
+  });
+  expect(dueDate).toBe("2026-11-18");
+});
+
+test("week headings support arrow-key navigation", async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 10, 4, 12, 0, 0));
+  await openPlannerSurface(page);
+  await openCalendarView(page, "week");
+
+  const focusedWeekDate = () => page.evaluate(() => {
+    const column = document.activeElement && document.activeElement.closest(".calendar-week-col");
+    return column && column.dataset.date;
+  });
+
+  await page.locator('.calendar-week-col[data-date="2026-11-04"] .calendar-week-head').focus();
+  await page.keyboard.press("ArrowRight");
+  await expect.poll(focusedWeekDate).toBe("2026-11-05");
+  await page.keyboard.press("ArrowLeft");
+  await expect.poll(focusedWeekDate).toBe("2026-11-04");
+});
+
+test("sidebar note count is hidden from the accessible name", async ({ page }) => {
+  await openPlannerSurface(page);
+  await expect(page.locator('[data-side-count="notes"]')).toHaveAttribute("aria-hidden", "true");
+});
+
+test("today count includes open undated tasks but not completed ones", async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 10, 4, 12, 0, 0));
+  await page.evaluate(() => {
+    const now = Date.now();
+    const task = (id, title, dueDate, done, index) => ({
+      id, type: "task", title, body: "", dueDate, done,
+      createdAt: now - index, updatedAt: now - index
+    });
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      task("today-open", "Today open", "2026-11-04", false, 0),
+      task("undated-open", "Undated open", "", false, 1),
+      task("undated-done", "Undated done", "", true, 2),
+      task("today-done", "Today done", "2026-11-04", true, 3)
+    ]));
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+
+  await expect(page.locator('[data-side-count="today"]')).toHaveText("2");
+  await expect(page.locator('[data-side-count="calendar"]')).toBeHidden();
+
+  await page.getByRole("button", { name: "Calendar", exact: true }).click();
+  await expect(page.locator('[data-side-count="calendar"]')).toHaveText("1");
+});
+
+test("tablists and filter menus support arrow keys", async ({ page }) => {
+  await openPlannerSurface(page);
+  await page.getByRole("button", { name: "Calendar", exact: true }).click();
+
+  const weekTab = page.getByRole("tab", { name: "Week", exact: true });
+  const monthTab = page.getByRole("tab", { name: "Month", exact: true });
+  await weekTab.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(monthTab).toBeFocused();
+  await expect(monthTab).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("Home");
+  await expect(weekTab).toBeFocused();
+  await expect(weekTab).toHaveAttribute("aria-selected", "true");
+
+  const filterToggle = page.getByRole("button", { name: "Task status filter" });
+  const allOption = page.getByRole("button", { name: "All", exact: true });
+  await filterToggle.focus();
+  await page.keyboard.press("ArrowDown");
+  await expect(allOption).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  const openOption = page.getByRole("button", { name: "Open", exact: true });
+  await expect(openOption).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("button", { name: "Done", exact: true })).toBeFocused();
+  await page.keyboard.press("Home");
+  await expect(allOption).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(filterToggle).toHaveAttribute("aria-expanded", "false");
+  await expect(filterToggle).toBeFocused();
+
+  // On the mobile/tablet layout the surface switch is a real tablist too.
+  if (await page.locator(".surface-switch").isVisible()) {
+    await page.getByRole("tab", { name: "Planner" }).focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(page.getByRole("tab", { name: "Notes" })).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.getByLabel("Notes app")).toBeVisible();
+  }
+});
+
+test("window title bars move and resize with the keyboard", async ({ page }) => {
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+
+  const plannerWindow = page.locator(".planner-window");
+  const titlebar = plannerWindow.locator(".window-titlebar");
+  const before = await plannerWindow.boundingBox();
+  await titlebar.focus();
+  await expect(titlebar).toBeFocused();
+
+  await page.keyboard.press("ArrowRight");
+  const moved = await plannerWindow.boundingBox();
+  expect(moved.x).toBeCloseTo(before.x + 12, 0);
+
+  await page.keyboard.press("Shift+ArrowDown");
+  const resized = await plannerWindow.boundingBox();
+  expect(resized.height).toBeCloseTo(moved.height + 24, 0);
+
+  const saved = await page.evaluate(() => JSON.parse(
+    localStorage.getItem("random_notes_window_positions_v1") || "{}"
+  ).planner);
+  expect(saved.left).toBeGreaterThanOrEqual(0);
+  expect(saved.width).toBeGreaterThan(0);
+  expect(saved.height).toBeGreaterThan(moved.height);
+});
+
+test("a saved window position cannot hide the title bar behind the menu bar", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "desktop", "window dragging is desktop-only");
+  await openPlannerSurface(page);
+
+  // The old clamp allowed a window top of 8px, which the fixed menu bar covers.
+  await page.evaluate(() => {
+    const grid = document.querySelector(".desktop-grid").getBoundingClientRect();
+    localStorage.setItem("random_notes_window_positions_v1", JSON.stringify({
+      notes: { left: 40, top: 8 - grid.top, width: 360, zIndex: "12" }
+    }));
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openNotesSurface(page);
+
+  const menuBox = await page.locator(".menu-bar").boundingBox();
+  const windowBox = await page.locator(".notes-window").boundingBox();
+  expect(windowBox.y).toBeGreaterThan(menuBox.y + menuBox.height);
+
+  // The close control must receive clicks rather than the menu bar.
+  const closeBox = await page.locator(".notes-window .close-control").boundingBox();
+  const topElement = await page.evaluate(({ x, y }) => {
+    const element = document.elementFromPoint(x, y);
+    return element ? element.className : "";
+  }, { x: closeBox.x + closeBox.width / 2, y: closeBox.y + closeBox.height / 2 });
+  expect(topElement).toContain("close-control");
+});
+
+test("note filter popover is anchored to its button and stays inside the window", async ({ page }) => {
+  await openNotesSurface(page);
+  const toggle = page.getByRole("button", { name: "Filter notes by timeline" });
+  await toggle.click();
+  const options = page.locator("#note-filter-options");
+  await expect(options).toBeVisible();
+
+  const [toggleBox, menuBox, windowBox] = await Promise.all([
+    toggle.boundingBox(),
+    options.boundingBox(),
+    page.locator(".notes-window").boundingBox()
+  ]);
+
+  // Right-aligned with the trigger, not floating over the note list.
+  expect(Math.abs((menuBox.x + menuBox.width) - (toggleBox.x + toggleBox.width))).toBeLessThan(2);
+  const adjacentAbove = Math.abs((menuBox.y + menuBox.height) - toggleBox.y) <= 8;
+  const adjacentBelow = Math.abs(menuBox.y - (toggleBox.y + toggleBox.height)) <= 8;
+  expect(adjacentAbove || adjacentBelow).toBe(true);
+
+  // All four options are inside the clipping window.
+  expect(menuBox.y).toBeGreaterThanOrEqual(windowBox.y);
+  expect(menuBox.y + menuBox.height).toBeLessThanOrEqual(windowBox.y + windowBox.height);
+
+  const monthBox = await page.getByRole("menuitemradio", { name: "Month" }).boundingBox();
+  const topElement = await page.evaluate(({ x, y }) => {
+    const element = document.elementFromPoint(x, y);
+    return element ? element.textContent.trim() : "";
+  }, { x: monthBox.x + monthBox.width / 2, y: monthBox.y + monthBox.height / 2 });
+  expect(topElement).toBe("Month");
+});
+
+test("quick capture explains when a new task is not visible", async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 10, 4, 12, 0, 0));
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+
+  await page.locator("#task-quick-input").fill("Future task");
+  await page.locator("#task-quick-input").press("Control+Enter");
+  await page.locator("#task-date").fill("2026-11-20");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.locator("#toast")).toContainText("will appear in Today");
+
+  await page.getByRole("button", { name: "Task status filter" }).click();
+  await page.getByRole("button", { name: "Done", exact: true }).click();
+  await page.locator("#task-quick-input").fill("Hidden task");
+  await page.locator("#task-quick-input").press("Enter");
+  await expect(page.locator("#toast")).toContainText("Done filter hides it");
+});
+
+test("calendar export folds non-ASCII lines at 75 octets", async ({ page }) => {
+  const title = "日本語の字幕を全部確認して公開用の長いタイトルを作る🎬🎬🎬 and keep going";
+  await page.evaluate(({ today, title }) => {
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "wide", type: "task", title, body: "", dueDate: today, done: false, createdAt: Date.now(), updatedAt: Date.now() }
+    ]));
+  }, { today: todayValue(), title });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+
+  page.once("dialog", dialog => dialog.accept());
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export tasks to calendar" }).click();
+  const download = await downloadPromise;
+  const content = require("fs").readFileSync(await download.path(), "utf8");
+  const encoder = new TextEncoder();
+  const lines = content.split("\r\n").filter(Boolean);
+
+  for (const line of lines) {
+    expect(encoder.encode(line).length).toBeLessThanOrEqual(75);
+  }
+  expect(lines.some(line => line.startsWith(" "))).toBe(true);
+  expect(content.replace(/\r\n[ \t]/g, "")).toContain(title);
+  expect(content).toContain("END:VCALENDAR");
+});
+
+test("the app shell reloads while offline", async ({ page, browserName }) => {
+  test.skip(browserName !== "chromium", "WebKit throws on reload with emulated offline mode");
+  await page.evaluate(async () => {
+    if ("serviceWorker" in navigator) await navigator.serviceWorker.ready;
+  });
+  await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
+
+  await page.context().setOffline(true);
+  try {
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(page.getByRole("button", { name: "Open Planner" })).toBeVisible();
+  } finally {
+    await page.context().setOffline(false);
+  }
+});
+
+test("forced colors keeps window controls and focus visible", async ({ page }) => {
+  await page.emulateMedia({ forcedColors: "active" });
+  await openPlannerSurface(page);
+
+  const closeControl = page.locator(".planner-window .close-control");
+  await expect(closeControl).toBeVisible();
+  const outline = await closeControl.evaluate(element => {
+    const style = getComputedStyle(element);
+    return { style: style.outlineStyle, width: parseFloat(style.outlineWidth) };
+  });
+  expect(outline.style).not.toBe("none");
+  expect(outline.width).toBeGreaterThan(0);
+});
+
+test("planner stays usable at a 200% zoom equivalent", async ({ page }) => {
+  await page.setViewportSize({ width: 720, height: 450 });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+
+  await expect(page.locator("#task-quick-input")).toBeVisible();
+  const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+  expect(horizontalOverflow).toBe(false);
+
+  await page.getByRole("button", { name: "Calendar", exact: true }).click();
+  await expect(page.locator("#calendar-view")).toBeVisible();
+  await expect(page.locator("#task-quick-input")).toBeVisible();
+});
+
+test("document language follows the browser and full-form Enter is IME-safe", async ({ page }) => {
+  const language = await page.evaluate(() => navigator.language);
+  await expect.poll(() => page.evaluate(() => document.documentElement.lang)).toBe(language);
+
+  await openPlannerSurface(page);
+  await page.locator("#task-quick-input").press("Control+Enter");
+  await expect(page.locator("#task-title")).toBeVisible();
+  await page.locator("#task-title").fill("Full form task");
+  await page.locator("#task-title").press("Enter");
+  await expect(page.locator("#task-list").getByText("Full form task")).toBeVisible();
+
+  await page.locator("#task-quick-input").press("Control+Enter");
+  await page.locator("#task-title").fill("にほん");
+  const prevented = await page.locator("#task-title").evaluate(element => {
+    const event = new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true });
+    Object.defineProperty(event, "isComposing", { get: () => true });
+    element.dispatchEvent(event);
+    return event.defaultPrevented;
+  });
+  expect(prevented).toBe(true);
+  await expect(page.locator("#task-list").getByText("にほん")).toHaveCount(0);
 });
