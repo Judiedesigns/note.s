@@ -52,18 +52,24 @@ async function openReadmeSurface(page) {
   }
 }
 
+// Desktop and tablet show the view switch in the sidebar; collapsed layouts
+// use the segmented control in the header. Exactly one is displayed at a time.
+function viewSwitch(page, view) {
+  return page.locator(
+    `.side-row[data-view="${view}"]:visible, .planner-view-tab[data-view="${view}"]:visible`
+  );
+}
+
+async function openPlannerView(page, view) {
+  await viewSwitch(page, view).click();
+}
+
 async function openCalendarView(page, mode = "month") {
-  await page.getByRole("button", { name: "Calendar", exact: true }).click();
-  await page.getByRole("tab", { name: mode === "week" ? "Week" : "Month", exact: true }).click();
+  await openPlannerView(page, mode);
 }
 
 async function openTodayView(page) {
-  const sideToday = page.locator('.side-row[data-view="today"]');
-  if (await sideToday.isVisible()) {
-    await sideToday.click();
-  } else {
-    await page.locator('.planner-view-tab[data-planner-view="today"]').click();
-  }
+  await openPlannerView(page, "today");
 }
 
 test("planner UI fits the viewport", async ({ page }) => {
@@ -74,9 +80,16 @@ test("planner UI fits the viewport", async ({ page }) => {
 
   await page.getByRole("button", { name: "Open Planner" }).click();
   await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Calendar", exact: true })).toBeVisible();
-  await expect(page.getByRole("tab", { name: "Week" })).toBeHidden();
-  await expect(page.getByRole("tab", { name: "Month" })).toBeHidden();
+  // Only one view switch is on screen: the header control appears where the
+  // sidebar is collapsed, never next to it.
+  if (await page.locator(".planner-sidebar").isVisible()) {
+    await expect(page.locator(".planner-view-tabs")).toBeHidden();
+  } else {
+    await expect(page.locator(".planner-view-tabs")).toBeVisible();
+  }
+  await expect(viewSwitch(page, "today")).toBeVisible();
+  await expect(viewSwitch(page, "week")).toBeVisible();
+  await expect(viewSwitch(page, "month")).toBeVisible();
   await expect(page.locator("#task-quick-input")).toBeVisible();
   await expect(page.getByPlaceholder("Add a task", { exact: true })).toBeHidden();
   await page.locator("#task-quick-input").fill("Plan the week");
@@ -85,10 +98,211 @@ test("planner UI fits the viewport", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
   await expect(page.getByPlaceholder("Add a task for today")).toHaveCount(0);
   await expect(page.getByLabel("Focus timer")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Export tasks to calendar" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export tasks and events to calendar" })).toBeVisible();
 
   const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(horizontalOverflow).toBe(false);
+});
+
+test("an empty planner hides the focus dock until there is a task", async ({ page }) => {
+  await openPlannerSurface(page);
+  const dock = page.locator("#focus-dock");
+  // No task, no minutes: an inert timer would only add chrome.
+  await expect(dock).toBeHidden();
+
+  await page.locator("#task-quick-input").fill("Draft Q4 report");
+  await page.locator("#task-quick-input").press("Enter");
+  await expect(dock).toBeVisible();
+  await expect(page.locator("#focus-task")).toContainText("Up next: Draft Q4 report");
+  await expect(page.locator("#focus-start")).toHaveText("Start 25 min");
+});
+
+test("focus starts from a task and never starts on its own", async ({ page }) => {
+  const today = todayValue();
+  await page.evaluate(today => {
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "focus-a", type: "task", title: "Draft Q4 report", body: "", dueDate: today, done: false, focusedMin: 0, createdAt: Date.now(), updatedAt: Date.now() },
+      { id: "focus-b", type: "task", title: "Reply to Anita about the deck", body: "", dueDate: today, done: false, focusedMin: 0, createdAt: Date.now() - 1, updatedAt: Date.now() - 1 },
+      { id: "focus-c", type: "task", title: "Book studio B", body: "", dueDate: today, done: false, focusedMin: 0, createdAt: Date.now() - 2, updatedAt: Date.now() - 2 }
+    ]));
+  }, today);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+
+  const dock = page.locator("#focus-dock");
+  const start = page.locator("#focus-start");
+  const pill = page.locator("#focus-pill");
+  const cardA = page.locator("#task-list .task-card", { hasText: "Draft Q4 report" });
+  const cardB = page.locator("#task-list .task-card", { hasText: "Reply to Anita about the deck" });
+
+  await expect(dock).toBeVisible();
+  // Nothing starts by itself: the dock just names the agenda's first open task.
+  await expect(start).toBeEnabled();
+  await expect(page.locator("#focus-task")).toContainText("Up next: Draft Q4 report");
+  await expect(page.locator("#focus-phase")).toHaveText("Ready");
+  await expect(pill).toBeHidden();
+  await expect(page.locator(".focus-queue")).toHaveCount(0);
+
+  // A card action starts that specific task, not the up-next one.
+  await cardB.getByRole("button", { name: "Start focus on Reply to Anita about the deck" }).click();
+  await expect(page.locator("#focus-phase")).toHaveText("Focus");
+  await expect(page.locator("#focus-task")).toContainText("Reply to Anita about the deck");
+  await expect(page.locator("#focus-pause")).toBeVisible();
+  await expect(page.locator("#focus-pause")).toHaveText("Pause");
+  await expect(pill).toBeVisible();
+  await expect(page.locator("#focus-pill-label")).toHaveText("Focus");
+  await expect(cardA.getByRole("button", { name: "Switch focus to Draft Q4 report" })).toBeVisible();
+
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("random_notes_focus_v1")));
+  expect(stored).not.toHaveProperty("queue");
+
+  await page.locator("#focus-pause").click();
+  await expect(page.locator("#focus-pause")).toHaveText("Resume");
+  await page.locator("#focus-pause").click();
+  await expect(page.locator("#focus-pause")).toHaveText("Pause");
+
+  await openPlannerView(page, "week");
+  await expect(dock).toBeHidden();
+  await expect(pill).toBeVisible();
+
+  await openTodayView(page);
+  await expect(dock).toBeVisible();
+  await page.locator("#focus-end").click();
+  await expect(page.locator("#focus-phase")).toHaveText("Ready");
+  await expect(pill).toBeHidden();
+});
+
+test("switching focus saves the current task first", async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 12, 10, 0, 0) });
+  await page.evaluate(() => {
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "focus-a", type: "task", title: "Draft Q4 report", body: "", dueDate: "2026-11-12", done: false, focusedMin: 0, createdAt: Date.now(), updatedAt: Date.now() },
+      { id: "focus-b", type: "task", title: "Reply to Anita about the deck", body: "", dueDate: "2026-11-12", done: false, focusedMin: 0, createdAt: Date.now() - 1, updatedAt: Date.now() - 1 }
+    ]));
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+
+  const cardA = page.locator("#task-list .task-card", { hasText: "Draft Q4 report" });
+  const cardB = page.locator("#task-list .task-card", { hasText: "Reply to Anita about the deck" });
+  await cardA.getByRole("button", { name: "Start focus on Draft Q4 report" }).click();
+  await page.clock.fastForward(10 * 60 * 1000);
+
+  // The timer counts live; committed minutes only land on switch or stop.
+  await expect(page.locator("#focus-mins")).toHaveText("10 min on this task");
+  await expect(page.locator("#focus-goal")).toHaveText("10 / 60 min today");
+
+  await cardB.getByRole("button", { name: "Switch focus to Reply to Anita about the deck" }).click();
+  await expect(page.locator("#focus-phase")).toHaveText("Focus");
+  await expect(page.locator("#focus-task")).toContainText("Reply to Anita about the deck");
+  await expect(cardA.locator(".task-focused")).toHaveText("10 min focused");
+  await expect(page.locator("#focus-goal")).toHaveText("10 / 60 min today");
+});
+
+test("focus sprint logs minutes and asks what to do next", async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 12, 10, 0, 0) });
+  await page.evaluate(() => {
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "focus-a", type: "task", title: "Draft Q4 report", body: "", dueDate: "2026-11-12", done: false, focusedMin: 0, createdAt: Date.now(), updatedAt: Date.now() },
+      { id: "focus-b", type: "task", title: "Reply to Anita about the deck", body: "", dueDate: "2026-11-12", done: false, focusedMin: 0, createdAt: Date.now() - 1, updatedAt: Date.now() - 1 }
+    ]));
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+
+  const cardA = page.locator("#task-list .task-card", { hasText: "Draft Q4 report" });
+  await cardA.getByRole("button", { name: "Start focus on Draft Q4 report" }).click();
+  await expect(page.locator("#focus-time")).toHaveText("25:00");
+
+  await page.clock.fastForward(25 * 60 * 1000 + 1000);
+  await expect(page.locator("#focus-offer")).toBeVisible();
+  await expect(page.locator("#focus-offer-copy")).toHaveText("25 min logged · what next?");
+  await expect(page.locator("#focus-goal")).toHaveText("25 / 60 min today");
+  await expect(page.locator("#focus-pill-label")).toHaveText("Sprint done");
+  await expect(page.locator("#focus-pill-time")).toBeHidden();
+
+  // Completing the task is always a manual action.
+  await expect(cardA.locator(".check")).not.toBeChecked();
+  await expect(cardA.locator(".task-focused")).toHaveText("25 min focused");
+
+  const stored = await page.evaluate(() => ({
+    focus: JSON.parse(localStorage.getItem("random_notes_focus_v1")),
+    items: JSON.parse(localStorage.getItem("random_notes_v1"))
+  }));
+  expect(stored.focus.dayMin).toBe(25);
+  expect(stored.items.find(item => item.id === "focus-a").focusedMin).toBe(25);
+
+  await page.getByRole("button", { name: "Done for now" }).click();
+  await expect(page.locator("#focus-phase")).toHaveText("Ready");
+  await expect(page.locator("#focus-pill")).toBeHidden();
+
+  await cardA.locator(".check").check();
+  await expect(cardA).toHaveClass(/done/);
+  await expect(page.locator("#focus-task")).toContainText("Up next: Reply to Anita about the deck");
+});
+
+test("focus break is optional and returns to the same task", async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 12, 10, 0, 0) });
+  await page.evaluate(() => {
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "focus-a", type: "task", title: "Draft Q4 report", body: "", dueDate: "2026-11-12", done: false, focusedMin: 0, createdAt: Date.now(), updatedAt: Date.now() }
+    ]));
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+  await page.getByRole("button", { name: "Start focus on Draft Q4 report" }).click();
+  await page.clock.fastForward(25 * 60 * 1000 + 1000);
+
+  await page.getByRole("button", { name: "5 min break" }).click();
+  await expect(page.locator("#focus-phase")).toHaveText("Break");
+  await expect(page.locator("#focus-skip")).toBeVisible();
+  await expect(page.locator("#focus-pill-label")).toHaveText("Break");
+
+  await page.clock.fastForward(5 * 60 * 1000 + 1000);
+  await expect(page.locator("#focus-offer-copy")).toHaveText("Break over. Back to it, or stop for now?");
+  await expect(page.locator("#focus-offer-break")).toHaveText("Back to work");
+  await expect(page.locator("#focus-offer-keep")).toBeHidden();
+  await expect(page.locator("#focus-pill-label")).toHaveText("Break over");
+
+  await page.getByRole("button", { name: "Back to work" }).click();
+  await expect(page.locator("#focus-phase")).toHaveText("Focus");
+  await expect(page.locator("#focus-task")).toContainText("Draft Q4 report");
+  await expect(page.locator("#focus-time")).toHaveText("25:00");
+});
+
+test("focus session resumes after reload from its absolute end time", async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 12, 10, 0, 0) });
+  await page.evaluate(() => {
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "focus-a", type: "task", title: "Draft Q4 report", body: "", dueDate: "2026-11-12", done: false, focusedMin: 0, createdAt: Date.now(), updatedAt: Date.now() }
+    ]));
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+  await page.getByRole("button", { name: "Start focus on Draft Q4 report" }).click();
+  await page.clock.fastForward(5 * 60 * 1000);
+  await expect(page.locator("#focus-time")).toHaveText("20:00");
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+  await expect(page.locator("#focus-dock")).toBeVisible();
+  await expect(page.locator("#focus-phase")).toHaveText("Focus");
+  await expect(page.locator("#focus-time")).toHaveText("20:00");
+  await expect(page.locator("#focus-pill")).toBeVisible();
+
+  // The sprint can also finish while the tab is closed: the next load settles
+  // it from endsAt instead of from a stale interval.
+  await page.evaluate(() => {
+    const state = JSON.parse(localStorage.getItem("random_notes_focus_v1"));
+    state.session.endsAt = Date.now() - 1000;
+    localStorage.setItem("random_notes_focus_v1", JSON.stringify(state));
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+  await expect(page.locator("#focus-offer")).toBeVisible();
+  await expect(page.locator("#focus-offer-copy")).toHaveText("25 min logged · what next?");
+  await expect(page.locator("#focus-goal")).toHaveText("25 / 60 min today");
+  await expect(page.locator("#focus-pill-label")).toHaveText("Sprint done");
 });
 
 test("README opens as a generated daily checklist", async ({ page }) => {
@@ -144,10 +358,31 @@ test("quick capture keeps focus for consecutive tasks", async ({ page }) => {
   await quickInput.fill("Second quick task");
   await quickInput.press("Enter");
 
-  const plannerWindow = page.getByLabel("Planner app");
-  await expect(plannerWindow.getByText("First quick task")).toBeVisible();
-  await expect(plannerWindow.getByText("Second quick task")).toBeVisible();
+  // The dock also names the up-next task, so scope this to the task list.
+  const taskList = page.locator("#task-list");
+  await expect(taskList.getByText("First quick task")).toBeVisible();
+  await expect(taskList.getByText("Second quick task")).toBeVisible();
   await expect(quickInput).toHaveValue("");
+  await expect(quickInput).toBeFocused();
+});
+
+test("Save button submits quick capture and resets", async ({ page }) => {
+  await openPlannerSurface(page);
+  const quickInput = page.locator("#task-quick-input");
+  const saveButton = page.locator("#task-quick-save");
+
+  await expect(saveButton).toBeVisible();
+  await expect(saveButton).toBeDisabled();
+  await expect(saveButton).toHaveAttribute("aria-label", "Save task");
+
+  await quickInput.fill("Save button task");
+  await expect(saveButton).toBeEnabled();
+  await saveButton.click();
+
+  // The dock also names the up-next task, so scope this to the task list.
+  await expect(page.locator("#task-list").getByText("Save button task")).toBeVisible();
+  await expect(quickInput).toHaveValue("");
+  await expect(saveButton).toBeDisabled();
   await expect(quickInput).toBeFocused();
 });
 
@@ -226,7 +461,7 @@ test("exports dated tasks to a calendar file", async ({ page }) => {
     await dialog.accept();
   });
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export tasks to calendar" }).click();
+  await page.getByRole("button", { name: "Export tasks and events to calendar" }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/^random-notes-calendar-\d{4}-\d{2}-\d{2}\.ics$/);
 
@@ -311,7 +546,7 @@ test("calendar views place tasks by due date", async ({ page }) => {
   await expect(calendar.getByRole("button", { name: "December task" })).toBeHidden();
   await expect(calendar.getByRole("group", { name: "Tasks with no date" })).toContainText("Undated task");
 
-  await page.getByRole("tab", { name: "Month" }).click();
+  await openPlannerView(page, "month");
   await expect(page.locator("#view-title")).toContainText("2026");
   const novemberTitle = await page.locator("#view-title").innerText();
   await expect(calendar.getByRole("button", { name: "Today task" })).toBeVisible();
@@ -332,7 +567,7 @@ test("calendar views place tasks by due date", async ({ page }) => {
   await expect(calendar.getByRole("group", { name: "Tasks with no date" })).toContainText("Undated task");
 });
 
-test("calendar destination remembers the last week or month mode", async ({ page }) => {
+test("planner view remembers the last week or month period", async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 10, 4, 12, 0, 0));
   await page.evaluate(() => {
     localStorage.setItem("random_notes_v1", JSON.stringify([
@@ -345,40 +580,33 @@ test("calendar destination remembers the last week or month mode", async ({ page
   await page.reload({ waitUntil: "domcontentloaded" });
   await openPlannerSurface(page);
 
-  const calendarButton = page.getByRole("button", { name: "Calendar", exact: true });
-  const weekTab = page.getByRole("tab", { name: "Week", exact: true });
-  const monthTab = page.getByRole("tab", { name: "Month", exact: true });
+  const todaySwitch = viewSwitch(page, "today");
+  const weekSwitch = viewSwitch(page, "week");
+  const monthSwitch = viewSwitch(page, "month");
 
-  await expect(weekTab).toBeHidden();
-  await expect(monthTab).toBeHidden();
+  await expect(todaySwitch).toHaveClass(/active/);
+  await expect(weekSwitch).not.toHaveClass(/active/);
   await expect(page.locator('[data-side-count="today"]')).toHaveText("1");
-  // The Calendar badge describes the period on screen, so it is hidden while
-  // Today is the visible destination.
-  await expect(page.locator('[data-side-count="calendar"]')).toBeHidden();
 
-  await calendarButton.click();
-  await expect(monthTab).toHaveAttribute("aria-selected", "true");
+  await monthSwitch.click();
+  await expect(monthSwitch).toHaveClass(/active/);
   await expect(page.locator("#view-title")).toContainText("November 2026");
-  // The November grid also shows 1 Dec in its last cell, so all four dates
-  // visible in the grid are counted.
-  await expect(page.locator('[data-side-count="calendar"]')).toHaveText("4");
+  await expect(page.locator("#calendar-view")).toContainText("Today task");
 
-  await weekTab.click();
-  await expect(weekTab).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator('[data-side-count="calendar"]')).toHaveText("2");
+  await weekSwitch.click();
+  await expect(weekSwitch).toHaveClass(/active/);
+  await expect(page.locator("#view-title")).not.toContainText("November 2026");
 
   await openTodayView(page);
-  await expect(weekTab).toBeHidden();
-  await expect(page.locator('[data-side-count="calendar"]')).toBeHidden();
+  await expect(todaySwitch).toHaveClass(/active/);
+  await expect(page.locator("#task-list")).toBeVisible();
 
-  await calendarButton.click();
-  await expect(weekTab).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("#view-title")).not.toContainText("November 2026");
+  await weekSwitch.click();
+  await expect(weekSwitch).toHaveClass(/active/);
 
   await page.reload({ waitUntil: "domcontentloaded" });
   await openPlannerSurface(page);
-  await expect(weekTab).toBeVisible();
-  await expect(weekTab).toHaveAttribute("aria-selected", "true");
+  await expect(weekSwitch).toHaveClass(/active/);
   await expect(page.locator("#calendar-view")).toBeVisible();
 });
 
@@ -409,20 +637,179 @@ test("month grid supports arrow-key navigation and day popover", async ({ page }
   await expect(page.locator("#calendar-view").getByRole("button", { name: "Today task (done)" })).toBeVisible();
 });
 
-test("adding from a calendar day presets the task date", async ({ page }) => {
+test("adding from a calendar day presets the event date", async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 10, 4, 12, 0, 0));
   await page.reload({ waitUntil: "domcontentloaded" });
   await openPlannerSurface(page);
   await openCalendarView(page, "month");
 
   await page.locator('.calendar-day[data-date="2026-11-18"] .calendar-day-num').click();
-  await page.getByRole("button", { name: "+ Add task" }).click();
-  await expect(page.getByRole("textbox", { name: "Task", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "+ Add event" }).click();
+  await expect(page.getByRole("textbox", { name: "Event", exact: true })).toBeVisible();
   await expect(page.locator("#task-date")).toHaveValue("2026-11-18");
+  await expect(page.locator("#task-time-field")).toBeVisible();
+  await expect(page.locator("#task-duration-field")).toBeVisible();
 
-  await page.getByRole("textbox", { name: "Task", exact: true }).fill("Plan the offsite");
+  await page.getByRole("textbox", { name: "Event", exact: true }).fill("Plan the offsite");
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.locator("#calendar-view").getByRole("button", { name: "Plan the offsite" })).toBeVisible();
+});
+
+test("create button and quick capture follow Today or Calendar", async ({ page }) => {
+  await openPlannerSurface(page);
+  const newItem = page.locator("#new-item-btn");
+  await expect(newItem).toHaveText(/New task/);
+  await expect(page.locator("#quick-time-chip")).toBeHidden();
+  await expect(page.locator("#quick-duration-chip")).toBeHidden();
+  await expect(page.locator("#task-quick-save")).toHaveAttribute("aria-label", "Save task");
+
+  await openCalendarView(page, "month");
+  await expect(newItem).toHaveText(/New event/);
+  await expect(page.locator("#task-quick-input")).toHaveAttribute("placeholder", /Add an event/);
+  await expect(page.locator("#quick-time-chip")).toBeVisible();
+  await expect(page.locator("#quick-duration-chip")).toBeVisible();
+  // The capture date is already visible in the calendar selection; a passive
+  // pill repeating it was removed from the quick-capture row.
+  await expect(page.locator("#quick-date-chip")).toHaveCount(0);
+  await expect(page.locator("#task-quick-form")).toHaveAttribute("aria-label", "Quick add event");
+  await expect(page.locator("#task-quick-save")).toHaveAttribute("aria-label", "Save event");
+
+  // The event chips plus Save must still fit inside the planner pane.
+  const saveBox = await page.locator("#task-quick-save").boundingBox();
+  const paneBox = await page.locator(".main-pane").boundingBox();
+  expect(saveBox.x + saveBox.width).toBeLessThanOrEqual(paneBox.x + paneBox.width + 1);
+
+  await newItem.click();
+  await expect(page.locator("#task-quick-input")).toBeFocused();
+
+  await openTodayView(page);
+  await expect(newItem).toHaveText(/New task/);
+  await expect(page.locator("#quick-time-chip")).toBeHidden();
+});
+
+test("quick-adds an event with a start time and duration", async ({ page }) => {
+  await page.clock.setFixedTime(new Date(2026, 10, 4, 12, 0, 0));
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+  await openCalendarView(page, "month");
+
+  await page.locator('.calendar-day[data-date="2026-11-18"] .calendar-day-num').click();
+  await page.getByRole("button", { name: "Done" }).click();
+
+  await page.locator("#quick-time-chip").click();
+  await expect(page.locator("#quick-time-chip")).toHaveText("9:30 AM");
+
+  await page.locator("#quick-duration-chip").click();
+  await expect(page.locator("#quick-duration-chip")).toHaveText("1 hr 30 min");
+
+  await page.locator("#task-quick-input").fill("Shoot day prep");
+  await page.locator("#task-quick-input").press("Enter");
+
+  const chip = page.locator('#calendar-view [data-id]', { hasText: "Shoot day prep" });
+  await expect(chip).toBeVisible();
+  await expect(chip).toHaveAttribute("aria-label", /Shoot day prep, 9:30 AM – 11:00 AM/);
+
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("random_notes_v1")));
+  const event = stored.find(item => item.title === "Shoot day prep");
+  expect(event.type).toBe("event");
+  expect(event.dueDate).toBe("2026-11-18");
+  expect(event.startTime).toBe("09:30");
+  expect(event.durationMin).toBe(90);
+
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+  await openCalendarView(page, "month");
+  await expect(page.locator('#calendar-view [data-id]', { hasText: "Shoot day prep" })).toBeVisible();
+});
+
+test("events appear in Today without a task checkbox and ignore the task filter", async ({ page }) => {
+  const today = todayValue();
+  const tomorrow = addDaysValue(1);
+  await page.evaluate(({ today, tomorrow }) => {
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "task", type: "task", title: "Write the brief", body: "", dueDate: today, done: false, createdAt: Date.now(), updatedAt: Date.now() },
+      { id: "event", type: "event", title: "Dentist", body: "", dueDate: today, startTime: "09:30", durationMin: 45, done: false, createdAt: Date.now() - 1, updatedAt: Date.now() - 1 },
+      { id: "later", type: "event", title: "Studio booking", body: "", dueDate: tomorrow, startTime: "14:00", durationMin: 60, done: false, createdAt: Date.now() - 2, updatedAt: Date.now() - 2 }
+    ]));
+  }, { today, tomorrow });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+
+  const eventCard = page.locator("#task-list .event-card", { hasText: "Dentist" });
+  await expect(eventCard).toBeVisible();
+  await expect(eventCard).toContainText("9:30 AM – 10:15 AM");
+  await expect(eventCard.locator(".check")).toHaveCount(0);
+  await expect(page.locator("#task-list .task-card", { hasText: "Write the brief" }).locator(".check")).toBeVisible();
+  await expect(page.getByText("Studio booking", { exact: true })).toBeHidden();
+
+  await page.locator("#task-filter-toggle").click();
+  await page.locator('[data-task-filter="done"]').click();
+  // Scope to the list: the focus dock still offers this open task as up next.
+  await expect(page.locator("#task-list").getByText("Write the brief", { exact: true })).toBeHidden();
+  await expect(eventCard).toBeVisible();
+});
+
+test("editing an event keeps its type and updates the time", async ({ page }) => {
+  const today = todayValue();
+  await page.evaluate(today => {
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "event", type: "event", title: "Dentist", body: "", dueDate: today, startTime: "09:30", durationMin: 45, done: false, createdAt: Date.now(), updatedAt: Date.now() }
+    ]));
+  }, today);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+
+  await page.getByRole("button", { name: "Edit event: Dentist" }).click();
+  await expect(page.getByRole("textbox", { name: "Event", exact: true })).toHaveValue("Dentist");
+  await expect(page.locator("#task-time")).toHaveValue("09:30");
+  await expect(page.locator("#task-duration")).toHaveValue("45");
+
+  await page.locator("#task-time").fill("11:00");
+  await page.locator("#task-duration").selectOption("90");
+  await page.getByRole("button", { name: "Update Event" }).click();
+
+  const eventCard = page.locator("#task-list .event-card", { hasText: "Dentist" });
+  await expect(eventCard).toContainText("11:00 AM – 12:30 PM");
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("random_notes_v1")));
+  expect(stored[0].type).toBe("event");
+  expect(stored[0].startTime).toBe("11:00");
+  expect(stored[0].durationMin).toBe(90);
+});
+
+test("exports a timed event with start and end times", async ({ page }) => {
+  const today = todayValue();
+  await page.evaluate(today => {
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "event", type: "event", title: "Dentist", body: "", dueDate: today, startTime: "14:00", durationMin: 90, done: false, createdAt: Date.now(), updatedAt: Date.now() }
+    ]));
+  }, today);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+
+  page.once("dialog", dialog => dialog.accept());
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Export tasks and events to calendar" }).click();
+  const content = require("fs").readFileSync(await (await downloadPromise).path(), "utf8");
+
+  expect(content).toContain("SUMMARY:Dentist");
+  expect(content).toMatch(/DTSTART:\d{8}T\d{6}Z/);
+  expect(content).toMatch(/DTEND:\d{8}T\d{6}Z/);
+  expect(content).not.toContain("DTSTART;VALUE=DATE");
+  expect(content).toContain("TRANSP:OPAQUE");
+
+  const start = content.match(/DTSTART:(\d{8})T(\d{6})Z/);
+  const end = content.match(/DTEND:(\d{8})T(\d{6})Z/);
+  expect(start).toBeTruthy();
+  expect(end).toBeTruthy();
+  const toDate = match => Date.UTC(
+    Number(match[1].slice(0, 4)),
+    Number(match[1].slice(4, 6)) - 1,
+    Number(match[1].slice(6, 8)),
+    Number(match[2].slice(0, 2)),
+    Number(match[2].slice(2, 4)),
+    Number(match[2].slice(4, 6))
+  );
+  expect(toDate(end) - toDate(start)).toBe(90 * 60 * 1000);
 });
 
 test("planner handles a long task queue with compact expandable rows", async ({ page }) => {
@@ -462,6 +849,91 @@ test("planner handles a long task queue with compact expandable rows", async ({ 
   await expect(firstTask.locator(".task-details")).toBeHidden();
   await firstTask.click();
   await expect(firstTask.locator(".task-details")).toBeVisible();
+});
+
+test("a resized planner keeps its task list above quick capture", async ({ page }) => {
+  const viewport = page.viewportSize();
+  if (viewport && viewport.width <= 780) test.skip();
+
+  const today = todayValue();
+  await page.evaluate(dueDate => {
+    const now = Date.now();
+    const tasks = Array.from({ length: 10 }, (_, index) => ({
+      id: `resized-task-${index}`,
+      type: "task",
+      title: `Resized task ${index + 1}`,
+      body: "",
+      dueDate,
+      done: false,
+      createdAt: now - index,
+      updatedAt: now - index
+    }));
+    localStorage.setItem("random_notes_v1", JSON.stringify(tasks));
+    localStorage.setItem("random_notes_window_positions_v1", JSON.stringify({
+      planner: { left: 100, top: 60, width: 960, height: 600 }
+    }));
+  }, today);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+
+  const taskList = page.getByLabel("Saved tasks");
+  const quickForm = page.locator("#task-quick-form");
+  const status = page.locator(".planner-status");
+  await expect(taskList.getByRole("heading", { name: "Resized task 1", exact: true })).toBeVisible();
+
+  const [listBox, quickBox, statusBox] = await Promise.all([
+    taskList.boundingBox(),
+    quickForm.boundingBox(),
+    status.boundingBox()
+  ]);
+  expect(listBox.y + listBox.height).toBeLessThanOrEqual(quickBox.y + 1);
+  expect(quickBox.y + quickBox.height).toBeLessThanOrEqual(statusBox.y + 1);
+
+  const scrollState = await taskList.evaluate(element => ({
+    clientHeight: element.clientHeight,
+    scrollHeight: element.scrollHeight
+  }));
+  expect(scrollState.scrollHeight).toBeGreaterThan(scrollState.clientHeight);
+});
+
+test("quick capture stays above the dock on a short screen", async ({ page }) => {
+  const viewport = page.viewportSize();
+  if (viewport && viewport.width <= 780) test.skip();
+
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const today = todayValue();
+  await page.evaluate(dueDate => {
+    const now = Date.now();
+    const tasks = Array.from({ length: 12 }, (_, index) => ({
+      id: `short-task-${index}`,
+      type: "task",
+      title: `Short screen task ${index + 1}`,
+      body: "",
+      dueDate,
+      done: false,
+      createdAt: now - index,
+      updatedAt: now - index
+    }));
+    localStorage.setItem("random_notes_v1", JSON.stringify(tasks));
+  }, today);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+
+  const quickInput = page.locator("#task-quick-input");
+  const quickForm = page.locator("#task-quick-form");
+  const dock = page.locator(".taskbar");
+  await expect(quickInput).toBeVisible();
+
+  const [formBox, dockBox] = await Promise.all([quickForm.boundingBox(), dock.boundingBox()]);
+  expect(formBox.y + formBox.height).toBeLessThanOrEqual(dockBox.y + 1);
+  expect(formBox.y + formBox.height).toBeLessThanOrEqual(800);
+
+  // Playwright refuses to click if the dock (or anything else) covers it.
+  await quickInput.click();
+  await quickInput.fill("Added on a short screen");
+  await quickInput.press("Enter");
+  const taskList = page.getByLabel("Saved tasks");
+  await expect(taskList.getByRole("heading", { name: "Added on a short screen", exact: true })).toBeVisible();
 });
 
 test("notes view captures loose thoughts separately", async ({ page }) => {
@@ -1153,7 +1625,7 @@ test("calendar and add-task form stay separated in a short window", async ({ pag
   await openCalendarView(page, "month");
 
   await page.locator('.calendar-day[data-date="2026-11-28"] .calendar-day-num').click();
-  await page.getByRole("button", { name: "+ Add task" }).click();
+  await page.getByRole("button", { name: "+ Add event" }).click();
 
   const calendarBox = await page.locator("#calendar-view").boundingBox();
   const formBox = await page.locator("#task-form").boundingBox();
@@ -1390,25 +1862,41 @@ test("today count includes open undated tasks but not completed ones", async ({ 
   await openPlannerSurface(page);
 
   await expect(page.locator('[data-side-count="today"]')).toHaveText("2");
-  await expect(page.locator('[data-side-count="calendar"]')).toBeHidden();
 
-  await page.getByRole("button", { name: "Calendar", exact: true }).click();
-  await expect(page.locator('[data-side-count="calendar"]')).toHaveText("1");
+  await openPlannerView(page, "month");
+  await expect(page.locator("#calendar-view")).toBeVisible();
+  await expect(page.locator("#calendar-view").getByRole("button", { name: "Today open" })).toBeVisible();
 });
 
 test("tablists and filter menus support arrow keys", async ({ page }) => {
   await openPlannerSurface(page);
-  await page.getByRole("button", { name: "Calendar", exact: true }).click();
+  // Opening Planner focuses quick capture on the next frame; let that settle so
+  // it cannot steal focus from the tablist mid-test.
+  await expect(page.locator("#task-quick-input")).toBeFocused();
 
-  const weekTab = page.getByRole("tab", { name: "Week", exact: true });
-  const monthTab = page.getByRole("tab", { name: "Month", exact: true });
-  await weekTab.focus();
-  await page.keyboard.press("ArrowRight");
-  await expect(monthTab).toBeFocused();
-  await expect(monthTab).toHaveAttribute("aria-selected", "true");
-  await page.keyboard.press("Home");
-  await expect(weekTab).toBeFocused();
-  await expect(weekTab).toHaveAttribute("aria-selected", "true");
+  // The header view tabs only exist where the sidebar is collapsed.
+  if (await page.locator(".planner-view-tabs").isVisible()) {
+    const todayTab = page.getByRole("tab", { name: "Today", exact: true });
+    const weekTab = page.getByRole("tab", { name: "Week", exact: true });
+    const monthTab = page.getByRole("tab", { name: "Month", exact: true });
+    await weekTab.focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(monthTab).toBeFocused();
+    await expect(monthTab).toHaveAttribute("aria-selected", "true");
+    await page.keyboard.press("Home");
+    await expect(todayTab).toBeFocused();
+    await expect(todayTab).toHaveAttribute("aria-selected", "true");
+    await page.keyboard.press("End");
+    await expect(monthTab).toBeFocused();
+    await expect(monthTab).toHaveAttribute("aria-selected", "true");
+  } else {
+    // Desktop keeps the same switch in the sidebar.
+    await expect(viewSwitch(page, "today")).toHaveClass(/active/);
+    await openPlannerView(page, "week");
+    await expect(viewSwitch(page, "week")).toHaveClass(/active/);
+    await openTodayView(page);
+    await expect(viewSwitch(page, "today")).toHaveClass(/active/);
+  }
 
   const filterToggle = page.getByRole("button", { name: "Task status filter" });
   const allOption = page.getByRole("button", { name: "All", exact: true });
@@ -1551,7 +2039,7 @@ test("calendar export folds non-ASCII lines at 75 octets", async ({ page }) => {
 
   page.once("dialog", dialog => dialog.accept());
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export tasks to calendar" }).click();
+  await page.getByRole("button", { name: "Export tasks and events to calendar" }).click();
   const download = await downloadPromise;
   const content = require("fs").readFileSync(await download.path(), "utf8");
   const encoder = new TextEncoder();
@@ -1570,6 +2058,12 @@ test("the app shell reloads while offline", async ({ page, browserName }) => {
   await page.evaluate(async () => {
     if ("serviceWorker" in navigator) await navigator.serviceWorker.ready;
   });
+  // If the worker activates while this document is still loading,
+  // clients.claim() runs before the document exists and it stays uncontrolled.
+  // One navigation with an active worker picks it up.
+  if (!(await page.evaluate(() => Boolean(navigator.serviceWorker.controller)))) {
+    await page.reload({ waitUntil: "domcontentloaded" });
+  }
   await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
 
   await page.context().setOffline(true);
@@ -1604,7 +2098,7 @@ test("planner stays usable at a 200% zoom equivalent", async ({ page }) => {
   const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(horizontalOverflow).toBe(false);
 
-  await page.getByRole("button", { name: "Calendar", exact: true }).click();
+  await openPlannerView(page, "month");
   await expect(page.locator("#calendar-view")).toBeVisible();
   await expect(page.locator("#task-quick-input")).toBeVisible();
 });

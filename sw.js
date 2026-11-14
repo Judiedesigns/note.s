@@ -2,7 +2,7 @@
 // Network-first keeps normal browsing fresh; the cache is the fallback when
 // the network is slow or unavailable.
 
-const CACHE_NAME = "random-notes-shell-v1";
+const CACHE_NAME = "random-notes-shell-v9";
 const SHELL_ASSETS = [
   "./",
   "./index.html",
@@ -48,7 +48,10 @@ self.addEventListener("fetch", event => {
         return response;
       })
       .catch(async () => {
-        const cached = await caches.match(request);
+        // Query strings (e.g. styles.css?v=...) are cache busters, not
+        // different files, so fall back to the same path if the exact
+        // versioned URL was never cached.
+        const cached = await caches.match(request, { ignoreSearch: true });
         if (cached) return cached;
         if (request.mode === "navigate") {
           const shell = await caches.match("./index.html");

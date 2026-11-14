@@ -1,0 +1,2002 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="only light">
+<title>Focus activation — four directions</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  [hidden] { display: none !important; }
+
+  :root {
+    color-scheme: only light;
+    --font-ui: "Lucida Grande", "Helvetica Neue", Arial, sans-serif;
+    --ink: #24232a;
+    --ink-soft: #3c3b44;
+    --muted: #6d6c75;
+    --placeholder: #8f8b95;
+    --accent: #6d6bc6;
+    --accent-hover: #5d5bbb;
+    --accent-press: #4f4c9d;
+    --danger: #bf4d63;
+    --success: #4f8f6a;
+    --success-press: #3d7255;
+    --surface: #fffdfd;
+    --surface-2: #f7f2f7;
+    --hairline: rgba(71, 64, 85, 0.18);
+    --hairline-strong: rgba(71, 64, 85, 0.3);
+    --fill: rgba(109, 107, 198, 0.12);
+    --ns-sidebar: rgba(240, 232, 242, 0.84);
+    --ns-selected: rgba(109, 107, 198, 0.14);
+    --ns-glass: rgba(249, 245, 251, 0.92);
+    --shadow-window: 0 28px 64px rgba(44, 35, 70, 0.28), 0 4px 14px rgba(44, 35, 70, 0.16);
+    --shadow-pop: 0 18px 44px rgba(44, 35, 70, 0.24), 0 2px 8px rgba(44, 35, 70, 0.12);
+    --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  body {
+    min-height: 100vh;
+    padding-bottom: 40px;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--ink);
+    background-color: #b9a4bd;
+    background-image:
+      linear-gradient(180deg, rgba(255, 209, 226, 0.22), rgba(81, 75, 139, 0.26)),
+      url("../bg-2.jpg");
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; }
+  button:active { transform: scale(0.98); }
+  button:focus-visible, input:focus-visible { outline: 2px solid rgba(109, 107, 198, 0.6); outline-offset: 2px; }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+  }
+
+  /* ------------------------------------------------------------ study bar */
+  .study-bar {
+    position: sticky;
+    top: 0;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    min-height: 46px;
+    padding: 0 max(16px, calc((100vw - 1220px) / 2));
+    border-bottom: 1px solid rgba(70, 60, 84, 0.24);
+    background: rgba(37, 31, 48, 0.9);
+    -webkit-backdrop-filter: blur(18px) saturate(130%);
+    backdrop-filter: blur(18px) saturate(130%);
+    color: rgba(255, 255, 255, 0.86);
+    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+  .study-title {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+    white-space: nowrap;
+  }
+  .study-title strong { font-size: 12px; letter-spacing: 0.01em; }
+  .study-title span { color: rgba(255, 255, 255, 0.5); font-size: 11px; }
+
+  .iteration-switch {
+    display: flex;
+    gap: 2px;
+    margin: 0 auto;
+    padding: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 9px;
+    background: rgba(0, 0, 0, 0.2);
+  }
+  .iteration-tab {
+    min-height: 26px;
+    padding: 0 11px;
+    border-radius: 7px;
+    color: rgba(255, 255, 255, 0.66);
+    font-size: 11px;
+    white-space: nowrap;
+    transition: background-color 0.14s ease, color 0.14s ease;
+  }
+  .iteration-tab:hover { color: #fff; background: rgba(255, 255, 255, 0.08); }
+  .iteration-tab[aria-selected="true"] {
+    background: rgba(255, 255, 255, 0.93);
+    color: #2c2836;
+    font-weight: 600;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+  .iteration-tab .n {
+    display: inline-grid;
+    place-items: center;
+    width: 15px;
+    height: 15px;
+    margin-right: 5px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    font-size: 9px;
+    font-weight: 600;
+  }
+  .iteration-tab[aria-selected="true"] .n { background: rgba(109, 107, 198, 0.16); color: var(--accent-press); }
+
+  /* ------------------------------------------------------------ app menu bar */
+  .app-menu-bar {
+    position: relative;
+    z-index: 50;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    min-height: 30px;
+    padding: 0 max(16px, calc((100vw - 1220px) / 2));
+    border-bottom: 1px solid rgba(86, 75, 92, 0.2);
+    background: rgba(255, 245, 248, 0.8);
+    -webkit-backdrop-filter: blur(18px) saturate(125%);
+    backdrop-filter: blur(18px) saturate(125%);
+    font-size: 11.5px;
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    color: var(--ink);
+  }
+  .app-menu-left,
+  .app-menu-right { display: flex; align-items: center; gap: 14px; min-width: 0; overflow: hidden; }
+  .app-menu-right { justify-self: end; gap: 12px; color: var(--muted); font-weight: 400; }
+  .app-menu-brand { display: inline-flex; align-items: center; gap: 7px; }
+  .app-menu-brand img { width: 16px; height: 16px; image-rendering: pixelated; }
+  .app-menu-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 2px;
+    border: 1px solid rgba(75, 66, 86, 0.2);
+    border-radius: 8px;
+    background: rgba(116, 104, 124, 0.1);
+    box-shadow: inset 0 1px 2px rgba(60, 48, 69, 0.1);
+  }
+  .app-menu-tab { min-height: 22px; padding: 0 9px; border-radius: 6px; color: #51505a; font-size: 10.5px; }
+  .app-menu-tab.active {
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--ink);
+    font-weight: 500;
+    box-shadow: 0 1px 3px rgba(55, 45, 67, 0.2);
+  }
+  .menu-pill {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    height: 20px;
+    padding: 0 8px;
+    border: 1px solid rgba(77, 69, 88, 0.18);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.62);
+    color: var(--ink-soft);
+    font-size: 10px;
+  }
+  .menu-pill .pdot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .menu-pill time { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink); }
+
+  .study-tools { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+  .study-tools .label { color: rgba(255, 255, 255, 0.46); font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .speed {
+    display: flex;
+    gap: 1px;
+    padding: 2px;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    border-radius: 7px;
+    background: rgba(0, 0, 0, 0.18);
+  }
+  .speed button {
+    min-height: 21px;
+    padding: 0 7px;
+    border-radius: 5px;
+    color: rgba(255, 255, 255, 0.62);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  .speed button.on { background: rgba(255, 255, 255, 0.9); color: #2c2836; font-weight: 600; }
+  .reset-btn {
+    min-height: 25px;
+    padding: 0 9px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 7px;
+    color: rgba(255, 255, 255, 0.76);
+    font-size: 10px;
+  }
+  .reset-btn:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+
+  /* ---------------------------------------------------------------- stage */
+  .stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 292px;
+    align-items: start;
+    gap: 22px;
+    width: min(1220px, calc(100vw - 32px));
+    margin: 24px auto 0;
+  }
+
+  .app-window {
+    overflow: hidden;
+    border: 1px solid rgba(63, 54, 76, 0.28);
+    border-radius: 13px;
+    background: var(--ns-glass);
+    box-shadow: var(--shadow-window);
+  }
+  .window-titlebar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 38px;
+    padding: 0 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(235, 228, 240, 0.55));
+  }
+  .window-controls { display: flex; gap: 7px; }
+  .window-control {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.65), 0 0 0 0.5px rgba(60, 48, 70, 0.24), 0 1px 1.5px rgba(50, 38, 62, 0.2);
+  }
+  .close-control { background: radial-gradient(circle at 34% 30%, #ffc4c0, #e36d68 58%, #c34b49); }
+  .minimize-control { background: radial-gradient(circle at 34% 30%, #ffe8b2, #ecc15a 58%, #c99f37); }
+  .fullscreen-control { background: radial-gradient(circle at 34% 30%, #c7efc3, #67c465 58%, #43a344); }
+  .window-title { font-size: 11.5px; font-weight: 600; color: var(--ink-soft); }
+  .window-meta { margin-left: auto; color: var(--muted); font-size: 10px; }
+
+  .window-body {
+    display: grid;
+    grid-template-columns: 166px minmax(0, 1fr);
+    min-height: 482px;
+    background: rgba(255, 253, 253, 0.88);
+  }
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 12px 9px;
+    border-right: 1px solid var(--hairline);
+    background: var(--ns-sidebar);
+  }
+  .sidebar-label {
+    margin: 11px 8px 4px;
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+  .sidebar-label:first-child { margin-top: 0; }
+  .side-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 29px;
+    padding: 0 8px;
+    border-radius: 7px;
+    color: var(--ink-soft);
+    font-size: 11.5px;
+    text-align: left;
+    transition: background-color 0.12s ease, color 0.12s ease;
+  }
+  .side-row:hover { background: rgba(109, 107, 198, 0.09); }
+  .side-row.active { background: var(--ns-selected); color: var(--accent-press); font-weight: 600; }
+  .side-row .icon { width: 14px; height: 14px; flex: none; opacity: 0.8; }
+  .side-count { margin-left: auto; color: var(--muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+  .side-row.active .side-count { color: var(--accent-press); }
+  .side-row.timer-row { margin-top: auto; border: 1px dashed rgba(109, 107, 198, 0.3); }
+  .side-row.timer-row .side-count { font-weight: 600; }
+
+  .main { position: relative; display: flex; flex-direction: column; min-width: 0; padding: 17px 19px 12px; }
+  .panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+  .panel-title { font-size: 20px; font-weight: 600; letter-spacing: -0.015em; }
+  .panel-sub { margin-top: 2px; color: var(--muted); font-size: 10.5px; }
+  .tools { display: flex; align-items: center; gap: 6px; }
+  .new-btn,
+  .focus-launch {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 29px;
+    padding: 0 10px;
+    border: 1px solid rgba(80, 70, 94, 0.25);
+    border-radius: 8px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(244, 239, 248, 0.9));
+    color: var(--ink-soft);
+    font-size: 11px;
+    font-weight: 500;
+    box-shadow: 0 1px 1px rgba(56, 46, 66, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+    transition: background-color 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+  }
+  .new-btn:hover,
+  .focus-launch:hover { background: #fff; border-color: rgba(109, 107, 198, 0.4); }
+  .new-btn .plus { color: var(--accent-press); font-size: 14px; line-height: 1; }
+  .focus-launch {
+    color: var(--accent-press);
+    border-color: rgba(109, 107, 198, 0.34);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(241, 238, 251, 0.94));
+  }
+  .focus-launch svg { width: 13px; height: 13px; }
+  .focus-anchor { position: relative; }
+
+  /* --------------------------------------------------------------- footer */
+  .notes {
+    width: min(1220px, calc(100vw - 32px));
+    margin: 18px auto 0;
+    border: 1px solid rgba(255, 255, 255, 0.34);
+    border-radius: 12px;
+    background: rgba(37, 31, 48, 0.82);
+    color: rgba(255, 255, 255, 0.82);
+    box-shadow: 0 16px 40px rgba(35, 27, 48, 0.2);
+  }
+  .notes > summary {
+    padding: 12px 16px;
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+    list-style: none;
+  }
+  .notes > summary::-webkit-details-marker { display: none; }
+  .notes > summary::before { content: "▸ "; color: rgba(255, 255, 255, 0.5); }
+  .notes[open] > summary::before { content: "▾ "; }
+  .notes-body { padding: 0 16px 16px; font-size: 11.5px; line-height: 1.5; }
+  .notes-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+  .notes h3 { margin: 12px 0 5px; color: #fff; font-size: 10px; letter-spacing: 0.07em; text-transform: uppercase; }
+  .notes h3:first-child { margin-top: 0; }
+  .notes ul { margin: 0; padding-left: 16px; }
+  .notes li { margin: 3px 0; }
+  .notes a { color: #cfccff; }
+  .notes code { color: #fff; font-size: 10.5px; }
+  .compare { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+  .compare th,
+  .compare td { padding: 6px 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); text-align: left; vertical-align: top; }
+  .compare th { color: rgba(255, 255, 255, 0.5); font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .compare tr:last-child td { border-bottom: 0; }
+  .compare .pick { color: #c9f3d5; }
+  .recommend {
+    margin-top: 14px;
+    padding: 10px 12px;
+    border: 1px solid rgba(201, 243, 213, 0.3);
+    border-radius: 9px;
+    background: rgba(79, 143, 106, 0.16);
+    font-size: 11.5px;
+  }
+  .recommend strong { color: #d9ffe3; }
+
+  /* ---------------------------------------------------------------- toast */
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 22px;
+    z-index: 100;
+    max-width: min(430px, calc(100vw - 32px));
+    padding: 9px 14px;
+    border: 1px solid rgba(76, 67, 86, 0.24);
+    border-radius: 10px;
+    background: rgba(250, 246, 250, 0.96);
+    box-shadow: 0 18px 42px rgba(44, 35, 70, 0.24);
+    color: var(--ink);
+    font-size: 11.5px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 10px);
+    transition: opacity 0.18s ease, transform 0.18s var(--ease-out);
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+  /* --------------------------------------------------------- focus desk */
+  .desk {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 30;
+    width: 308px;
+    padding: 13px;
+    border: 1px solid rgba(72, 63, 86, 0.24);
+    border-radius: 12px;
+    background: rgba(255, 253, 255, 0.98);
+    box-shadow: var(--shadow-pop);
+    transform-origin: top right;
+    animation: pop-in 0.16s var(--ease-out);
+  }
+  @keyframes pop-in {
+    from { opacity: 0; transform: scale(0.97) translateY(-3px); }
+    to { opacity: 1; transform: none; }
+  }
+  .desk-head { display: flex; align-items: center; gap: 8px; }
+  .desk-head strong { font-size: 12px; }
+  .desk-close {
+    display: grid;
+    place-items: center;
+    width: 21px;
+    height: 21px;
+    margin-left: auto;
+    border-radius: 6px;
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1;
+  }
+  .desk-close:hover { background: var(--fill); color: var(--ink); }
+  .desk-label { margin: 12px 0 5px; color: var(--muted); font-size: 9.5px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+  .desk-tasks { display: flex; flex-direction: column; gap: 2px; }
+  .desk-task {
+    display: grid;
+    grid-template-columns: 14px minmax(0, 1fr);
+    gap: 8px;
+    align-items: center;
+    padding: 7px 8px;
+    border-radius: 7px;
+    color: var(--ink-soft);
+    text-align: left;
+    transition: background-color 0.12s ease;
+  }
+  .desk-task:hover { background: rgba(109, 107, 198, 0.08); }
+  .desk-task[aria-pressed="true"] { background: var(--ns-selected); color: var(--accent-press); }
+  .desk-radio {
+    width: 13px;
+    height: 13px;
+    border: 1.5px solid rgba(83, 74, 98, 0.4);
+    border-radius: 50%;
+    background: #fff;
+  }
+  .desk-task[aria-pressed="true"] .desk-radio {
+    border: 4px solid var(--accent);
+    background: #fff;
+  }
+  .desk-task-title { display: block; font-size: 11.5px; font-weight: 500; }
+  .desk-task-meta { display: block; color: var(--muted); font-size: 9.5px; }
+  .desk-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 12px;
+    padding-top: 11px;
+    border-top: 1px solid var(--hairline);
+  }
+  .desk-row > span { color: var(--muted); font-size: 10.5px; }
+  .seg {
+    display: flex;
+    gap: 1px;
+    padding: 2px;
+    border: 1px solid var(--hairline);
+    border-radius: 7px;
+    background: var(--surface-2);
+  }
+  .seg button {
+    min-height: 22px;
+    padding: 0 8px;
+    border-radius: 5px;
+    color: var(--muted);
+    font-size: 10px;
+    font-variant-numeric: tabular-nums;
+  }
+  .seg button.on { background: #fff; color: var(--accent-press); font-weight: 600; box-shadow: 0 1px 2px rgba(55, 45, 67, 0.16); }
+  .desk-note { margin-top: 9px; color: var(--muted); font-size: 10px; text-align: center; }
+  .primary-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    width: 100%;
+    height: 31px;
+    margin-top: 10px;
+    border: 1px solid var(--accent-press);
+    border-radius: 8px;
+    background: linear-gradient(180deg, var(--accent-hover), var(--accent));
+    color: #fff;
+    font-size: 11.5px;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(55, 45, 67, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    transition: filter 0.14s ease;
+  }
+  .primary-btn:hover { filter: brightness(1.05); }
+  .primary-btn:active { transform: scale(0.985); }
+
+  /* ------------------------------------------------------------ queue strip */
+  .queue-strip {
+    margin-top: 12px;
+    padding: 9px 10px 10px;
+    border: 1px solid rgba(109, 107, 198, 0.24);
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(245, 242, 253, 0.95), rgba(250, 247, 252, 0.86));
+  }
+  .queue-head { display: flex; align-items: baseline; gap: 8px; }
+  .queue-head strong { color: var(--accent-press); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .queue-summary { margin-left: auto; color: var(--muted); font-size: 9.5px; font-variant-numeric: tabular-nums; }
+  .queue-list { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 7px; }
+  .queue-empty { color: var(--muted); font-size: 10.5px; }
+  .queue-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    padding: 4px 5px 4px 6px;
+    border: 1px solid var(--hairline);
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.82);
+  }
+  .queue-card.current { border-color: rgba(109, 107, 198, 0.48); box-shadow: 0 0 0 2px rgba(109, 107, 198, 0.1); }
+  .queue-card.complete { opacity: 0.58; }
+  .queue-start {
+    display: grid;
+    place-items: center;
+    width: 19px;
+    height: 19px;
+    border-radius: 5px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 8px;
+    flex: none;
+  }
+  .queue-start:hover { background: var(--accent-hover); }
+  .queue-start:disabled { opacity: 0.4; cursor: default; }
+  .queue-title { max-width: 150px; overflow: hidden; font-size: 10.5px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+  .queue-meta { color: var(--muted); font-size: 9px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .queue-remove {
+    display: grid;
+    place-items: center;
+    width: 17px;
+    height: 17px;
+    border-radius: 4px;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1;
+    flex: none;
+  }
+  .queue-remove:hover { background: rgba(191, 77, 99, 0.12); color: var(--danger); }
+
+  /* --------------------------------------------------------------- tasks */
+  .task-list {
+    display: flex;
+    flex-direction: column;
+    margin-top: 9px;
+    list-style: none;
+  }
+  .task-row {
+    position: relative;
+    display: grid;
+    grid-template-columns: 16px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    min-height: 44px;
+    padding: 7px 8px 7px 9px;
+    border-bottom: 1px solid rgba(71, 64, 85, 0.1);
+    border-radius: 7px;
+    transition: background-color 0.12s ease;
+  }
+  .task-row:last-child { border-bottom: 0; }
+  .task-row:hover { background: rgba(109, 107, 198, 0.055); }
+  .task-row.is-active { background: rgba(109, 107, 198, 0.1); }
+  .task-row.is-active::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    left: 0;
+    width: 2.5px;
+    border-radius: 2px;
+    background: var(--accent);
+  }
+  .task-row.done .item-title { color: var(--muted); text-decoration: line-through; }
+  .task-row.done .item-meta { opacity: 0.7; }
+  .check {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 15px;
+    height: 15px;
+    border: 1.5px solid rgba(83, 74, 98, 0.42);
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    transition: background-color 0.12s ease, border-color 0.12s ease;
+  }
+  .check:checked { border-color: var(--accent); background: var(--accent); }
+  .check:checked::after {
+    content: "";
+    display: block;
+    width: 6px;
+    height: 3px;
+    margin: 3px 0 0 3.5px;
+    border-bottom: 1.8px solid #fff;
+    border-left: 1.8px solid #fff;
+    transform: rotate(-45deg);
+  }
+  .task-main { display: flex; min-width: 0; flex-direction: column; gap: 1px; }
+  .item-title { overflow: hidden; color: var(--ink); font-size: 12.5px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+  .item-meta { color: var(--muted); font-size: 10px; }
+  .row-side { display: flex; align-items: center; justify-content: flex-end; gap: 5px; min-width: 24px; }
+  .row-action {
+    height: 23px;
+    padding: 0 8px;
+    border: 1px solid rgba(109, 107, 198, 0.3);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.94);
+    color: var(--accent-press);
+    font-size: 9.5px;
+    font-weight: 600;
+    opacity: 0;
+    transform: translateX(3px);
+    transition: opacity 0.13s ease, transform 0.13s var(--ease-out), background-color 0.13s ease;
+  }
+  .task-row:hover .row-action,
+  .task-row:focus-within .row-action { opacity: 1; transform: none; }
+  .row-action:hover { background: rgba(109, 107, 198, 0.1); }
+  .row-action .glyph { margin-right: 4px; font-size: 9px; }
+  .queue-tag {
+    padding: 2px 6px;
+    border: 1px dashed rgba(109, 107, 198, 0.36);
+    border-radius: 999px;
+    color: var(--accent-press);
+    font-size: 8.5px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .active-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: rgba(109, 107, 198, 0.13);
+    color: var(--accent-press);
+    font-size: 9.5px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .active-chip .dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  .active-chip.is-break { background: rgba(79, 143, 106, 0.14); color: var(--success-press); }
+  .active-chip.is-paused { background: rgba(109, 107, 198, 0.08); color: var(--muted); }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+
+  /* ---------------------------------------------------------------- quick */
+  .list-foot {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: auto;
+    padding: 11px 2px 7px;
+    color: var(--muted);
+    font-size: 10px;
+  }
+  .list-foot .hint { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .list-foot .open-count { margin-left: auto; white-space: nowrap; }
+  .cmd-hint {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    min-height: 23px;
+    padding: 0 7px;
+    border: 1px solid var(--hairline);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--ink-soft);
+    font-size: 9.5px;
+    white-space: nowrap;
+  }
+  .cmd-hint:hover { border-color: rgba(109, 107, 198, 0.36); background: #fff; }
+  .cmd-hint kbd {
+    padding: 1px 4px;
+    border: 1px solid var(--hairline);
+    border-bottom-color: var(--hairline-strong);
+    border-radius: 4px;
+    background: var(--surface-2);
+    font-family: inherit;
+    font-size: 9px;
+  }
+  .quick {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid rgba(78, 68, 92, 0.24);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.72);
+    box-shadow: inset 0 1px 2px rgba(60, 48, 69, 0.06);
+    transition: background-color 0.14s ease, border-color 0.14s ease;
+  }
+  .quick:focus-within { background: #fff; border-color: rgba(109, 107, 198, 0.42); }
+  .quick .plus { color: var(--accent-press); font-size: 14px; }
+  .quick input { min-width: 0; flex: 1; border: 0; outline: 0; background: none; color: var(--ink); font: inherit; font-size: 11.5px; }
+  .quick input::placeholder { color: var(--placeholder); }
+  .quick .kbd { color: var(--muted); font-size: 9.5px; }
+  /* ----------------------------------------------------------------- rail */
+  .rail { position: sticky; top: 62px; display: flex; flex-direction: column; gap: 10px; }
+  .rail-card {
+    padding: 13px 14px;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 12px;
+    background: rgba(255, 253, 255, 0.84);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    box-shadow: 0 14px 36px rgba(44, 35, 70, 0.18);
+  }
+  .rail-kicker {
+    color: var(--accent-press);
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+  }
+  .rail-card h2 { margin: 3px 0 5px; font-size: 14px; letter-spacing: -0.01em; }
+  .rail-card p { color: var(--ink-soft); font-size: 10.5px; line-height: 1.45; }
+  .rail-facts { display: grid; gap: 6px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--hairline); }
+  .rail-fact { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 7px; font-size: 9.5px; line-height: 1.35; }
+  .rail-fact dt { color: var(--muted); }
+  .rail-fact dd { color: var(--ink-soft); }
+  .rail-fact .good { color: var(--success-press); font-weight: 600; }
+  .rail-fact .warn { color: var(--danger); font-weight: 600; }
+
+  .player-slot { min-height: 248px; }
+  .player {
+    overflow: hidden;
+    border: 1px solid rgba(63, 54, 76, 0.24);
+    border-radius: 12px;
+    background: rgba(255, 253, 255, 0.95);
+    box-shadow: 0 18px 40px rgba(44, 35, 70, 0.22);
+    animation: player-in 0.18s var(--ease-out);
+  }
+  @keyframes player-in {
+    from { opacity: 0; transform: translateY(7px) scale(0.985); }
+    to { opacity: 1; transform: none; }
+  }
+  .player.flash { box-shadow: 0 18px 40px rgba(44, 35, 70, 0.22), 0 0 0 3px rgba(109, 107, 198, 0.45); }
+  .player-top {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 11px;
+    border-bottom: 1px solid var(--hairline);
+    background: rgba(247, 243, 250, 0.7);
+  }
+  .phase {
+    padding: 2.5px 7px;
+    border-radius: 999px;
+    background: rgba(109, 107, 198, 0.13);
+    color: var(--accent-press);
+    font-size: 8.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .phase.is-break { background: rgba(79, 143, 106, 0.15); color: var(--success-press); }
+  .phase.is-ready { background: rgba(109, 107, 198, 0.08); color: var(--muted); }
+  .cycle { display: flex; gap: 3px; margin-left: auto; }
+  .cycle i { width: 5px; height: 5px; border-radius: 50%; background: rgba(83, 74, 98, 0.18); }
+  .cycle i.on { background: var(--accent); }
+  .player .time {
+    padding: 13px 12px 1px;
+    text-align: center;
+    font-size: 40px;
+    font-weight: 600;
+    letter-spacing: -0.035em;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .player .time.is-done { font-size: 26px; letter-spacing: -0.01em; }
+  .player-task {
+    overflow: hidden;
+    padding: 5px 14px 0;
+    text-align: center;
+    font-size: 11.5px;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .player-next { padding: 4px 14px 10px; color: var(--muted); font-size: 9.5px; text-align: center; }
+  .progress { height: 3px; margin: 0 12px; background: rgba(109, 107, 198, 0.14); }
+  .progress span { display: block; width: 0; height: 100%; background: var(--accent); transition: width 0.2s linear; }
+  .player.is-break .progress span { background: var(--success); }
+  .controls { display: flex; gap: 5px; padding: 9px 11px 11px; }
+  .controls button {
+    flex: 1;
+    height: 29px;
+    border: 1px solid var(--hairline);
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.86);
+    color: var(--ink-soft);
+    font-size: 10px;
+    font-weight: 500;
+    transition: background-color 0.13s ease, border-color 0.13s ease;
+  }
+  .controls button:hover { background: #fff; border-color: rgba(109, 107, 198, 0.36); }
+  .controls button.primary {
+    flex: 1.4;
+    border-color: var(--accent-press);
+    background: linear-gradient(180deg, var(--accent-hover), var(--accent));
+    color: #fff;
+    font-weight: 600;
+  }
+  .controls button.danger:hover { border-color: rgba(191, 77, 99, 0.42); color: var(--danger); }
+
+  .empty-player {
+    display: grid;
+    place-items: center;
+    min-height: 248px;
+    padding: 20px;
+    border: 1px dashed rgba(83, 74, 98, 0.3);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.34);
+    text-align: center;
+  }
+  .empty-player strong { display: block; margin-bottom: 4px; color: var(--ink-soft); font-size: 11.5px; }
+  .empty-player span { color: var(--muted); font-size: 10px; line-height: 1.45; }
+  .empty-player .ghost-time {
+    margin-bottom: 8px;
+    color: rgba(83, 74, 98, 0.16);
+    font-size: 36px;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* --------------------------------------------------------------- palette */
+  .palette-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 90;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 12vh;
+    background: rgba(30, 24, 42, 0.32);
+    -webkit-backdrop-filter: blur(3px);
+    backdrop-filter: blur(3px);
+  }
+  .palette {
+    width: min(500px, calc(100vw - 28px));
+    overflow: hidden;
+    border: 1px solid rgba(63, 54, 76, 0.28);
+    border-radius: 13px;
+    background: rgba(255, 253, 255, 0.98);
+    box-shadow: 0 32px 72px rgba(35, 27, 48, 0.36);
+    animation: palette-in 0.16s var(--ease-out);
+  }
+  @keyframes palette-in {
+    from { opacity: 0; transform: translateY(-6px) scale(0.985); }
+    to { opacity: 1; transform: none; }
+  }
+  .palette-search { display: flex; align-items: center; gap: 9px; padding: 13px 15px; border-bottom: 1px solid var(--hairline); }
+  .palette-search svg { width: 15px; height: 15px; color: var(--muted); flex: none; }
+  .palette-search input { min-width: 0; flex: 1; border: 0; outline: 0; background: none; color: var(--ink); font: inherit; font-size: 13px; }
+  .palette-search input::placeholder { color: var(--placeholder); }
+  .palette-search .esc { padding: 2px 5px; border: 1px solid var(--hairline); border-radius: 4px; color: var(--muted); font-size: 9px; }
+  .palette-list { max-height: 292px; overflow: auto; padding: 6px; }
+  .palette-item {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    gap: 9px;
+    align-items: center;
+    width: 100%;
+    padding: 8px 9px;
+    border-radius: 7px;
+    color: var(--ink-soft);
+    text-align: left;
+  }
+  .palette-item.selected { background: var(--ns-selected); color: var(--accent-press); }
+  .palette-item .pi-icon {
+    display: grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border: 1px solid var(--hairline);
+    border-radius: 5px;
+    background: rgba(255, 255, 255, 0.8);
+    font-size: 9px;
+  }
+  .palette-item .pi-title { display: block; overflow: hidden; font-size: 11.5px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+  .palette-item .pi-meta { display: block; color: var(--muted); font-size: 9.5px; }
+  .palette-item .pi-go { color: var(--muted); font-size: 9px; white-space: nowrap; }
+  .palette-item.selected .pi-go { color: var(--accent-press); }
+  .palette-empty { padding: 22px 12px; color: var(--muted); font-size: 11px; text-align: center; }
+  .palette-foot {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 14px;
+    border-top: 1px solid var(--hairline);
+    background: rgba(247, 243, 250, 0.7);
+    color: var(--muted);
+    font-size: 9px;
+  }
+  .palette-foot kbd {
+    padding: 1px 4px;
+    border: 1px solid var(--hairline);
+    border-bottom-color: var(--hairline-strong);
+    border-radius: 4px;
+    background: #fff;
+    font-family: inherit;
+    font-size: 8.5px;
+  }
+
+  /* ------------------------------------------------------------ responsive */
+  @media (max-width: 1040px) {
+    .stage { grid-template-columns: minmax(0, 1fr); width: min(760px, calc(100vw - 24px)); }
+    .rail { position: static; display: grid; grid-template-columns: 1fr 1fr; }
+    .player-slot { grid-row: span 1; }
+    .notes { width: min(760px, calc(100vw - 24px)); }
+    .notes-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 760px) {
+    .study-bar { flex-wrap: wrap; gap: 8px; padding: 7px 12px; }
+    .study-title span { display: none; }
+    .iteration-switch { order: 3; width: 100%; overflow-x: auto; justify-content: flex-start; }
+    .iteration-tab { flex: none; }
+    .study-tools { margin-left: auto; }
+    .app-menu-bar { grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 0 10px; }
+    .app-menu-left .app-menu-item { display: none; }
+    .app-menu-tabs { display: none; }
+    .app-menu-right .meta-text { display: none; }
+    .stage { margin-top: 12px; }
+    .window-body { grid-template-columns: 1fr; min-height: 0; }
+    .sidebar { display: none; }
+    .main { padding: 14px 12px 10px; }
+    .rail { grid-template-columns: 1fr; }
+    .desk {
+      position: fixed;
+      top: 112px;
+      right: 12px;
+      left: 12px;
+      width: auto;
+      max-height: calc(100vh - 128px);
+      overflow: auto;
+      transform-origin: top center;
+    }
+    .item-title { font-size: 12px; }
+    .panel-title { font-size: 18px; }
+  }
+  @media (max-width: 480px) {
+    .study-tools .label { display: none; }
+    .iteration-tab { padding: 0 7px; font-size: 10px; }
+    .iteration-tab .n { display: none; }
+    .queue-title { max-width: 92px; }
+    .tools { gap: 4px; }
+    .new-btn, .focus-launch { padding: 0 8px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+<header class="study-bar">
+  <div class="study-title"><strong>Focus activation</strong><span>four directions, one timer</span></div>
+  <div class="iteration-switch" role="tablist" aria-label="Focus activation iterations">
+    <button class="iteration-tab" type="button" role="tab" aria-selected="true" data-iter="1"><span class="n">1</span>Quiet row</button>
+    <button class="iteration-tab" type="button" role="tab" aria-selected="false" data-iter="2"><span class="n">2</span>Focus desk</button>
+    <button class="iteration-tab" type="button" role="tab" aria-selected="false" data-iter="3"><span class="n">3</span>Command</button>
+    <button class="iteration-tab" type="button" role="tab" aria-selected="false" data-iter="4"><span class="n">4</span>Queue</button>
+  </div>
+  <div class="study-tools">
+    <span class="label">Demo speed</span>
+    <span class="speed" role="group" aria-label="Demo timer speed">
+      <button type="button" data-speed="1" class="on">1×</button>
+      <button type="button" data-speed="20">20×</button>
+      <button type="button" data-speed="60">60×</button>
+    </span>
+    <button class="reset-btn" id="reset-demo" type="button">Reset</button>
+  </div>
+</header>
+
+<header class="app-menu-bar" aria-label="App menu">
+  <div class="app-menu-left">
+    <span class="app-menu-brand"><img src="../assets/icons/planner.png" alt="">Random Notes</span>
+    <span class="app-menu-item">Planner</span><span class="app-menu-item">File</span><span class="app-menu-item">Edit</span><span class="app-menu-item">View</span>
+  </div>
+  <div class="app-menu-tabs">
+    <button class="app-menu-tab active" type="button">Planner</button>
+    <button class="app-menu-tab" type="button" data-stub="Notes">Notes</button>
+    <button class="app-menu-tab" type="button" data-stub="README">README.txt</button>
+  </div>
+  <div class="app-menu-right">
+    <button class="menu-pill" id="menu-pill" type="button" hidden aria-label="Open the focus session">
+      <span class="pdot" aria-hidden="true"></span>
+      <time id="pill-time">25:00</time>
+      <span id="pill-phase">Focus</span>
+    </button>
+    <span class="meta-text">All saved locally</span>
+    <span class="meta-text" id="menu-clock">Mon 10 Nov · 10:42</span>
+  </div>
+</header>
+
+<main class="stage">
+  <section class="app-window" aria-label="Planner">
+    <div class="window-titlebar">
+      <div class="window-controls" aria-hidden="true">
+        <span class="window-control close-control"></span>
+        <span class="window-control minimize-control"></span>
+        <span class="window-control fullscreen-control"></span>
+      </div>
+      <span class="window-title">Planner</span>
+      <span class="window-meta">Local</span>
+    </div>
+
+    <div class="window-body">
+      <aside class="sidebar" aria-label="Planner navigation">
+        <p class="sidebar-label">Plan</p>
+        <button class="side-row active" type="button">
+          <svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="9.5" rx="1.6"/><path d="M2.5 6.7h11M5.6 2.2v2.4M10.4 2.2v2.4"/><circle cx="8" cy="9.7" r="1.15" fill="currentColor" stroke="none"/></svg>Today
+          <span class="side-count" id="side-today">5</span>
+        </button>
+        <button class="side-row" type="button" data-stub="Calendar">
+          <svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3.5" width="11" height="9.5" rx="1.6"/><path d="M2.5 6.7h11M5.6 2.2v2.4M10.4 2.2v2.4"/></svg>Calendar
+          <span class="side-count">23</span>
+        </button>
+        <p class="sidebar-label">Places</p>
+        <button class="side-row" type="button" data-stub="Notes">
+          <svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" aria-hidden="true"><path d="M4 4.4h8M4 8h8M4 11.6h5.2"/></svg>Notes
+          <span class="side-count">12</span>
+        </button>
+        <button class="side-row" type="button" data-stub="Logbook">
+          <svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2.8h7.4v10.4H4.9A1.9 1.9 0 0 1 3 11.3V4.7a1.9 1.9 0 0 1 1.9-1.9z"/><path d="M4 11.1h7.4"/></svg>Logbook
+        </button>
+        <p class="sidebar-label">Timer</p>
+        <button class="side-row timer-row" type="button" id="sidebar-focus">
+          <svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8.6" r="5.4"/><path d="M8 5.6v3.2l2.2 1.3M6.2 1.9h3.6"/></svg>Focus
+          <span class="side-count" id="side-time">Off</span>
+        </button>
+      </aside>
+
+      <section class="main">
+        <header class="panel-head">
+          <div>
+            <h1 class="panel-title" id="view-title">Today</h1>
+            <p class="panel-sub" id="view-sub">Monday, November 10 · 5 open</p>
+          </div>
+          <div class="tools">
+            <div class="focus-anchor">
+              <button class="focus-launch" id="focus-launch" type="button" hidden>
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="8" cy="8.6" r="5.2"/><path d="M8 5.8v3l2.1 1.2M6.3 2h3.4"/></svg>
+                Focus
+              </button>
+              <div class="desk" id="desk" hidden role="dialog" aria-label="Start a focus sprint">
+                <div class="desk-head">
+                  <strong>Start a focus sprint</strong>
+                  <button class="desk-close" id="desk-close" type="button" aria-label="Close">×</button>
+                </div>
+                <p class="desk-label">What are you working on?</p>
+                <div class="desk-tasks" id="desk-tasks"></div>
+                <div class="desk-row">
+                  <span>Sprint</span>
+                  <div class="seg" id="desk-duration" role="group" aria-label="Sprint length">
+                    <button type="button" data-min="15">15</button>
+                    <button type="button" data-min="25" class="on">25</button>
+                    <button type="button" data-min="50">50</button>
+                  </div>
+                </div>
+                <p class="desk-note" id="desk-note">25 min focus · 5 min break</p>
+                <button class="primary-btn" id="desk-start" type="button">Start focus</button>
+              </div>
+            </div>
+            <button class="new-btn" id="new-btn" type="button"><span class="plus" aria-hidden="true">+</span>New task</button>
+          </div>
+        </header>
+
+        <section class="queue-strip" id="queue-strip" hidden aria-label="Today's focus queue">
+          <div class="queue-head"><strong>Today's focus</strong><span class="queue-summary" id="queue-summary"></span></div>
+          <div class="queue-list" id="queue-list"></div>
+        </section>
+
+        <ul class="task-list" id="task-list" aria-label="Tasks"></ul>
+
+        <div class="list-foot">
+          <span class="hint" id="hint">Hover a task, then choose Focus.</span>
+          <button class="cmd-hint" id="cmd-hint" type="button" hidden><kbd>F</kbd> Start focus</button>
+          <span class="open-count" id="open-count">5 open</span>
+        </div>
+
+        <form class="quick" id="quick" aria-label="Quick add">
+          <span class="plus" aria-hidden="true">+</span>
+          <input id="quick-input" type="text" maxlength="220" placeholder="Add a task… (↵ save)" autocomplete="off">
+          <span class="kbd" aria-hidden="true">↵</span>
+        </form>
+      </section>
+    </div>
+  </section>
+
+  <aside class="rail" aria-label="Iteration notes and focus timer">
+    <section class="rail-card">
+      <p class="rail-kicker" id="rail-kicker">Iteration 1 of 4</p>
+      <h2 id="rail-title">Quiet row</h2>
+      <p id="rail-copy">The list is completely clean until you point at a task. A Focus button fades in on the row, and one click starts a 25-minute sprint.</p>
+      <dl class="rail-facts">
+        <div class="rail-fact"><dt>Entry</dt><dd id="rail-entry">Hover a task</dd></div>
+        <div class="rail-fact"><dt>Idle noise</dt><dd id="rail-noise" class="good">None</dd></div>
+        <div class="rail-fact"><dt>Risk</dt><dd id="rail-risk">Hover is invisible on touch</dd></div>
+      </dl>
+    </section>
+
+    <div class="player-slot">
+      <div class="empty-player" id="empty-player">
+        <div>
+          <div class="ghost-time">25:00</div>
+          <strong>No timer yet</strong>
+          <span>Nothing appears here until you deliberately start a session. That is the rule in all four directions.</span>
+        </div>
+      </div>
+
+      <section class="player" id="player" hidden aria-label="Focus session">
+        <div class="player-top">
+          <span class="phase" id="phase">Focus</span>
+          <div class="cycle" id="cycle" aria-label="Sprint cycle"><i></i><i></i><i></i><i></i></div>
+        </div>
+        <div class="time" id="time" role="timer" aria-live="off">25:00</div>
+        <div class="player-task" id="player-task">Draft Q4 report</div>
+        <div class="player-next" id="player-next">5 min break next</div>
+        <div class="progress" id="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Sprint progress"><span id="progress-fill"></span></div>
+        <div class="controls">
+          <button class="primary" id="player-start" type="button" hidden>Start sprint</button>
+          <button id="pause" type="button">Pause</button>
+          <button id="skip" type="button">Finish early</button>
+          <button class="danger" id="end" type="button">End</button>
+        </div>
+      </section>
+    </div>
+  </aside>
+</main>
+
+<details class="notes">
+  <summary>Research, comparison, and the recommendation</summary>
+  <div class="notes-body">
+    <div class="notes-grid">
+      <div>
+        <h3>What the Pomodoro research says</h3>
+        <ul>
+          <li><strong>One task, one sprint.</strong> Pick a single specific task before the clock starts; do not switch mid-sprint.</li>
+          <li><strong>25 / 5 is the default, not a rule.</strong> A 15–50 minute range is normal; longer blocks suit deep work, shorter blocks suit admin or low resistance.</li>
+          <li><strong>Four sprints, then a long break.</strong> 15–30 minutes after four focus intervals. The long break is part of the method, not a bonus.</li>
+          <li><strong>A sprint is indivisible.</strong> Capture an interruption and return to it later; if it cannot wait, the sprint is void and restarts.</li>
+          <li><strong>Estimate and review in sprints.</strong> Record the task, the sprints it took, and interruptions; use that to calibrate future plans.</li>
+          <li><strong>Keep setup separate from the clock.</strong> Show the sequence before Start; do not silently change a running sprint; do not auto-start the next work interval after a break.</li>
+        </ul>
+        <p style="margin-top:8px;color:rgba(255,255,255,0.55);font-size:10px;">Sources:
+          <a href="https://arc.duke.edu/pomodoro-technique/" target="_blank" rel="noreferrer">Duke ARC</a>,
+          <a href="https://en.wikipedia.org/wiki/Pomodoro_Technique" target="_blank" rel="noreferrer">Wikipedia</a>,
+          <a href="https://www.todoist.com/productivity-methods/pomodoro-technique" target="_blank" rel="noreferrer">Todoist</a>,
+          <a href="https://success.oregonstate.edu/planning-time/pomodoro" target="_blank" rel="noreferrer">Oregon State</a>,
+          <a href="https://asana.com/resources/pomodoro-technique" target="_blank" rel="noreferrer">Asana</a>, and
+          <a href="https://screensdesign.com/articles/pomodoro-focus-session-settings-ux/" target="_blank" rel="noreferrer">ScreensDesign on focus-timer settings</a>.
+        </p>
+      </div>
+      <div>
+        <h3>How the four directions compare</h3>
+        <table class="compare">
+          <thead><tr><th>Direction</th><th>Entry</th><th>Idle clutter</th><th>Best for</th></tr></thead>
+          <tbody>
+            <tr><td>1 Quiet row</td><td>Hover the task</td><td>None</td><td>Fast mouse work</td></tr>
+            <tr><td>2 Focus desk</td><td>One header button</td><td>None</td><td>Deliberate starts, touch</td></tr>
+            <tr><td>3 Command</td><td>F / ⌘K</td><td>None</td><td>Keyboard-heavy users</td></tr>
+            <tr><td>4 Queue</td><td>Plan, then run</td><td>Low</td><td>Deep-work days</td></tr>
+          </tbody>
+        </table>
+        <h3>What changes in the data model</h3>
+        <ul>
+          <li>No per-task timer fields. A session is a separate record: <code>{ taskId, phase, startedAt, endsAt, sprintMin, completed }</code>.</li>
+          <li>Task gets only a focus history summary (<code>focusMin</code>, <code>sprints</code>) after a session ends.</li>
+          <li>Real app should store <code>endsAt</code> timestamps, not interval ticks, so sleep and reloads stay accurate.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="recommend"><strong>Recommendation:</strong> ship <strong>2 · Focus desk</strong> as the default entry and <strong>3 · Command</strong> as the keyboard shortcut to the same panel. It gives one deliberate, touch-friendly start, keeps every task row free of timer chrome, and still gives power users a one-key path. Borrow the active-row treatment from 1, and keep 4 as a later planning feature.</div>
+  </div>
+</details>
+
+<span class="sr-only" id="sr-status" role="status" aria-live="polite" aria-atomic="true"></span>
+<div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<div class="palette-backdrop" id="palette" hidden>
+  <div class="palette" role="dialog" aria-modal="true" aria-label="Start focus on a task">
+    <div class="palette-search">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><circle cx="7" cy="7" r="4.4"/><path d="m10.4 10.4 3 3"/></svg>
+      <input id="palette-input" type="text" placeholder="Start focus on…" autocomplete="off" aria-label="Start focus on a task">
+      <span class="esc">esc</span>
+    </div>
+    <div class="palette-list" id="palette-list" role="listbox" aria-label="Tasks"></div>
+    <div class="palette-foot"><span><kbd>↑</kbd><kbd>↓</kbd> move</span><span><kbd>↵</kbd> start 25</span><span><kbd>⌥↵</kbd> start 50</span></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  const $ = id => document.getElementById(id);
+  const TODAY_KEY = "2026-11-10";
+  const DAY_LABEL = "Monday, November 10";
+  const SHORT_DAY = "Mon 10 Nov";
+
+  const VARIANTS = {
+    1: {
+      label: "Quiet row",
+      copy: "The list is completely clean until you point at a task. A Focus button fades in on the row, and one click starts a 25-minute sprint.",
+      entry: "Hover a task",
+      noise: "None",
+      noiseTone: "good",
+      risk: "Hover is invisible on touch",
+      hint: "Hover a task, then choose Focus. Default sprint: 25 min."
+    },
+    2: {
+      label: "Focus desk",
+      copy: "One deliberate entry point. There are no per-task timer controls at all: open the panel, pick the task and sprint length, then start.",
+      entry: "Header Focus button",
+      noise: "None",
+      noiseTone: "good",
+      risk: "Two clicks, not one",
+      hint: "The list has no focus controls. Start from the header."
+    },
+    3: {
+      label: "Command",
+      copy: "No visible controls. Press F or ⌘K, type a few letters, and Enter starts the sprint. The menu-bar pill is the only persistent trace.",
+      entry: "F / ⌘K",
+      noise: "None",
+      noiseTone: "good",
+      risk: "Needs a discovery hint",
+      hint: "Press F or ⌘K to start a focus sprint."
+    },
+    4: {
+      label: "Queue",
+      copy: "Plan one to three sprints per task, then run the queue in order. Only queued tasks get extra chrome; the rest of the list stays quiet.",
+      entry: "Plan, then run",
+      noise: "Low",
+      noiseTone: "warn",
+      risk: "Upfront planning effort",
+      hint: "Hover a task to add it to today's focus queue."
+    }
+  };
+
+  let variant = 1;
+  let speed = 1;
+  let queue = [1, 2];
+  let lastTick = Date.now();
+  let toastTimer = 0;
+
+  let tasks = [
+    { id: 1, title: "Draft Q4 report", meta: "Today · due 4:00 PM", done: false, estimate: 2, spent: 1 },
+    { id: 2, title: "Reply to Anita about the deck", meta: "Today", done: false, estimate: 1, spent: 0 },
+    { id: 3, title: "Book studio B for the shoot", meta: "No date", done: false, estimate: 1, spent: 0 },
+    { id: 4, title: "Prep standup notes for Monday", meta: "Today", done: false, estimate: 1, spent: 0 },
+    { id: 5, title: "Send invoice #1042", meta: "Done · Nov 5", done: true, estimate: 1, spent: 1 }
+  ];
+
+  let deskTaskId = 1;
+  let deskMinutes = 25;
+  let paletteIndex = 0;
+  let paletteResults = [];
+
+  let session = {
+    active: false,
+    taskId: null,
+    phase: "idle",        // idle | focus | break | long | ready
+    running: false,
+    remaining: 0,
+    total: 0,
+    completed: 0,
+    sprintMin: 25,
+    breakMin: 5
+  };
+
+  const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+  const pad = n => String(n).padStart(2, "0");
+  const fmt = seconds => {
+    const s = Math.max(0, Math.ceil(seconds));
+    return `${Math.floor(s / 60)}:${pad(s % 60)}`;
+  };
+  const taskById = id => tasks.find(t => t.id === id);
+  const openTasks = () => tasks.filter(t => !t.done);
+  const phaseLabel = phase => phase === "focus" ? "Focus" : phase === "break" ? "Break" : phase === "long" ? "Long break" : "Ready";
+  const activeTask = () => taskById(session.taskId);
+  const elapsedMin = () => Math.max(0, (session.total - session.remaining) / 60);
+
+  function announce(message) {
+    const live = $("sr-status");
+    if (live) live.textContent = message;
+  }
+
+  function toast(message) {
+    const element = $("toast");
+    element.textContent = message;
+    element.classList.add("show");
+    window.clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(() => element.classList.remove("show"), 2600);
+  }
+
+  /* ------------------------------------------------------------- rendering */
+  function sessionChipParts() {
+    if (session.phase === "focus") {
+      return {
+        className: `active-chip${session.running ? "" : " is-paused"}`,
+        text: session.running ? `${fmt(session.remaining)} left` : `Paused · ${fmt(session.remaining)}`
+      };
+    }
+    if (session.phase === "break" || session.phase === "long") {
+      return { className: "active-chip is-break", text: `${phaseLabel(session.phase)} · ${fmt(session.remaining)}` };
+    }
+    return { className: "active-chip is-paused", text: "Ready for next sprint" };
+  }
+
+  function sessionChip() {
+    if (!session.active) return "";
+    const parts = sessionChipParts();
+    return `<span class="${parts.className}"><i class="dot" aria-hidden="true"></i><span class="chip-text">${parts.text}</span></span>`;
+  }
+
+  function renderTasks() {
+    $("task-list").innerHTML = tasks.map(task => {
+      const active = session.active && session.taskId === task.id;
+      let side = "";
+      if (active) {
+        side = sessionChip();
+      } else if (variant === 1 && !task.done) {
+        side = `<button class="row-action" type="button" data-focus="${task.id}" aria-label="Start a focus sprint on ${esc(task.title)}"><span class="glyph" aria-hidden="true">▶</span>Focus</button>`;
+      } else if (variant === 4 && !task.done) {
+        const queued = queue.includes(task.id);
+        side = queued
+          ? `<span class="queue-tag">${queue.indexOf(task.id) + 1} in queue</span>`
+          : `<button class="row-action" type="button" data-queue="${task.id}" aria-label="Add ${esc(task.title)} to the focus queue">+ Queue</button>`;
+      }
+      return `<li class="task-row${task.done ? " done" : ""}${active ? " is-active" : ""}" data-id="${task.id}">
+        <input class="check" type="checkbox" ${task.done ? "checked" : ""} aria-label="Mark ${esc(task.title)} done">
+        <div class="task-main">
+          <span class="item-title">${esc(task.title)}</span>
+          <span class="item-meta">${esc(task.meta)}</span>
+        </div>
+        <div class="row-side">${side}</div>
+      </li>`;
+    }).join("");
+    const open = openTasks().length;
+    $("open-count").textContent = `${open} open`;
+    $("side-today").textContent = String(open);
+  }
+
+  function esc(value) {
+    return String(value).replace(/[&<>"']/g, character => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[character]));
+  }
+
+  function nextQueueId() {
+    const next = queue.find(id => {
+      const task = taskById(id);
+      return task && !task.done && task.spent < task.estimate;
+    });
+    return next !== undefined ? next : (queue[0] !== undefined ? queue[0] : null);
+  }
+
+  function renderQueue() {
+    $("queue-strip").hidden = variant !== 4;
+    if (variant !== 4) return;
+    const remaining = queue.reduce((total, id) => {
+      const task = taskById(id);
+      return total + (task ? Math.max(0, task.estimate - task.spent) * 25 : 0);
+    }, 0);
+    $("queue-summary").textContent = queue.length
+      ? `${queue.length} task${queue.length === 1 ? "" : "s"} · ${remaining} min left`
+      : "Empty";
+    if (!queue.length) {
+      $("queue-list").innerHTML = `<span class="queue-empty">Hover a task below and choose <strong>+ Queue</strong>.</span>`;
+      return;
+    }
+    const current = session.active && queue.includes(session.taskId) ? session.taskId : nextQueueId();
+    $("queue-list").innerHTML = queue.map((id, index) => {
+      const task = taskById(id);
+      if (!task) return "";
+      const complete = task.spent >= task.estimate;
+      const isCurrent = id === current && !complete;
+      return `<div class="queue-card${isCurrent ? " current" : ""}${complete ? " complete" : ""}">
+        <button class="queue-start" type="button" data-qstart="${id}" aria-label="Start focus on ${esc(task.title)}"${complete ? " disabled" : ""}>▶</button>
+        <span class="queue-title" title="${esc(task.title)}">${index + 1}. ${esc(task.title)}</span>
+        <span class="queue-meta">${task.spent}/${task.estimate}</span>
+        <button class="queue-remove" type="button" data-qremove="${id}" aria-label="Remove ${esc(task.title)} from the queue">×</button>
+      </div>`;
+    }).join("");
+  }
+
+  function cycleFill() {
+    if (session.phase === "long") return 4;
+    return session.completed % 4;
+  }
+
+  function renderFocus() {
+    const player = $("player");
+    const empty = $("empty-player");
+    const pill = $("menu-pill");
+    const sideTime = $("side-time");
+
+    player.hidden = !session.active;
+    empty.hidden = session.active;
+    pill.hidden = !session.active;
+    pill.style.display = session.active ? "inline-flex" : "none";
+    sideTime.textContent = session.active ? fmt(session.remaining) : "Off";
+
+    if (!session.active) return;
+
+    const task = activeTask();
+    const phase = session.phase;
+    $("phase").textContent = phaseLabel(phase);
+    $("phase").className = `phase${phase === "break" || phase === "long" ? " is-break" : phase === "ready" ? " is-ready" : ""}`;
+    $("player-task").textContent = task ? task.title : "No task selected";
+
+    const displaySeconds = phase === "ready" ? session.sprintMin * 60 : session.remaining;
+    $("time").textContent = fmt(displaySeconds);
+    $("time").classList.toggle("is-done", phase === "ready");
+    $("player-next").textContent = phase === "focus"
+      ? `${session.breakMin} min break next`
+      : phase === "break"
+        ? `Next: sprint ${session.completed + 1} · ${session.sprintMin} min`
+        : phase === "long"
+          ? `Next cycle starts with sprint ${session.completed + 1}`
+          : `Ready for sprint ${session.completed + 1} · ${session.sprintMin} min`;
+
+    const fill = cycleFill();
+    Array.from($("cycle").children).forEach((dot, index) => dot.classList.toggle("on", index < fill));
+
+    const progress = phase === "ready" || !session.total
+      ? 0
+      : clamp((1 - session.remaining / session.total) * 100, 0, 100);
+    $("progress-fill").style.width = `${progress}%`;
+    $("progress").setAttribute("aria-valuenow", String(Math.round(progress)));
+    $("progress").setAttribute("aria-label", phase === "break" || phase === "long" ? "Break progress" : "Sprint progress");
+
+    $("player-start").hidden = phase !== "ready";
+    $("pause").hidden = phase === "ready";
+    $("skip").hidden = phase === "ready";
+    $("pause").textContent = session.running ? "Pause" : "Resume";
+    $("skip").textContent = phase === "focus" ? "Finish early" : "Skip break";
+    $("end").textContent = phase === "ready" ? "Close" : "End";
+
+    $("pill-time").textContent = phase === "ready" ? fmt(session.sprintMin * 60) : fmt(session.remaining);
+    $("pill-phase").textContent = phaseLabel(phase);
+    $("phase").setAttribute("aria-label", `${phaseLabel(phase)}${phase === "ready" ? "" : `, ${fmt(session.remaining)} remaining`}`);
+    updateActiveChip();
+  }
+
+  function updateActiveChip() {
+    const chip = document.querySelector(".task-row.is-active .active-chip");
+    if (!chip || !session.active) return;
+    const parts = sessionChipParts();
+    chip.className = parts.className;
+    const label = chip.querySelector(".chip-text");
+    if (label) label.textContent = parts.text;
+  }
+
+  function renderVariant() {
+    const data = VARIANTS[variant];
+    document.querySelectorAll("[data-iter]").forEach(tab => {
+      tab.setAttribute("aria-selected", String(Number(tab.dataset.iter) === variant));
+    });
+    $("rail-kicker").textContent = `Iteration ${variant} of 4`;
+    $("rail-title").textContent = data.label;
+    $("rail-copy").textContent = data.copy;
+    $("rail-entry").textContent = data.entry;
+    $("rail-noise").textContent = data.noise;
+    $("rail-noise").className = data.noiseTone === "good" ? "good" : "warn";
+    $("rail-risk").textContent = data.risk;
+    $("hint").textContent = data.hint;
+    $("focus-launch").hidden = variant !== 2;
+    $("cmd-hint").hidden = variant !== 3;
+    $("queue-strip").hidden = variant !== 4;
+    document.body.dataset.variant = String(variant);
+  }
+
+  function renderAll() {
+    renderVariant();
+    renderTasks();
+    renderQueue();
+    renderFocus();
+  }
+  /* ---------------------------------------------------------------- timer */
+  function startSession(taskId, minutes) {
+    const task = taskById(taskId);
+    if (!task || task.done) {
+      toast("Pick an open task first.");
+      return;
+    }
+    if (session.active && session.taskId === taskId) {
+      flashPlayer();
+      toast("Already focusing on this task.");
+      return;
+    }
+    const switching = session.active;
+    session = {
+      active: true,
+      taskId,
+      phase: "focus",
+      running: true,
+      remaining: minutes * 60,
+      total: minutes * 60,
+      completed: 0,
+      sprintMin: minutes,
+      breakMin: minutes >= 50 ? 10 : 5
+    };
+    lastTick = Date.now();
+    closeDesk();
+    closePalette();
+    renderAll();
+    toast(`${switching ? "Switched" : "Focus started"} — ${minutes} min on ${task.title}.`);
+    announce(`Focus started on ${task.title} for ${minutes} minutes.`);
+  }
+
+  function startNextSprint() {
+    if (!session.active) return;
+    session.phase = "focus";
+    session.running = true;
+    session.total = session.sprintMin * 60;
+    session.remaining = session.total;
+    lastTick = Date.now();
+    renderAll();
+    toast(`Sprint ${session.completed + 1} started — ${session.sprintMin} minutes.`);
+    announce(`Sprint ${session.completed + 1} started.`);
+  }
+
+  function completeFocus(credit) {
+    const task = activeTask();
+    session.completed += 1;
+    if (task) task.spent += 1;
+    session.phase = session.completed % 4 === 0 ? "long" : "break";
+    session.total = (session.phase === "long" ? 15 : session.breakMin) * 60;
+    session.remaining = session.total;
+    session.running = true;
+    lastTick = Date.now();
+    renderTasks();
+    renderQueue();
+    renderFocus();
+    const breakText = session.phase === "long" ? "15 min long break" : `${session.breakMin} min break`;
+    toast(`Sprint complete — ${breakText}.`);
+    announce(`Sprint complete. ${breakText} started.`);
+  }
+
+  function endBreak() {
+    session.phase = "ready";
+    session.running = false;
+    session.remaining = 0;
+    session.total = 0;
+    renderTasks();
+    renderQueue();
+    renderFocus();
+    toast(`Break over — ready for sprint ${session.completed + 1}.`);
+    announce(`Break over. Ready for sprint ${session.completed + 1}.`);
+  }
+
+  function endSession() {
+    session.active = false;
+    session.running = false;
+    session.phase = "idle";
+    session.taskId = null;
+    session.remaining = 0;
+    session.total = 0;
+    renderTasks();
+    renderQueue();
+    renderFocus();
+    toast("Focus session ended. Nothing keeps running in the background.");
+    announce("Focus session ended.");
+  }
+
+  function togglePause() {
+    if (!session.active || session.phase === "ready") return;
+    session.running = !session.running;
+    lastTick = Date.now();
+    renderFocus();
+    announce(session.running ? "Focus resumed." : "Focus paused.");
+  }
+
+  function skipPhase() {
+    if (!session.active) return;
+    if (session.phase === "focus") {
+      const credit = elapsedMin();
+      if (credit < 0.5) {
+        endSession();
+        toast("Sprint ended without credit.");
+        return;
+      }
+      completeFocus(credit);
+      return;
+    }
+    if (session.phase === "break" || session.phase === "long") {
+      endBreak();
+    }
+  }
+
+  function flashPlayer() {
+    if (!session.active) {
+      toast("No focus session yet.");
+      return;
+    }
+    const player = $("player");
+    player.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    player.classList.add("flash");
+    window.setTimeout(() => player.classList.remove("flash"), 900);
+  }
+
+  window.setInterval(() => {
+    const now = Date.now();
+    const delta = (now - lastTick) / 1000;
+    lastTick = now;
+    if (!session.active || !session.running) return;
+    session.remaining -= delta * speed;
+    if (session.remaining <= 0) {
+      session.remaining = 0;
+      if (session.phase === "focus") completeFocus(session.sprintMin);
+      else if (session.phase === "break" || session.phase === "long") endBreak();
+      return;
+    }
+    renderFocus();
+  }, 250);
+
+  /* ------------------------------------------------------------ focus desk */
+  function closeDesk() {
+    const wasOpen = !$("desk").hidden;
+    $("desk").hidden = true;
+    if (wasOpen && variant === 2 && !$("focus-launch").hidden) $("focus-launch").focus();
+  }
+
+  function openDesk() {
+    if (session.active) {
+      flashPlayer();
+      toast("End the current session first.");
+      return;
+    }
+    deskTaskId = openTasks()[0] ? openTasks()[0].id : null;
+    renderDeskTasks();
+    renderDeskDuration();
+    $("desk").hidden = false;
+    window.requestAnimationFrame(() => {
+      const selected = $("desk").querySelector('.desk-task[aria-pressed="true"]') || $("desk").querySelector(".desk-task");
+      if (selected) selected.focus();
+    });
+    announce("Focus desk opened.");
+  }
+
+  function renderDeskTasks() {
+    const open = openTasks();
+    if (!open.length) {
+      $("desk-tasks").innerHTML = `<span class="queue-empty">No open tasks. Add one first.</span>`;
+      deskTaskId = null;
+      return;
+    }
+    if (!open.some(task => task.id === deskTaskId)) deskTaskId = open[0].id;
+    $("desk-tasks").innerHTML = open.map(task => `<button class="desk-task" type="button" data-desk-task="${task.id}" aria-pressed="${task.id === deskTaskId}">
+      <span class="desk-radio" aria-hidden="true"></span>
+      <span><span class="desk-task-title">${esc(task.title)}</span><span class="desk-task-meta">${esc(task.meta)}</span></span>
+    </button>`).join("");
+  }
+
+  function renderDeskDuration() {
+    document.querySelectorAll("[data-min]").forEach(button => {
+      button.classList.toggle("on", Number(button.dataset.min) === deskMinutes);
+    });
+    $("desk-note").textContent = `${deskMinutes} min focus · ${deskMinutes >= 50 ? 10 : 5} min break`;
+  }
+
+  /* --------------------------------------------------------------- palette */
+  function renderPalette() {
+    const list = $("palette-list");
+    if (!paletteResults.length) {
+      list.innerHTML = `<div class="palette-empty">No task matches that search.</div>`;
+      return;
+    }
+    paletteIndex = clamp(paletteIndex, 0, paletteResults.length - 1);
+    list.innerHTML = paletteResults.map((task, index) => `<button class="palette-item${index === paletteIndex ? " selected" : ""}" type="button" role="option" aria-selected="${index === paletteIndex}" data-palette="${task.id}">
+      <span class="pi-icon" aria-hidden="true">${task.spent ? "↻" : "○"}</span>
+      <span><span class="pi-title">${esc(task.title)}</span><span class="pi-meta">${esc(task.meta)}</span></span>
+      <span class="pi-go">${index === paletteIndex ? "↵ start" : ""}</span>
+    </button>`).join("");
+    const selected = list.querySelector(".selected");
+    if (selected) selected.scrollIntoView({ block: "nearest" });
+  }
+
+  function filterPalette() {
+    const query = $("palette-input").value.trim().toLowerCase();
+    paletteResults = openTasks().filter(task => !query || task.title.toLowerCase().includes(query));
+    paletteIndex = 0;
+    renderPalette();
+  }
+
+  function openPalette() {
+    if (session.active) {
+      flashPlayer();
+      toast("End the current session first.");
+      return;
+    }
+    $("palette").hidden = false;
+    $("palette-input").value = "";
+    paletteResults = openTasks();
+    paletteIndex = 0;
+    renderPalette();
+    window.requestAnimationFrame(() => $("palette-input").focus());
+    announce("Focus command opened.");
+  }
+
+  function closePalette() {
+    const wasOpen = !$("palette").hidden;
+    $("palette").hidden = true;
+    if (wasOpen) {
+      $("palette-input").blur();
+      if (variant === 3) $("cmd-hint").focus();
+    }
+  }
+
+  function startFromPalette(minutes) {
+    if (!paletteResults.length) return;
+    const task = paletteResults[paletteIndex];
+    if (!task) return;
+    startSession(task.id, minutes);
+  }
+
+  /* ----------------------------------------------------------------- queue */
+  function addToQueue(taskId) {
+    if (!queue.includes(taskId)) queue.push(taskId);
+    renderTasks();
+    renderQueue();
+    toast(`Added ${taskById(taskId).title} to today's focus queue.`);
+  }
+
+  function removeFromQueue(taskId) {
+    queue = queue.filter(id => id !== taskId);
+    renderTasks();
+    renderQueue();
+    toast("Removed from the focus queue.");
+  }
+
+  /* ------------------------------------------------------------- variant UI */
+  function setVariant(next) {
+    const value = Number(next);
+    if (!VARIANTS[value] || value === variant) {
+      if (value === variant) renderAll();
+      return;
+    }
+    variant = value;
+    closeDesk();
+    closePalette();
+    renderAll();
+    announce(`Iteration ${variant}: ${VARIANTS[variant].label}.`);
+  }
+
+  function resetDemo() {
+    session = {
+      active: false,
+      taskId: null,
+      phase: "idle",
+      running: false,
+      remaining: 0,
+      total: 0,
+      completed: 0,
+      sprintMin: 25,
+      breakMin: 5
+    };
+    tasks = [
+      { id: 1, title: "Draft Q4 report", meta: "Today · due 4:00 PM", done: false, estimate: 2, spent: 1 },
+      { id: 2, title: "Reply to Anita about the deck", meta: "Today", done: false, estimate: 1, spent: 0 },
+      { id: 3, title: "Book studio B for the shoot", meta: "No date", done: false, estimate: 1, spent: 0 },
+      { id: 4, title: "Prep standup notes for Monday", meta: "Today", done: false, estimate: 1, spent: 0 },
+      { id: 5, title: "Send invoice #1042", meta: "Done · Nov 5", done: true, estimate: 1, spent: 1 }
+    ];
+    queue = [1, 2];
+    deskTaskId = 1;
+    deskMinutes = 25;
+    speed = 1;
+    document.querySelectorAll("[data-speed]").forEach(button => {
+      button.classList.toggle("on", Number(button.dataset.speed) === 1);
+    });
+    closeDesk();
+    closePalette();
+    renderAll();
+    toast("Demo reset. No timer is running.");
+  }
+  /* --------------------------------------------------------------- events */
+  document.querySelectorAll("[data-iter]").forEach(tab => {
+    tab.addEventListener("click", () => setVariant(tab.dataset.iter));
+  });
+
+  document.querySelectorAll("[data-speed]").forEach(button => {
+    button.addEventListener("click", () => {
+      speed = Number(button.dataset.speed);
+      document.querySelectorAll("[data-speed]").forEach(other => {
+        other.classList.toggle("on", other === button);
+      });
+      toast(`Demo speed ${speed}×. Timer math is unchanged.`);
+    });
+  });
+
+  $("reset-demo").addEventListener("click", resetDemo);
+
+  document.querySelectorAll("[data-stub]").forEach(button => {
+    button.addEventListener("click", () => {
+      toast(`${button.dataset.stub} is outside this focus study.`);
+    });
+  });
+
+  $("focus-launch").addEventListener("click", event => {
+    event.stopPropagation();
+    if ($("desk").hidden) openDesk();
+    else closeDesk();
+  });
+  $("desk-close").addEventListener("click", closeDesk);
+  $("desk-tasks").addEventListener("click", event => {
+    const button = event.target.closest("[data-desk-task]");
+    if (!button) return;
+    deskTaskId = Number(button.dataset.deskTask);
+    renderDeskTasks();
+  });
+  $("desk-duration").addEventListener("click", event => {
+    const button = event.target.closest("[data-min]");
+    if (!button) return;
+    deskMinutes = Number(button.dataset.min);
+    renderDeskDuration();
+  });
+  $("desk-start").addEventListener("click", () => {
+    if (!deskTaskId) {
+      toast("Pick a task first.");
+      return;
+    }
+    startSession(deskTaskId, deskMinutes);
+  });
+
+  $("cmd-hint").addEventListener("click", openPalette);
+  $("palette-input").addEventListener("input", filterPalette);
+  $("palette-input").addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closePalette();
+      return;
+    }
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      paletteIndex = paletteResults.length ? (paletteIndex + 1) % paletteResults.length : 0;
+      renderPalette();
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      paletteIndex = paletteResults.length ? (paletteIndex - 1 + paletteResults.length) % paletteResults.length : 0;
+      renderPalette();
+      return;
+    }
+    if (event.key === "Enter") {
+      event.preventDefault();
+      startFromPalette(event.altKey ? 50 : 25);
+    }
+  });
+  $("palette-list").addEventListener("click", event => {
+    const item = event.target.closest("[data-palette]");
+    if (!item) return;
+    startSession(Number(item.dataset.palette), 25);
+  });
+  $("palette").addEventListener("click", event => {
+    if (event.target === $("palette")) closePalette();
+  });
+
+  $("task-list").addEventListener("click", event => {
+    const focusButton = event.target.closest("[data-focus]");
+    if (focusButton) {
+      startSession(Number(focusButton.dataset.focus), 25);
+      return;
+    }
+    const queueButton = event.target.closest("[data-queue]");
+    if (queueButton) {
+      addToQueue(Number(queueButton.dataset.queue));
+    }
+  });
+
+  $("task-list").addEventListener("change", event => {
+    if (!event.target.classList.contains("check")) return;
+    const row = event.target.closest(".task-row");
+    const task = taskById(Number(row.dataset.id));
+    if (!task) return;
+    task.done = event.target.checked;
+    renderTasks();
+    renderQueue();
+    if (task.done && session.active && session.taskId === task.id) {
+      endSession();
+      toast("Task completed — focus session closed.");
+    }
+  });
+
+  $("queue-list").addEventListener("click", event => {
+    const startButton = event.target.closest("[data-qstart]");
+    if (startButton && !startButton.disabled) {
+      startSession(Number(startButton.dataset.qstart), 25);
+      return;
+    }
+    const removeButton = event.target.closest("[data-qremove]");
+    if (removeButton) removeFromQueue(Number(removeButton.dataset.qremove));
+  });
+
+  $("quick").addEventListener("submit", event => {
+    event.preventDefault();
+    const input = $("quick-input");
+    const title = input.value.trim();
+    if (!title) {
+      input.focus();
+      return;
+    }
+    tasks.unshift({
+      id: Date.now(),
+      title,
+      meta: "Today",
+      done: false,
+      estimate: 1,
+      spent: 0
+    });
+    input.value = "";
+    renderAll();
+    toast("Task added. Start focus only when you choose to.");
+    announce(`Task added: ${title}.`);
+  });
+
+  $("player-start").addEventListener("click", startNextSprint);
+  $("pause").addEventListener("click", togglePause);
+  $("skip").addEventListener("click", skipPhase);
+  $("end").addEventListener("click", endSession);
+  $("menu-pill").addEventListener("click", flashPlayer);
+  $("sidebar-focus").addEventListener("click", () => {
+    if (session.active) {
+      flashPlayer();
+      return;
+    }
+    if (variant === 2) openDesk();
+    else if (variant === 3) openPalette();
+    else toast(VARIANTS[variant].hint);
+  });
+
+  document.addEventListener("click", event => {
+    if ($("desk").hidden) return;
+    if ($("desk").contains(event.target) || $("focus-launch").contains(event.target)) return;
+    closeDesk();
+  });
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      if (!$("palette").hidden) {
+        closePalette();
+        return;
+      }
+      if (!$("desk").hidden) {
+        closeDesk();
+        return;
+      }
+    }
+    if (variant !== 3) return;
+    const target = event.target;
+    const typing = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
+    if (typing) return;
+    if (!event.metaKey && !event.ctrlKey && !event.altKey && (event.key === "f" || event.key === "F")) {
+      event.preventDefault();
+      openPalette();
+    }
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      event.preventDefault();
+      openPalette();
+    }
+  });
+
+  function updateClock() {
+    const now = new Date();
+    $("menu-clock").textContent = `${SHORT_DAY} · ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  }
+
+  renderAll();
+  updateClock();
+  window.setInterval(updateClock, 30000);
+
+
+})();
+</script>
+</body>
+</html>

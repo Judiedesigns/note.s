@@ -37,6 +37,19 @@
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+
+  /* Icon scale. Every glyph is drawn on a 24px grid and rendered at one of
+     these sizes so weight and alignment stay consistent: 16px is the dense
+     desktop default, 18px carries touch targets, and the hit areas follow
+     WCAG 2.2 (24px minimum) with Apple's 44pt guidance on touch. */
+  --icon-size: 16px;
+  --icon-hit: 28px;
+  --icon-size-touch: 18px;
+  --icon-hit-touch: 44px;
+
+  /* One hairline for every calendar rule. Using a single token keeps the
+     week and month grids from stacking four slightly different greys. */
+  --calendar-line: rgba(74, 66, 84, 0.1);
 }
 
 html { -webkit-text-size-adjust: 100%; }
@@ -486,6 +499,29 @@ button { cursor: pointer; }
 }
 .planner-window.window-resized .window-body { min-height: 0; }
 .planner-window.window-resized .main-pane { min-height: 0; }
+/* A resized window has a fixed height, so the task list must scroll inside
+   its row instead of painting over quick capture and the status line. */
+.planner-window.window-resized .main-pane > .items-list {
+  align-self: stretch;
+  min-height: 0;
+}
+/* Focus mode made the Planner's natural height taller than shorter screens.
+   When the window is capped to the space above the dock, the task list takes
+   the leftover row and scrolls, so quick capture always stays on screen. */
+.planner-window.window-height-capped { display: flex; flex-direction: column; }
+.planner-window.window-height-capped > .window-body {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.planner-window.window-height-capped .main-pane {
+  min-height: 0;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
+}
+.planner-window.window-height-capped .main-pane > .items-list {
+  align-self: stretch;
+  min-height: 0;
+  max-height: none;
+}
 .notes-window.window-resized .content-panel { max-height: none; }
 .readme-window.window-resized .readme-panel { overflow: auto; }
 .window-fullscreen .window-resize-handles { display: none; }
@@ -690,7 +726,6 @@ button { cursor: pointer; }
 }
 
 .surface-tab,
-.mode-tab,
 .planner-view-tab,
 .task-filter-toggle,
 .task-filter,
@@ -796,40 +831,6 @@ button { cursor: pointer; }
   margin: 0.6rem 0 0.7rem;
 }
 
-.mode-tabs {
-  display: grid;
-  grid-template-columns: repeat(2, 4.9rem);
-  gap: 2px;
-  width: max-content;
-  max-width: calc(100vw - 6rem);
-  margin: 0;
-  padding: 2px;
-  border-radius: 8px;
-  background: var(--fill);
-}
-
-.mode-tab {
-  min-width: 0;
-  min-height: 26px;
-  padding: 0 0.5rem;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .mode-tab:hover { background: rgba(255, 255, 255, 0.5); }
-}
-
-.mode-tab.active {
-  background: var(--surface);
-  color: #000;
-  font-weight: 600;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
-}
-
-.mode-tab:active { transform: scale(0.98); }
-
 .planner-tools {
   display: flex;
   align-items: center;
@@ -861,8 +862,8 @@ button { cursor: pointer; }
 
 .calendar-export-icon {
   display: block;
-  width: 16px;
-  height: 16px;
+  width: var(--icon-size);
+  height: var(--icon-size);
   border: 0;
   background-color: currentColor;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='3.5'/%3E%3Cpath d='M3 10h18M8 3v4M16 3v4'/%3E%3Cpath d='M12 13.5v5m0 0 2-2m-2 2-2-2'/%3E%3C/svg%3E") center / contain no-repeat;
@@ -871,7 +872,7 @@ button { cursor: pointer; }
 
 .task-filter-menu {
   position: relative;
-  width: 28px;
+  width: auto;
 }
 
 /* The note popover is absolutely positioned, so its trigger must establish the
@@ -882,8 +883,8 @@ button { cursor: pointer; }
 
 .task-filter-icon {
   display: block;
-  width: 16px;
-  height: 16px;
+  width: var(--icon-size);
+  height: var(--icon-size);
   background-color: currentColor;
   -webkit-mask-position: center;
   -webkit-mask-size: contain;
@@ -1295,8 +1296,8 @@ button { cursor: pointer; }
 
 .filter-icon {
   display: block;
-  width: 15px;
-  height: 15px;
+  width: var(--icon-size);
+  height: var(--icon-size);
   background-color: currentColor;
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='1.9' stroke-linejoin='round'%3E%3Cpath d='M4 6h16l-6 7v5l-4 2v-7z'/%3E%3C/svg%3E") center / contain no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='1.9' stroke-linejoin='round'%3E%3Cpath d='M4 6h16l-6 7v5l-4 2v-7z'/%3E%3C/svg%3E") center / contain no-repeat;
@@ -1575,9 +1576,10 @@ button { cursor: pointer; }
 .icon-btn {
   display: inline-grid;
   place-items: center;
-  width: 26px;
-  min-width: 26px;
-  min-height: 24px;
+  width: var(--icon-hit);
+  min-width: var(--icon-hit);
+  height: var(--icon-hit);
+  min-height: var(--icon-hit);
   padding: 0;
   border-radius: 6px;
   color: #48484a;
@@ -1600,8 +1602,8 @@ button { cursor: pointer; }
 
 .action-icon {
   display: block;
-  width: 15px;
-  height: 15px;
+  width: var(--icon-size);
+  height: var(--icon-size);
   background-color: currentColor;
   -webkit-mask-position: center;
   -webkit-mask-size: contain;
@@ -1611,34 +1613,12 @@ button { cursor: pointer; }
   mask-repeat: no-repeat;
 }
 
+/* Same monochrome stroke family as Edit and Delete: the old multicolour
+   calendar read as clip-art beside the line icons. The plus matches the
+   header's "export to calendar" glyph so the action reads the same everywhere. */
 .task-calendar-icon {
-  width: 13px;
-  height: 12px;
-  border: 1px solid #111;
-  background:
-    linear-gradient(#111, #111) 2px 5px / 9px 1px no-repeat,
-    linear-gradient(#111, #111) 2px 8px / 6px 1px no-repeat,
-    linear-gradient(#fff, #fff) 0 4px / 100% 8px no-repeat,
-    #f1f300;
-}
-
-.task-calendar-icon::before,
-.task-calendar-icon::after {
-  content: "";
-  position: absolute;
-  top: -3px;
-  width: 3px;
-  height: 5px;
-  border: 1px solid #111;
-  background: #0b73f6;
-}
-
-.task-calendar-icon::before {
-  left: 2px;
-}
-
-.task-calendar-icon::after {
-  right: 2px;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='3.5'/%3E%3Cpath d='M3 10h18M8 3v4M16 3v4'/%3E%3Cpath d='M12 13.5v5m0 0 2-2m-2 2-2-2'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='3.5'/%3E%3Cpath d='M3 10h18M8 3v4M16 3v4'/%3E%3Cpath d='M12 13.5v5m0 0 2-2m-2 2-2-2'/%3E%3C/svg%3E");
 }
 
 .edit-icon {
@@ -2047,18 +2027,6 @@ button { cursor: pointer; }
 
   .add-btn { min-height: 34px; }
 
-  .mode-tab {
-    min-height: 31px;
-    padding-inline: 0.2rem;
-    font-size: 12px;
-  }
-
-  .mode-tabs {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    width: 100%;
-    max-width: none;
-  }
-
   .planner-controls { grid-template-columns: minmax(0, 1fr) auto; }
   .planner-tools { flex: 0 0 auto; }
 
@@ -2066,20 +2034,6 @@ button { cursor: pointer; }
     grid-template-columns: 22px minmax(0, 1fr);
     gap: 0.5rem;
     padding: 10px;
-  }
-
-  .task-card {
-    grid-template-columns: 22px minmax(0, 1fr) auto;
-    align-items: center;
-  }
-
-  .task-meta {
-    grid-column: 2;
-    grid-row: 2;
-    justify-self: start;
-    justify-items: start;
-    min-width: 0;
-    white-space: normal;
   }
 
   .notes-window .item-card { grid-template-columns: minmax(0, 1fr); }
@@ -2096,20 +2050,6 @@ button { cursor: pointer; }
   }
 
   .notes-window .actions { justify-content: flex-start; }
-
-  .icon-btn {
-    width: 34px;
-    min-width: 34px;
-    min-height: 30px;
-  }
-
-  .task-card .actions {
-    grid-column: 3;
-    grid-row: 1 / span 2;
-    align-self: start;
-    margin-top: 1px;
-    justify-content: flex-end;
-  }
 
   /* Dock shrinks to fit narrow screens */
   .taskbar {
@@ -2155,6 +2095,7 @@ button { cursor: pointer; }
    ========================================================================== */
 
 :root {
+  color-scheme: only light;
   --font-ui: "Lucida Grande", "Helvetica Neue", Arial, sans-serif;
   --ink: #24232a;
   --ink-soft: #3c3b44;
@@ -2233,6 +2174,41 @@ body {
 
 .menu-meta { justify-self: end; color: var(--ns-secondary); font-weight: 400; }
 .menu-saved { color: var(--ns-secondary); }
+
+.focus-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 21px;
+  padding: 0 9px;
+  border: 1px solid rgba(109, 107, 198, 0.32);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--accent-press);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(44, 35, 70, 0.1);
+  white-space: nowrap;
+}
+
+.focus-pill:hover { background: #fff; }
+.focus-pill time { font-variant-numeric: tabular-nums; }
+
+.focus-pill-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 3px rgba(109, 107, 198, 0.16);
+}
+
+.focus-pill.is-break {
+  border-color: rgba(67, 140, 108, 0.3);
+  color: #2f7d59;
+}
+
+.focus-pill.is-break .focus-pill-dot { box-shadow: 0 0 0 3px rgba(67, 140, 108, 0.16); }
 
 .menu-brand {
   display: inline-flex;
@@ -2490,6 +2466,12 @@ body {
   min-height: 0;
 }
 
+/* Windows are resizable and the desktop grid can hand the planner a narrow
+   column, so content decisions follow the window width, not the viewport. */
+.planner-window .window-body.planner-shell {
+  container-type: inline-size;
+}
+
 .planner-sidebar {
   min-width: 0;
   padding: 18px 12px 14px;
@@ -2539,8 +2521,8 @@ body {
 
 .side-icon {
   display: block;
-  width: 15px;
-  height: 15px;
+  width: var(--icon-size);
+  height: var(--icon-size);
   background-color: currentColor;
   -webkit-mask-position: center;
   -webkit-mask-size: contain;
@@ -2640,24 +2622,11 @@ body {
   padding: 0;
 }
 
-.mode-tabs {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(52px, 1fr));
-  gap: 0;
-  width: auto;
-  max-width: none;
-  margin: 0;
-  padding: 2px;
-  border: 1px solid rgba(75, 66, 86, 0.22);
-  border-radius: 8px;
-  background: rgba(116, 104, 124, 0.1);
-  box-shadow: inset 0 1px 2px rgba(60, 48, 69, 0.12);
-}
-
-/* Compact Today/Calendar switch used when the sidebar is hidden on mobile. */
+/* Planner view switch: Today | Week | Month. The sidebar mirrors it on wide
+   windows and hides on mobile, where this control becomes the only switch. */
 .planner-view-tabs {
-  display: none;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0;
   width: auto;
   margin: 0;
@@ -2685,36 +2654,24 @@ body {
   box-shadow: 0 1px 3px rgba(55, 45, 67, 0.2);
 }
 
-.mode-tab:focus-visible,
 .planner-view-tab:focus-visible {
   outline: 2px solid rgba(109, 107, 198, 0.55);
   outline-offset: 1px;
 }
 
-.mode-tab {
-  min-height: 24px;
-  padding: 0 9px;
-  border-radius: 6px;
-  color: #51505a;
-  font-size: 11px;
-  font-weight: 400;
-}
-
-.mode-tab:hover { background: rgba(255, 255, 255, 0.5); }
-
-.mode-tab.active {
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--ink);
-  font-weight: 500;
-  box-shadow: 0 1px 3px rgba(55, 45, 67, 0.2);
+/* The sidebar already lists Today / Week / Month wherever it is visible, so
+   the header control is only the fallback for collapsed layouts. Showing both
+   put a second "Today" beside the "Today" heading and squeezed quick capture. */
+@media (min-width: 781px) {
+  .planner-view-tabs { display: none; }
 }
 
 .planner-tools { gap: 4px; }
 
 .calendar-export-btn,
 .task-filter-toggle {
-  width: 28px;
-  height: 26px;
+  width: var(--icon-hit);
+  height: var(--icon-hit);
   border: 1px solid rgba(77, 69, 88, 0.24);
   border-radius: 7px;
   background: linear-gradient(180deg, #fff, #eee8ef);
@@ -2728,13 +2685,411 @@ body {
   color: var(--accent-press);
 }
 
-.calendar-export-icon,
-.task-filter-icon { width: 14px; height: 14px; }
+
+/* Focus dock (Today only). One task at a time: the panel only runs what you
+   explicitly start and never checks a task off for you. */
+.todo-board > .focus-dock {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  margin: 0 0 10px;
+}
+
+.focus-panel {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 9px 10px 10px;
+  border: 1px solid rgba(109, 107, 198, 0.26);
+  border-radius: 10px;
+  background: linear-gradient(rgba(246, 243, 252, 0.92), rgba(250, 248, 253, 0.9));
+  box-shadow: 0 1px 2px rgba(44, 35, 70, 0.05);
+}
+
+.focus-panel.is-break {
+  border-color: rgba(67, 140, 108, 0.28);
+  background: linear-gradient(rgba(244, 250, 246, 0.94), rgba(249, 252, 250, 0.92));
+}
+
+.focus-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.focus-phase {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  height: 19px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: rgba(109, 107, 198, 0.13);
+  color: var(--accent-press);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.focus-phase::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.focus-phase.ready {
+  background: rgba(116, 104, 124, 0.12);
+  color: #51505a;
+}
+
+.focus-phase.break {
+  background: rgba(67, 140, 108, 0.14);
+  color: #2f7d59;
+}
+
+.focus-next {
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  color: var(--ns-secondary);
+  font-size: 9.5px;
+  line-height: 1.35;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.focus-settings-btn {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: var(--icon-hit);
+  height: var(--icon-hit);
+  padding: 0;
+  border: 1px solid rgba(71, 64, 85, 0.18);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--ns-secondary);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* A masked SVG keeps the gear the same weight and size as every other icon;
+   the ⚙ text glyph fell back to a different font on each platform. */
+.settings-icon {
+  display: block;
+  width: var(--icon-size);
+  height: var(--icon-size);
+  background-color: currentColor;
+  -webkit-mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-position: center;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3.2'/%3E%3Cpath d='M19.1 14.6a1.5 1.5 0 0 0 .3 1.6l.1.1a1.8 1.8 0 1 1-2.6 2.6l-.1-.1a1.5 1.5 0 0 0-1.6-.3 1.5 1.5 0 0 0-.9 1.4v.2a1.8 1.8 0 1 1-3.6 0v-.1a1.5 1.5 0 0 0-1-1.4 1.5 1.5 0 0 0-1.6.3l-.1.1a1.8 1.8 0 1 1-2.6-2.6l.1-.1a1.5 1.5 0 0 0 .3-1.6 1.5 1.5 0 0 0-1.4-.9h-.2a1.8 1.8 0 1 1 0-3.6h.1a1.5 1.5 0 0 0 1.4-1 1.5 1.5 0 0 0-.3-1.6l-.1-.1a1.8 1.8 0 1 1 2.6-2.6l.1.1a1.5 1.5 0 0 0 1.6.3h.1a1.5 1.5 0 0 0 .9-1.4v-.2a1.8 1.8 0 1 1 3.6 0v.1a1.5 1.5 0 0 0 .9 1.4 1.5 1.5 0 0 0 1.6-.3l.1-.1a1.8 1.8 0 1 1 2.6 2.6l-.1.1a1.5 1.5 0 0 0-.3 1.6v.1a1.5 1.5 0 0 0 1.4.9h.2a1.8 1.8 0 1 1 0 3.6h-.1a1.5 1.5 0 0 0-1.4.9z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3.2'/%3E%3Cpath d='M19.1 14.6a1.5 1.5 0 0 0 .3 1.6l.1.1a1.8 1.8 0 1 1-2.6 2.6l-.1-.1a1.5 1.5 0 0 0-1.6-.3 1.5 1.5 0 0 0-.9 1.4v.2a1.8 1.8 0 1 1-3.6 0v-.1a1.5 1.5 0 0 0-1-1.4 1.5 1.5 0 0 0-1.6.3l-.1.1a1.8 1.8 0 1 1-2.6-2.6l.1-.1a1.5 1.5 0 0 0 .3-1.6 1.5 1.5 0 0 0-1.4-.9h-.2a1.8 1.8 0 1 1 0-3.6h.1a1.5 1.5 0 0 0 1.4-1 1.5 1.5 0 0 0-.3-1.6l-.1-.1a1.8 1.8 0 1 1 2.6-2.6l.1.1a1.5 1.5 0 0 0 1.6.3h.1a1.5 1.5 0 0 0 .9-1.4v-.2a1.8 1.8 0 1 1 3.6 0v.1a1.5 1.5 0 0 0 .9 1.4 1.5 1.5 0 0 0 1.6-.3l.1-.1a1.8 1.8 0 1 1 2.6 2.6l-.1.1a1.5 1.5 0 0 0-.3 1.6v.1a1.5 1.5 0 0 0 1.4.9h.2a1.8 1.8 0 1 1 0 3.6h-.1a1.5 1.5 0 0 0-1.4.9z'/%3E%3C/svg%3E");
+}
+
+.focus-settings-btn:hover { background: #fff; color: var(--accent-press); }
+
+.focus-body {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.focus-clock {
+  min-width: 4.4rem;
+  color: var(--ink);
+  font-size: 36px;
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.focus-clock.is-idle { color: #9b99a4; }
+
+.focus-copy {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.focus-task {
+  min-height: 16px;
+  margin: 0;
+  overflow: hidden;
+  color: #51505a;
+  font-size: 11.5px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+}
+
+.focus-task strong { color: var(--ink); font-weight: 600; }
+
+.focus-bar {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(116, 104, 124, 0.14);
+  overflow: hidden;
+}
+
+.focus-fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 180ms linear;
+}
+
+.focus-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--ns-secondary);
+  font-size: 9.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* An empty span still counts as a flex item and would split space-between. */
+.focus-mins:empty { display: none; }
+
+.focus-goal { color: var(--ns-secondary); white-space: nowrap; }
+
+.focus-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.focus-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 11px;
+  border: 1px solid var(--hairline);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #51505a;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.focus-action:hover { background: #fff; border-color: rgba(109, 107, 198, 0.34); }
+.focus-action[disabled] { opacity: 0.45; cursor: default; }
+.focus-action[disabled]:hover { background: rgba(255, 255, 255, 0.94); border-color: var(--hairline); }
+
+.focus-action.primary {
+  flex: 1 1 auto;
+  border-color: transparent;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 500;
+  box-shadow: 0 1px 2px rgba(44, 35, 70, 0.18);
+}
+
+.focus-action.primary:hover { background: var(--accent-hover); border-color: transparent; }
+.focus-action.primary[disabled] { background: rgba(109, 107, 198, 0.35); }
+
+/* Ready state: a compact start bar. The oversized idle clock, state pill, and
+   duplicate open count all disappear; the sprint length moves onto the button
+   so the panel communicates one thing — what you would start next. */
+.focus-panel.is-idle {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  column-gap: 10px;
+  row-gap: 0;
+  padding: 12px 12px 12px;
+}
+
+/* Settings becomes a trailing utility beside the start button rather than
+   floating over its corner on narrow screens. */
+.focus-panel.is-idle .focus-head {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+}
+
+.focus-panel.is-idle .focus-phase,
+.focus-panel.is-idle .focus-next { display: none; }
+
+.focus-panel.is-idle .focus-body {
+  grid-column: 1;
+  grid-row: 1;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.focus-panel.is-idle .focus-clock { display: none; }
+
+.focus-panel.is-idle .focus-copy {
+  grid-template-columns: minmax(48px, 1fr) auto;
+  column-gap: 10px;
+  row-gap: 6px;
+}
+
+.focus-panel.is-idle .focus-task {
+  grid-column: 1 / -1;
+  padding-right: 24px;
+  color: var(--ink);
+}
+
+.focus-panel.is-idle .focus-bar { grid-column: 1; align-self: center; }
+.focus-panel.is-idle .focus-meta { grid-column: 2; }
+
+/* Before any minutes are logged the track carries no information, so the
+   ready row is a task line plus a quiet goal line beside the start button. */
+.focus-panel.is-idle:not(.has-progress) .focus-bar { display: none; }
+.focus-panel.is-idle:not(.has-progress) .focus-meta { grid-column: 1 / -1; }
+
+.focus-panel.is-idle .focus-settings { top: calc(100% - 4px); }
+
+.focus-panel.is-idle .focus-actions {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+  padding-right: 30px;
+}
+
+.focus-panel.is-idle .focus-action.primary {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 0 14px;
+}
+
+/* The offer is a decision, not a timer: the pill and the offer copy already
+   say the sprint is over, so the duplicate "Done" clock and status go. */
+.focus-panel.is-offer .focus-clock,
+.focus-panel.is-offer .focus-next { display: none; }
+
+.focus-panel.is-offer .focus-body { grid-template-columns: minmax(0, 1fr); }
+.focus-panel.is-offer .focus-settings-btn { margin-left: auto; }
+
+/* A narrow planner window (resized or squeezed by the desktop grid) drops the
+   decorative "Up next:" prefix so the task name stays on one line. */
+@container (max-width: 560px) {
+  .focus-panel.is-idle .focus-upnext { display: none; }
+}
+
+.focus-offer {
+  padding: 9px 10px;
+  border: 1px solid rgba(109, 107, 198, 0.3);
+  border-radius: 8px;
+  background: rgba(109, 107, 198, 0.08);
+}
+
+.focus-offer-copy {
+  margin: 0 0 7px;
+  color: var(--accent-press);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* Settings popover: the tall inline block stays out of the Today flow. */
+.focus-settings {
+  position: absolute;
+  top: 34px;
+  right: 8px;
+  z-index: 6;
+  display: grid;
+  gap: 6px;
+  width: min(230px, calc(100% - 16px));
+  padding: 9px 10px 10px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 9px;
+  background: rgba(255, 253, 253, 0.98);
+  box-shadow: var(--shadow-popover);
+}
+
+.focus-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.focus-setting-label { color: var(--ns-secondary); font-size: 10.5px; }
+.focus-setting-label span { display: block; color: var(--muted); font-size: 9px; }
+
+.focus-stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(71, 64, 85, 0.16);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.focus-stepper button {
+  width: 21px;
+  height: 21px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--ns-secondary);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.focus-stepper button:hover { background: rgba(109, 107, 198, 0.12); color: var(--accent-press); }
+.focus-stepper button[disabled] { opacity: 0.3; cursor: default; background: transparent; }
+
+.focus-stepper output {
+  min-width: 46px;
+  color: #51505a;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.focus-settings-note {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.focus-flash {
+  animation: focus-flash 800ms ease-out;
+}
+
+@keyframes focus-flash {
+  0% { box-shadow: 0 0 0 3px rgba(109, 107, 198, 0.3), 0 1px 2px rgba(44, 35, 70, 0.05); }
+  100% { box-shadow: 0 0 0 0 rgba(109, 107, 198, 0), 0 1px 2px rgba(44, 35, 70, 0.05); }
+}
+
+
+.task-focused { color: var(--ns-secondary); }
+
+.focus-icon {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='13' r='7.5'/%3E%3Cpath d='M12 9.8v3.4l2.2 1.3M9.5 2.5h5'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='13' r='7.5'/%3E%3Cpath d='M12 9.8v3.4l2.2 1.3M9.5 2.5h5'/%3E%3C/svg%3E");
+}
 
 /* Lists */
 .todo-board .items-list {
   grid-column: 1 / -1;
-  grid-row: 2;
+  grid-row: 3;
   min-height: 9rem;
   max-height: min(26rem, calc(100vh - 22.5rem));
   border: 0;
@@ -2860,18 +3215,9 @@ body {
 .notes-window .item-card:hover .actions,
 .notes-window .item-card:focus-within .actions { opacity: 1; }
 
-.icon-btn {
-  width: 25px;
-  min-width: 25px;
-  min-height: 23px;
-  border-radius: 6px;
-  color: #5a5864;
-}
-
 .icon-btn:hover { background: rgba(109, 107, 198, 0.14); color: var(--accent-press); }
 .delete-btn { color: #a85463; }
 .delete-btn:hover { background: rgba(191, 77, 99, 0.12); color: var(--danger); }
-.action-icon { width: 14px; height: 14px; }
 
 .empty {
   margin: 8px;
@@ -2887,7 +3233,9 @@ body {
 /* Quick-capture bar (always visible, replaces Add Task button) */
 .todo-board > .task-quick-form {
   grid-column: 1 / -1;
-  grid-row: 3;
+  grid-row: 4;
+  width: 100%;
+  min-width: 0;
   margin: 0;
 }
 
@@ -2961,10 +3309,44 @@ body {
 .task-quick-opts-btn:hover { color: var(--accent); }
 .task-quick-opts-btn:active { color: var(--accent-press); }
 
+/* Visible save affordance: not everyone knows Enter submits. */
+.task-quick-save {
+  flex: 0 0 auto;
+  align-self: center;
+  margin: 0 6px 0 2px;
+  padding: 0 11px;
+  height: 28px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, transform 60ms ease;
+}
+
+.task-quick-save:hover:not(:disabled) { background: var(--accent-hover); }
+.task-quick-save:active:not(:disabled) {
+  background: var(--accent-press);
+  transform: translateY(0.5px);
+}
+.task-quick-save:focus-visible {
+  outline: 2px solid var(--accent-press);
+  outline-offset: 2px;
+}
+.task-quick-save:disabled {
+  background: rgba(109, 107, 198, 0.16);
+  color: rgba(79, 76, 157, 0.62);
+  cursor: default;
+}
+
 /* Add task row (fallback / edit-mode) */
 .todo-board > .add-task-launch {
   grid-column: 1 / -1;
-  grid-row: 3;
+  grid-row: 4;
   justify-self: stretch;
   display: flex;
   align-items: center;
@@ -2991,7 +3373,7 @@ body {
 
 .todo-board > .task-capture {
   grid-column: 1 / -1;
-  grid-row: 4;
+  grid-row: 5;
   margin: 8px 0 4px;
   padding: 10px;
   border: 1px solid var(--hairline);
@@ -3402,7 +3784,23 @@ body {
     padding: 15px 13px 12px;
   }
 
-  .todo-board > .panel-head { padding-bottom: 10px; }
+  /* Keep the count beside the title instead of adding a third stacked line. */
+  .main-pane:not(.is-calendar) > .panel-head {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 8px;
+  }
+
+  .main-pane:not(.is-calendar) > .panel-head > div { min-width: 0; }
+  .main-pane:not(.is-calendar) > .panel-head .count {
+    flex: 0 0 auto;
+    padding-top: 0;
+    text-align: right;
+  }
+
+  .todo-board > .panel-head { padding-bottom: 8px; }
   .todo-board .panel-title { font-size: 19px; }
 
   .main-pane.is-calendar > .panel-head {
@@ -3424,11 +3822,7 @@ body {
     margin: 0 0 0.7rem;
   }
 
-  .planner-view-tabs { display: grid; }
   .planner-view-tab { min-height: 28px; font-size: 12px; }
-
-  .mode-tabs { width: auto; grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .mode-tab { min-height: 28px; padding: 0 12px; font-size: 12px; }
 
   .planner-tools { margin-left: auto; }
 
@@ -3458,14 +3852,25 @@ body {
 @media (max-width: 560px) {
   .menu-brand span { display: none; }
 
+  /* Phones keep the title on its own full-width row and move the four row
+     actions underneath it, right aligned. Sharing the first row would leave
+     the title ~130px wide once every action gets a 44px touch target. */
   .task-card {
     grid-template-columns: 22px minmax(0, 1fr) auto;
     column-gap: 8px;
+    align-items: start;
+  }
+
+  .task-card .task-main {
+    grid-column: 2 / -1;
+    grid-row: 1;
   }
 
   .task-card .actions {
     grid-column: 3;
-    grid-row: 1;
+    grid-row: 2;
+    align-self: center;
+    margin-top: 0;
     justify-content: flex-end;
     opacity: 1;
   }
@@ -3473,8 +3878,9 @@ body {
   .task-meta {
     grid-column: 2;
     grid-row: 2;
-    justify-items: start;
     justify-self: start;
+    justify-items: start;
+    min-width: 0;
     white-space: normal;
   }
 
@@ -3488,14 +3894,145 @@ body {
   .window-titlebar { grid-template-columns: 58px minmax(0, 1fr) 58px; }
 }
 
+/* Medium windows keep the sidebar, so the title column cannot share a row
+   with the toolbar without squeezing the date and task count. Give the title
+   the full width and put the tools on their own right-aligned row. */
+@media (min-width: 981px) and (max-width: 1250px) {
+  .main-pane:not(.is-calendar) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto auto auto 1fr;
+  }
+
+  .main-pane:not(.is-calendar) > .panel-head {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .main-pane:not(.is-calendar) > .planner-controls {
+    grid-column: 1;
+    grid-row: 2;
+    justify-content: flex-end;
+    margin-bottom: 10px;
+  }
+
+  .main-pane:not(.is-calendar) > .focus-dock {
+    grid-column: 1;
+    grid-row: 3;
+  }
+
+  .main-pane:not(.is-calendar) > .items-list {
+    grid-column: 1;
+    grid-row: 4;
+    min-height: 3.5rem;
+  }
+
+  .main-pane:not(.is-calendar) > .items-list .empty {
+    margin: 4px;
+    padding: 10px 12px;
+  }
+
+  .main-pane:not(.is-calendar) > .task-quick-form {
+    grid-column: 1;
+    grid-row: 5;
+  }
+
+  .main-pane:not(.is-calendar) > .add-task-launch,
+  .main-pane:not(.is-calendar) > .task-capture {
+    grid-column: 1;
+    grid-row: 6;
+  }
+
+  .main-pane:not(.is-calendar) > .planner-status {
+    grid-column: 1;
+    grid-row: 7;
+  }
+
+  .planner-controls { gap: 4px; }
+  .planner-tools { gap: 3px; margin-left: auto; }
+
+  .planner-window.window-height-capped .main-pane:not(.is-calendar) {
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto auto;
+  }
+}
+
 @media (max-width: 480px) {
-  .menu-meta { display: none; }
-  .menu-bar { grid-template-columns: minmax(0, auto) minmax(0, 1fr); }
+  .menu-saved,
+  #menu-clock { display: none; }
+  .menu-bar { grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; }
+  .menu-meta { gap: 0; overflow: visible; }
   .menu-bar .surface-switch { justify-self: center; }
+
+  .focus-clock { min-width: 3.8rem; font-size: 32px; }
+  .focus-meta { flex-wrap: wrap; }
+
+  /* Let the tools sit beside the view tabs instead of taking a row of their
+     own; the compact "+" keeps its accessible name. */
+  .new-item-btn {
+    width: 30px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  #new-item-label { display: none; }
+  .new-item-plus { font-size: 16px; }
+
+  /* The ready row has no width to spare on a phone; the button makes the
+     intent clear without the "Up next:" prefix. */
+  .focus-panel.is-idle .focus-upnext { display: none; }
 }
 
 @media (hover: none) and (pointer: coarse) {
   .actions { opacity: 1; }
+
+  /* Touch sizing. 18px glyphs keep the optical weight of the 16px desktop
+     set, and 44px hit areas meet Apple's 44pt / Material's 48dp guidance
+     (WCAG 2.2 SC 2.5.8 asks for 24px as the floor). */
+  .icon-btn,
+  .focus-settings-btn,
+  .calendar-export-btn,
+  .task-filter-toggle,
+  .note-filter-toggle {
+    width: var(--icon-hit-touch);
+    min-width: var(--icon-hit-touch);
+    height: var(--icon-hit-touch);
+    min-height: var(--icon-hit-touch);
+  }
+
+  .action-icon,
+  .settings-icon,
+  .side-icon,
+  .filter-icon,
+  .calendar-export-icon,
+  .task-filter-icon {
+    width: var(--icon-size-touch);
+    height: var(--icon-size-touch);
+  }
+
+  .side-row { min-height: 44px; }
+  .calendar-add-day { min-height: 40px; }
+  .new-item-btn { min-height: var(--icon-hit-touch); }
+  .focus-action,
+  .focus-panel.is-idle .focus-action.primary { min-height: var(--icon-hit-touch); }
+  .calendar-nav-btn { min-width: var(--icon-hit-touch); height: var(--icon-hit-touch); }
+
+  /* The idle gear is a 44px button now, so reserve its full width beside
+     the start button. */
+  .focus-panel.is-idle .focus-actions {
+    padding-right: calc(var(--icon-hit-touch) + 6px);
+  }
+
+  /* The mini add button rides in a day cell; 44px would cover the date and
+     chips, while the whole cell already opens the day popup. */
+  .calendar-add-mini { width: 28px; height: 28px; }
+}
+
+@media (hover: none) and (pointer: coarse) and (max-width: 480px) {
+  .new-item-btn {
+    width: var(--icon-hit-touch);
+    min-width: var(--icon-hit-touch);
+    padding: 0;
+    justify-content: center;
+  }
 }
 
 /* Overdue tasks: the date turns red and gains a leading dot, so a missed
@@ -3556,7 +4093,7 @@ body {
 
 .todo-board > .calendar-view {
   grid-column: 1 / -1;
-  grid-row: 2;
+  grid-row: 3;
   min-width: 0;
   min-height: 9rem;
   max-height: min(31rem, calc(100vh - 18rem));
@@ -3570,7 +4107,7 @@ body {
 
 /* Month */
 .calendar-month {
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--calendar-line);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.72);
   overflow: hidden;
@@ -3584,7 +4121,7 @@ body {
 
 .calendar-month-head-cell {
   padding: 6px 7px;
-  border-bottom: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--calendar-line);
   background: rgba(243, 238, 244, 0.86);
   color: var(--ns-secondary);
   font-size: 9.5px;
@@ -3601,8 +4138,8 @@ body {
   min-width: 0;
   min-height: 88px;
   padding: 5px 5px 4px;
-  border-right: 1px solid rgba(74, 66, 84, 0.1);
-  border-bottom: 1px solid rgba(74, 66, 84, 0.1);
+  border-right: 1px solid var(--calendar-line);
+  border-bottom: 1px solid var(--calendar-line);
   background: transparent;
   cursor: default;
 }
@@ -3734,7 +4271,7 @@ body {
 .calendar-week {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--calendar-line);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.72);
   overflow: hidden;
@@ -3744,7 +4281,7 @@ body {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  border-right: 1px solid rgba(74, 66, 84, 0.12);
+  border-right: 1px solid var(--calendar-line);
 }
 
 .calendar-week-col:last-child { border-right: 0; }
@@ -3759,7 +4296,7 @@ body {
   width: 100%;
   padding: 6px 7px 5px;
   border: 0;
-  border-bottom: 1px solid rgba(74, 66, 84, 0.12);
+  border-bottom: 1px solid var(--calendar-line);
   background: rgba(243, 238, 244, 0.86);
   color: var(--ink);
   font: inherit;
@@ -3799,15 +4336,25 @@ body {
 }
 
 .calendar-week-chip {
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 6px minmax(0, 1fr);
+  align-items: start;
+  gap: 2px 5px;
   padding: 5px 6px;
   border: 1px solid rgba(74, 66, 84, 0.08);
   background: rgba(246, 242, 247, 0.9);
   white-space: normal;
 }
 
+.calendar-week-chip .calendar-chip-dot { grid-row: 1 / span 2; margin-top: 3px; }
+.calendar-week-chip .calendar-chip-time {
+  grid-column: 2;
+  font-size: 9px;
+  white-space: nowrap;
+}
+.calendar-week-chip .calendar-chip-title { grid-column: 2; }
+
 .calendar-week-chip:hover { background: rgba(109, 107, 198, 0.12); }
-.calendar-week-chip .calendar-chip-dot { margin-top: 3px; }
 
 .calendar-week-chip .calendar-chip-title {
   display: -webkit-box;
@@ -3988,6 +4535,12 @@ body {
   margin-bottom: 10px;
 }
 
+/* Without the duplicated header tabs the calendar toolbar only holds the
+   tools, which would otherwise sit alone on the left. */
+@media (min-width: 781px) {
+  .main-pane.is-calendar > .planner-controls { justify-content: flex-end; }
+}
+
 .main-pane.is-calendar > .calendar-view {
   grid-row: 3;
   align-self: stretch;
@@ -4064,6 +4617,111 @@ body {
 }
 
 /* ------------------------------------------------------------------ */
+/* Events + context-aware New task / New event                        */
+/* ------------------------------------------------------------------ */
+.new-item-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid rgba(74, 64, 120, 0.36);
+  border-radius: 7px;
+  background: linear-gradient(180deg, #8f8dd8, var(--accent));
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 1px 1px rgba(56, 46, 66, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  cursor: pointer;
+}
+
+.new-item-btn:hover { background: linear-gradient(180deg, #9a98e0, var(--accent-hover, var(--accent))); }
+.new-item-btn:active { transform: translateY(0.5px); }
+.new-item-plus { font-size: 14px; font-weight: 400; line-height: 1; }
+
+.quick-chip {
+  flex: 0 0 auto;
+  align-self: center;
+  padding: 3px 8px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(109, 107, 198, 0.14);
+  color: var(--accent-press);
+  font: inherit;
+  font-size: 10.5px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.quick-time-chip,
+.quick-duration-chip {
+  border: 1px solid rgba(109, 107, 198, 0.28);
+  background: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+}
+
+.quick-time-chip:hover,
+.quick-duration-chip:hover { background: #fff; }
+.quick-duration-chip { margin-right: 3px; }
+
+.task-entry-row.is-event {
+  grid-template-columns: minmax(11rem, 1fr) minmax(8rem, 0.3fr) minmax(6.5rem, 0.22fr) minmax(7.5rem, 0.28fr) auto;
+}
+
+.event-card { grid-template-columns: 22px minmax(0, 1fr) max-content auto; }
+
+.event-marker {
+  width: 8px;
+  height: 8px;
+  margin: 5px auto 0;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(109, 107, 198, 0.14);
+}
+
+.event-time {
+  color: var(--accent-press);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.calendar-chip.is-event { color: var(--accent-press); }
+.calendar-chip.is-event .calendar-chip-dot {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.calendar-chip-time {
+  flex: none;
+  font-size: 9.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.9;
+}
+
+.calendar-view.is-month .calendar-chip-time { display: none; }
+
+.day-popup-row.is-event { grid-template-columns: 58px minmax(0, 1fr) auto; }
+.day-popup-time {
+  color: var(--accent-press);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 780px) {
+  .event-card { grid-template-columns: 22px minmax(0, 1fr) auto; }
+  .event-card .task-meta { display: none; }
+}
+
+@media (max-width: 560px) {
+  .task-entry-row.is-event { grid-template-columns: minmax(0, 1fr); }
+  .task-quick-save { margin-right: 4px; padding: 0 9px; font-size: 11px; }
+  .task-quick-opts-btn { width: 30px; }
+}
+
+/* ------------------------------------------------------------------ */
 /* Windows High Contrast / forced-colors                              */
 /* Keep selection, focus, and overdue cues visible when the OS replaces */
 /* the palette; the traffic lights keep their 20px hit target.         */
@@ -4083,7 +4741,6 @@ body {
   }
 
   .surface-tab.active,
-  .mode-tab.active,
   .planner-view-tab.active,
   .task-filter.active,
   .note-filter.active,
@@ -4104,10 +4761,24 @@ body {
     background: LinkText;
   }
 
+  .event-marker { background: CanvasText; box-shadow: none; }
+  .calendar-chip.is-event .calendar-chip-dot { box-shadow: inset 0 0 0 1.5px CanvasText; }
+
+  .task-quick-save:disabled {
+    border: 1px solid GrayText;
+    background: ButtonFace;
+    color: GrayText;
+  }
+
   .window-titlebar:focus-visible,
   button:focus-visible,
   [tabindex]:focus-visible {
     outline: 2px solid Highlight;
     outline-offset: 2px;
   }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .focus-flash { animation: none; }
+  .focus-fill { transition: none; }
 }

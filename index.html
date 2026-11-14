@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="only light">
 <title>Random Notes | Private Local Planner</title>
 <meta name="description" content="Plan tasks by today, week, and month, then capture loose notes privately in your browser.">
 <meta name="robots" content="index, follow">
@@ -19,7 +20,8 @@
 <meta name="twitter:description" content="A private local planner for tasks and quick thoughts.">
 <meta name="twitter:image" content="bg-2.jpg">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="styles.css?v=calendar-form-20261106">
+<!-- Bump ?v= whenever styles.css changes so cached copies refresh. -->
+<link rel="stylesheet" href="styles.css?v=ui-20261113b">
 </head>
 <body>
 <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -40,6 +42,11 @@
       <button class="surface-tab" type="button" data-surface-target="readme" role="tab" aria-selected="false" aria-controls="readme-window">README.txt</button>
     </div>
     <div class="menu-meta">
+      <button class="focus-pill" id="focus-pill" type="button" hidden>
+        <span class="focus-pill-dot" aria-hidden="true"></span>
+        <time id="focus-pill-time">25:00</time>
+        <span id="focus-pill-label">Focus</span>
+      </button>
       <span class="menu-saved">All saved locally</span>
       <span id="menu-clock"></span>
     </div>
@@ -80,10 +87,13 @@
                 <span>Today</span>
                 <span class="side-count" data-side-count="today" aria-hidden="true">0</span>
               </button>
-              <button class="side-row" type="button" data-view="calendar" aria-label="Calendar">
+              <button class="side-row" type="button" data-view="week" aria-label="Week">
+                <span class="side-icon range-icon" aria-hidden="true"></span>
+                <span>Week</span>
+              </button>
+              <button class="side-row" type="button" data-view="month" aria-label="Month">
                 <span class="side-icon calendar-icon" aria-hidden="true"></span>
-                <span>Calendar</span>
-                <span class="side-count" data-side-count="calendar" aria-hidden="true">0</span>
+                <span>Month</span>
               </button>
             </div>
             <p class="sidebar-label">Places</p>
@@ -114,16 +124,16 @@
               <p class="count" id="task-count">0 tasks</p>
             </div>
             <div class="planner-controls">
-              <div class="planner-view-tabs" role="group" aria-label="Planner destination">
-                <button class="planner-view-tab active" type="button" data-planner-view="today" aria-current="page">Today</button>
-                <button class="planner-view-tab" type="button" data-planner-view="calendar">Calendar</button>
-              </div>
-              <div class="mode-tabs" id="calendar-mode-tabs" role="tablist" aria-label="Calendar view" hidden>
-                <button class="mode-tab" type="button" data-view="week" role="tab" aria-selected="false" aria-controls="calendar-view" tabindex="-1">Week</button>
-                <button class="mode-tab active" type="button" data-view="month" role="tab" aria-selected="true" aria-controls="calendar-view" tabindex="0">Month</button>
+              <div class="planner-view-tabs" id="planner-view-tabs" role="tablist" aria-label="Planner view">
+                <button class="planner-view-tab active" type="button" data-view="today" role="tab" aria-selected="true" aria-controls="task-list" tabindex="0">Today</button>
+                <button class="planner-view-tab" type="button" data-view="week" role="tab" aria-selected="false" aria-controls="calendar-view" tabindex="-1">Week</button>
+                <button class="planner-view-tab" type="button" data-view="month" role="tab" aria-selected="false" aria-controls="calendar-view" tabindex="-1">Month</button>
               </div>
               <div class="planner-tools">
-                <button class="calendar-export-btn" id="calendar-export" type="button" aria-label="Export tasks to calendar" title="Export tasks to calendar">
+                <button class="new-item-btn" id="new-item-btn" type="button" aria-label="New task for today">
+                  <span class="new-item-plus" aria-hidden="true">+</span><span id="new-item-label">New task</span>
+                </button>
+                <button class="calendar-export-btn" id="calendar-export" type="button" aria-label="Export tasks and events to calendar" title="Export tasks and events to calendar">
                   <span class="calendar-export-icon" aria-hidden="true"></span>
                 </button>
                 <div class="task-filter-menu">
@@ -138,6 +148,60 @@
                 </div>
               </div>
             </div>
+            <section class="focus-dock" id="focus-dock" aria-label="Focus session">
+              <div class="focus-panel">
+                <div class="focus-head">
+                  <span class="focus-phase ready" id="focus-phase">Ready</span>
+                  <span class="focus-next" id="focus-next">25 min sprint</span>
+                  <button class="focus-settings-btn" id="focus-settings-btn" type="button" aria-label="Focus settings" aria-expanded="false" aria-controls="focus-settings" title="Focus settings"><span class="settings-icon" aria-hidden="true"></span></button>
+                </div>
+                <div class="focus-body">
+                  <div class="focus-clock is-idle" id="focus-time">25:00</div>
+                  <div class="focus-copy">
+                    <p class="focus-task" id="focus-task">Add a task below to start.</p>
+                    <div class="focus-bar" aria-hidden="true"><span class="focus-fill" id="focus-fill"></span></div>
+                    <div class="focus-meta">
+                      <span class="focus-mins" id="focus-mins"></span>
+                      <span class="focus-goal" id="focus-goal">0 / 60 min today</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="focus-actions" id="focus-actions">
+                  <button class="focus-action primary" id="focus-start" type="button">Start 25 min</button>
+                  <button class="focus-action" id="focus-pause" type="button" hidden>Pause</button>
+                  <button class="focus-action" id="focus-finish" type="button" hidden>Finish sprint now</button>
+                  <button class="focus-action" id="focus-skip" type="button" hidden>Skip break</button>
+                  <button class="focus-action" id="focus-end" type="button" hidden>End</button>
+                </div>
+                <div class="focus-offer" id="focus-offer" hidden>
+                  <p class="focus-offer-copy" id="focus-offer-copy"></p>
+                  <div class="focus-actions">
+                    <button class="focus-action primary" id="focus-offer-break" type="button">5 min break</button>
+                    <button class="focus-action" id="focus-offer-keep" type="button">Keep going</button>
+                    <button class="focus-action" id="focus-offer-done" type="button">Done for now</button>
+                  </div>
+                </div>
+                <div class="focus-settings" id="focus-settings" role="dialog" aria-label="Focus settings" hidden>
+                  <div class="focus-setting">
+                    <span class="focus-setting-label">Focus<span>one sprint</span></span>
+                    <span class="focus-stepper" role="group" aria-label="Focus length">
+                      <button type="button" data-focus-step="focus" data-delta="-5" aria-label="Shorter sprint">−</button>
+                      <output id="focus-value">25 min</output>
+                      <button type="button" data-focus-step="focus" data-delta="5" aria-label="Longer sprint">+</button>
+                    </span>
+                  </div>
+                  <div class="focus-setting">
+                    <span class="focus-setting-label">Goal<span>focused time</span></span>
+                    <span class="focus-stepper" role="group" aria-label="Daily goal">
+                      <button type="button" data-focus-step="goal" data-delta="-15" aria-label="Lower daily goal">−</button>
+                      <output id="focus-goal-value">1 hour</output>
+                      <button type="button" data-focus-step="goal" data-delta="15" aria-label="Raise daily goal">+</button>
+                    </span>
+                  </div>
+                  <p class="focus-settings-note">Sprint length starts with the next sprint. The 5 min break is part of the Pomodoro rhythm.</p>
+                </div>
+              </div>
+            </section>
             <section class="items-list" id="task-list" aria-label="Saved tasks"></section>
             <section class="calendar-view" id="calendar-view" aria-labelledby="view-title" hidden></section>
             <!-- Quick-capture bar: always visible, one click to type -->
@@ -145,20 +209,40 @@
               <div class="task-quick-row">
                 <span class="task-quick-plus" aria-hidden="true">+</span>
                 <input class="task-quick-input" id="task-quick-input" type="text" maxlength="220" placeholder="Add a task… (↵ save)" aria-describedby="task-quick-hint">
-                <span class="sr-only" id="task-quick-hint">Press Enter to save, or Control or Command plus Enter to set a date.</span>
+                <span class="sr-only" id="task-quick-hint">Press Enter or the Save button to save, or Control or Command plus Enter to set a date.</span>
+                <button class="quick-chip quick-time-chip" id="quick-time-chip" type="button" aria-label="Event start time" title="Change start time" hidden>9:00 AM</button>
+                <button class="quick-chip quick-duration-chip" id="quick-duration-chip" type="button" aria-label="Event duration" title="Change duration" hidden>1 hour</button>
                 <button class="task-quick-opts-btn" id="task-quick-opts-btn" type="button" aria-label="More options: set date" title="Set date / more options">⋯</button>
+                <button class="task-quick-save" id="task-quick-save" type="submit" aria-label="Save task" title="Save task" disabled>Save</button>
               </div>
             </form>
             <button class="add-task-launch" id="task-add-toggle" type="button" aria-controls="task-form" aria-expanded="false" hidden>+ Add Task</button>
             <form class="capture task-capture" id="task-form" aria-label="Add task" hidden>
               <div class="task-entry-row">
                 <div class="task-title-field">
-                  <label class="field-label" for="task-title">Task</label>
+                  <label class="field-label" id="task-title-label" for="task-title">Task</label>
                   <input class="text-input" id="task-title" type="text" maxlength="220" placeholder="Add a task">
                 </div>
                 <div class="task-date-field">
                   <label class="field-label" for="task-date">Date</label>
                   <input class="date-input" id="task-date" type="date">
+                </div>
+                <div class="task-time-field" id="task-time-field" hidden>
+                  <label class="field-label" for="task-time">Start</label>
+                  <input class="date-input" id="task-time" type="time" step="900">
+                </div>
+                <div class="task-duration-field" id="task-duration-field" hidden>
+                  <label class="field-label" for="task-duration">Duration</label>
+                  <select class="date-input" id="task-duration">
+                    <option value="15">15 min</option>
+                    <option value="30">30 min</option>
+                    <option value="45">45 min</option>
+                    <option value="60" selected>1 hour</option>
+                    <option value="90">1 hr 30 min</option>
+                    <option value="120">2 hours</option>
+                    <option value="180">3 hours</option>
+                    <option value="240">4 hours</option>
+                  </select>
                 </div>
                 <div class="form-actions">
                   <button class="add-btn" id="task-submit" type="submit">Save</button>
@@ -352,7 +436,7 @@
     <div class="day-popup-body">
       <div class="day-popup-list" id="day-popup-list"></div>
       <div class="day-popup-actions">
-        <button class="secondary-btn" id="day-popup-add" type="button">+ Add task</button>
+        <button class="secondary-btn" id="day-popup-add" type="button">+ Add event</button>
         <button class="add-btn" id="day-popup-done" type="button">Done</button>
       </div>
     </div>
@@ -373,6 +457,8 @@ if (/^[a-zA-Z]{2,3}(?:-[a-zA-Z0-9]{2,8})*$/.test(browserLanguage)) {
 const WINDOW_POSITIONS_KEY = "random_notes_window_positions_v1";
 const ICON_POSITIONS_KEY = "random_notes_icon_positions_v1";
 const PLANNER_VIEW_KEY = "random_notes_planner_view_v1";
+const FOCUS_KEY = "random_notes_focus_v1";
+const FOCUS_DEFAULT_SETTINGS = { focusMin: 25, breakMin: 5, goalMin: 60 };
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyCBt6sNfoVpKvAjjvdFt1JLAfHQ6_UNjSQ",
   authDomain: "notes-planner-5e410.firebaseapp.com",
@@ -399,6 +485,8 @@ let visibleNoteLimit = NOTE_PAGE_SIZE;
 let taskFilter = "all";
 let editingTaskId = null;
 let editingNoteId = null;
+let quickEventStart = "";
+let quickEventDuration = 60;
 let toastTimer = null;
 let windowPositions = {};
 let iconPositions = {};
@@ -408,6 +496,9 @@ let iconDragState = null;
 let windowZIndex = 10;
 let activePopupNoteText = "";
 let notePopupReturnFocus = null;
+let focusState = createDefaultFocusState();
+let focusSettingsOpen = false;
+let focusLastTickSecond = null;
 let syncDb = null;
 let syncUser = null;
 let syncReady = false;
@@ -426,6 +517,7 @@ const windowState = {
 };
 
 const taskForm = document.getElementById("task-form");
+const taskTitleLabel = document.getElementById("task-title-label");
 const taskTitleInput = document.getElementById("task-title");
 const taskBodyInput = document.getElementById("task-body");
 const taskDateInput = document.getElementById("task-date");
@@ -435,6 +527,15 @@ const taskAddToggle = document.getElementById("task-add-toggle");
 const taskQuickForm = document.getElementById("task-quick-form");
 const taskQuickInput = document.getElementById("task-quick-input");
 const taskQuickOptsBtn = document.getElementById("task-quick-opts-btn");
+const taskQuickSave = document.getElementById("task-quick-save");
+const newItemButton = document.getElementById("new-item-btn");
+const newItemLabel = document.getElementById("new-item-label");
+const quickTimeChip = document.getElementById("quick-time-chip");
+const quickDurationChip = document.getElementById("quick-duration-chip");
+const taskTimeField = document.getElementById("task-time-field");
+const taskTimeInput = document.getElementById("task-time");
+const taskDurationField = document.getElementById("task-duration-field");
+const taskDurationInput = document.getElementById("task-duration");
 const calendarExportButton = document.getElementById("calendar-export");
 const taskFilterToggle = document.getElementById("task-filter-toggle");
 const noteForm = document.getElementById("note-form");
@@ -469,7 +570,7 @@ const taskList = document.getElementById("task-list");
 const calendarView = document.getElementById("calendar-view");
 const plannerPane = document.querySelector(".planner-window .main-pane");
 const calendarNav = document.getElementById("calendar-nav");
-const calendarModeTabs = document.getElementById("calendar-mode-tabs");
+const plannerViewTabs = document.getElementById("planner-view-tabs");
 const calendarPrevButton = document.getElementById("calendar-prev");
 const calendarTodayButton = document.getElementById("calendar-today");
 const calendarNextButton = document.getElementById("calendar-next");
@@ -485,11 +586,36 @@ const noteCountLabel = document.getElementById("note-count");
 const readmeContent = document.getElementById("readme-content");
 const viewTitle = document.getElementById("view-title");
 const viewSubtitle = document.getElementById("view-subtitle");
-const tabs = Array.from(document.querySelectorAll(".mode-tab"));
+const tabs = Array.from(document.querySelectorAll(".planner-view-tab"));
 const sideViewButtons = Array.from(document.querySelectorAll(".side-row[data-view]"));
-const plannerViewButtons = Array.from(document.querySelectorAll(".planner-view-tab"));
 const sideOpenButtons = Array.from(document.querySelectorAll("[data-side-open]"));
 const menuClock = document.getElementById("menu-clock");
+const focusDock = document.getElementById("focus-dock");
+const focusPanel = focusDock.querySelector(".focus-panel");
+const focusPhase = document.getElementById("focus-phase");
+const focusNext = document.getElementById("focus-next");
+const focusTime = document.getElementById("focus-time");
+const focusTask = document.getElementById("focus-task");
+const focusFill = document.getElementById("focus-fill");
+const focusMins = document.getElementById("focus-mins");
+const focusGoal = document.getElementById("focus-goal");
+const focusStartButton = document.getElementById("focus-start");
+const focusPauseButton = document.getElementById("focus-pause");
+const focusFinishButton = document.getElementById("focus-finish");
+const focusSkipButton = document.getElementById("focus-skip");
+const focusEndButton = document.getElementById("focus-end");
+const focusOffer = document.getElementById("focus-offer");
+const focusOfferCopy = document.getElementById("focus-offer-copy");
+const focusOfferBreakButton = document.getElementById("focus-offer-break");
+const focusOfferKeepButton = document.getElementById("focus-offer-keep");
+const focusOfferDoneButton = document.getElementById("focus-offer-done");
+const focusSettingsButton = document.getElementById("focus-settings-btn");
+const focusSettings = document.getElementById("focus-settings");
+const focusValue = document.getElementById("focus-value");
+const focusGoalValue = document.getElementById("focus-goal-value");
+const focusPill = document.getElementById("focus-pill");
+const focusPillTime = document.getElementById("focus-pill-time");
+const focusPillLabel = document.getElementById("focus-pill-label");
 const taskFilterOptions = document.getElementById("task-filter-options");
 const noteFilterOptions = document.getElementById("note-filter-options");
 const taskFilterButtons = Array.from(document.querySelectorAll(".task-filter"));
@@ -508,15 +634,23 @@ const taskbarStartButton = document.querySelector("[data-taskbar-start]");
 const isMacPlatform = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
 const usesTouchInput = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
 const dateShortcutLabel = isMacPlatform ? "⌘↵" : "Ctrl+↵";
-taskQuickInput.placeholder = usesTouchInput
-  ? "Add a task…"
-  : `Add a task… (↵ save · ${dateShortcutLabel} for date)`;
+taskQuickInput.placeholder = "Add a task…";
+taskQuickInput.title = usesTouchInput ? "" : `Enter saves · ${dateShortcutLabel} sets a date`;
 taskQuickOptsBtn.title = usesTouchInput ? "Set date" : `Set date (${dateShortcutLabel})`;
 if (usesTouchInput) {
   const quickHint = document.getElementById("task-quick-hint");
-  if (quickHint) quickHint.textContent = "Press Enter to save, or use the More options button to set a date.";
+  if (quickHint) quickHint.textContent = "Tap Save to add it, or use the More options button to set a date.";
   noteBodyInput.placeholder = "Drop a thought…";
 }
+
+// The Save button is a second, more discoverable path to the same submit.
+// Keep it inert while the title is empty so it reads as an action, not a
+// dead control.
+function syncQuickSaveState() {
+  taskQuickSave.disabled = !taskQuickInput.value.trim();
+}
+taskQuickInput.addEventListener("input", syncQuickSaveState);
+syncQuickSaveState();
 
 let currentDayStamp = toDateInputValue(new Date());
 let cachedWeekStart = null;
@@ -527,6 +661,7 @@ let dayPopupDate = "";
 let dayPopupReturnFocus = null;
 
 loadItems();
+loadFocusState();
 loadWindowPositions();
 loadIconPositions();
 restorePlannerViewState();
@@ -539,7 +674,9 @@ setActiveSurface();
 setTaskFilter();
 setActiveTab();
 updateMenuClock();
+resumeFocusSession();
 window.setInterval(updateMenuClock, 30000);
+window.setInterval(focusTick, 1000);
 initSync();
 
 // Offline app shell (not just local data): the service worker serves the page
@@ -566,21 +703,43 @@ taskQuickForm.addEventListener("submit", event => {
   event.preventDefault();
   const title = taskQuickInput.value.trim();
   if (!title) { taskQuickInput.focus(); return; }
-  const task = {
-    id: createItemId(),
-    type: "task",
-    title,
-    body: "",
-    dueDate: getQuickCaptureDate(),
-    done: false,
-    createdAt: Date.now(),
-    updatedAt: Date.now()
-  };
-  items.unshift(task);
+  const dateKey = getQuickCaptureDate();
+  const isEvent = getFormKind() === "event";
+  const item = isEvent
+    ? {
+        id: createItemId(),
+        type: "event",
+        title,
+        body: "",
+        dueDate: dateKey,
+        startTime: getDefaultEventStart(dateKey),
+        durationMin: quickEventDuration,
+        done: false,
+        focusedMin: 0,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      }
+    : {
+        id: createItemId(),
+        type: "task",
+        title,
+        body: "",
+        dueDate: dateKey,
+        startTime: "",
+        durationMin: 0,
+        done: false,
+        focusedMin: 0,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+  items.unshift(item);
   saveItems();
   taskQuickInput.value = "";
+  syncQuickSaveState();
   render();
-  const message = describeTaskVisibility(task, "Task added.");
+  const message = isEvent
+    ? describeItemVisibility(item, "Event added.", "added")
+    : describeTaskVisibility(item, "Task added.");
   announce(message);
   showToast(message);
   taskQuickInput.focus();
@@ -590,6 +749,8 @@ taskQuickForm.addEventListener("submit", event => {
 function openQuickTaskForm() {
   const title = taskQuickInput.value.trim();
   taskQuickInput.value = "";
+  syncQuickSaveState();
+  if (isCalendarView(activeView)) taskDateInput.value = getQuickCaptureDate();
   setTaskFormOpen(true);
   taskTitleInput.value = title;
   (title ? taskDateInput : taskTitleInput).focus();
@@ -597,6 +758,59 @@ function openQuickTaskForm() {
 }
 
 taskQuickOptsBtn.addEventListener("click", openQuickTaskForm);
+
+function updateCaptureContext() {
+  const isEvent = getFormKind() === "event";
+  const dateKey = getQuickCaptureDate();
+
+  newItemLabel.textContent = isEvent ? "New event" : "New task";
+  newItemButton.setAttribute(
+    "aria-label",
+    isEvent ? `New event on ${formatDateLabel(dateKey)}` : "New task for today"
+  );
+  taskQuickForm.setAttribute("aria-label", isEvent ? "Quick add event" : "Quick add task");
+  taskQuickSave.setAttribute("aria-label", isEvent ? "Save event" : "Save task");
+  taskQuickSave.title = isEvent ? "Save event (Enter)" : "Save task (Enter)";
+  // The shortcut hint lives in the tooltip and the screen-reader hint; the
+  // placeholder stays quiet so the bar reads as one action.
+  taskQuickInput.placeholder = isEvent ? "Add an event…" : "Add a task…";
+
+  quickTimeChip.hidden = !isEvent;
+  quickDurationChip.hidden = !isEvent;
+
+  if (isEvent) {
+    const start = getDefaultEventStart(dateKey);
+    quickTimeChip.textContent = formatTimeLabel(start);
+    quickDurationChip.textContent = formatDurationLabel(quickEventDuration);
+    quickTimeChip.setAttribute("aria-label", `Event start time: ${formatTimeLabel(start)}. Change time.`);
+    quickDurationChip.setAttribute("aria-label", `Event duration: ${formatDurationLabel(quickEventDuration)}. Change duration.`);
+  }
+}
+
+newItemButton.addEventListener("click", () => {
+  if (!taskForm.hidden) {
+    clearTaskEditMode();
+    setTaskFormOpen(false);
+  }
+  updateCaptureContext();
+  taskQuickInput.focus();
+  announce(isCalendarView(activeView) ? "New event. Type a title." : "New task. Type a title.");
+});
+
+quickTimeChip.addEventListener("click", () => {
+  const dateKey = getQuickCaptureDate();
+  quickEventStart = minutesToTime(timeToMinutes(getDefaultEventStart(dateKey)) + 30);
+  updateCaptureContext();
+  announce(`Start time ${formatTimeLabel(quickEventStart)}.`);
+});
+
+quickDurationChip.addEventListener("click", () => {
+  const steps = [15, 30, 45, 60, 90, 120, 180];
+  const index = steps.indexOf(quickEventDuration);
+  quickEventDuration = steps[(index + 1) % steps.length];
+  updateCaptureContext();
+  announce(`Duration ${formatDurationLabel(quickEventDuration)}.`);
+});
 
 // Cmd/Ctrl+Enter opens the full form so a date can be set. Plain Tab is left
 // alone so keyboard navigation and screen-reader users keep working.
@@ -613,6 +827,7 @@ taskQuickInput.addEventListener("keydown", event => {
   }
   if (event.key === "Escape") {
     taskQuickInput.value = "";
+    syncQuickSaveState();
     taskQuickInput.blur();
   }
 });
@@ -824,12 +1039,6 @@ sideViewButtons.forEach(button => {
   });
 });
 
-plannerViewButtons.forEach(button => {
-  button.addEventListener("click", () => {
-    setPlannerView(button.dataset.plannerView);
-  });
-});
-
 sideOpenButtons.forEach(button => {
   button.addEventListener("click", () => {
     openWindow(button.dataset.sideOpen, true);
@@ -851,8 +1060,8 @@ surfaceTablist.addEventListener("keydown", event => {
   handleTablistKeys(event, surfaceTablist, surfaceTabs);
 });
 
-calendarModeTabs.addEventListener("keydown", event => {
-  handleTablistKeys(event, calendarModeTabs, tabs, tab => setPlannerView(tab.dataset.view));
+plannerViewTabs.addEventListener("keydown", event => {
+  handleTablistKeys(event, plannerViewTabs, tabs, tab => setPlannerView(tab.dataset.view));
 });
 
 surfaceTabs.forEach(button => {
@@ -919,14 +1128,21 @@ window.addEventListener("resize", () => {
   updateVisualViewportVars();
   applyWindowPositions();
   applyIconPositions();
+  fitPlannerHeight();
 });
 
 // Catch the day rollover immediately when the user comes back to the tab,
 // instead of waiting for the 30s clock tick (mobile browsers throttle it).
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden) refreshDayIfNeeded();
+  if (!document.hidden) {
+    refreshDayIfNeeded();
+    focusTick();
+  }
 });
-window.addEventListener("focus", refreshDayIfNeeded);
+window.addEventListener("focus", () => {
+  refreshDayIfNeeded();
+  focusTick();
+});
 
 if (window.visualViewport) {
   window.visualViewport.addEventListener("resize", updateVisualViewportVars);
@@ -964,19 +1180,24 @@ function normalizeItem(item) {
       dueDate: hasTodo ? toDateInputValue(new Date(Number(item.ts) || Date.now())) : "",
       planView: hasTodo ? "today" : "",
       done: Boolean(item.done),
+      focusedMin: Math.max(0, Math.round(Number(item.focusedMin) || 0)),
       createdAt: Number(item.ts) || Date.now(),
       updatedAt: Number(item.ts) || Date.now(),
       deletedAt: 0
     };
   }
+  const type = item.type === "note" ? "note" : item.type === "event" ? "event" : "task";
   return {
     id: String(item.id || createItemId()),
-    type: item.type === "note" ? "note" : "task",
+    type,
     title: String(item.title || "Untitled"),
     body: String(item.body || ""),
-    dueDate: item.type === "note" ? "" : normalizeDueDate(item.dueDate),
-    planView: item.type === "note" ? "" : normalizePlanView(item.planView),
-    done: Boolean(item.done),
+    dueDate: type === "note" ? "" : normalizeDueDate(item.dueDate),
+    startTime: type === "event" ? normalizeStartTime(item.startTime) : "",
+    durationMin: type === "event" ? normalizeDurationMin(item.durationMin) : 0,
+    planView: type === "note" ? "" : normalizePlanView(item.planView),
+    done: type === "event" ? false : Boolean(item.done),
+    focusedMin: Math.max(0, Math.round(Number(item.focusedMin) || 0)),
     createdAt: Number(item.createdAt) || Date.now(),
     updatedAt: Number(item.updatedAt) || Date.now(),
     deletedAt: Number(item.deletedAt) || 0
@@ -994,6 +1215,21 @@ function normalizeDueDate(value) {
   const date = new Date(year, month - 1, day);
   if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) return "";
   return toDateInputValue(date);
+}
+
+function normalizeStartTime(value) {
+  const match = /^(\d{1,2}):(\d{2})$/.exec(String(value || "").trim());
+  if (!match) return "";
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours > 23 || minutes > 59) return "";
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+}
+
+function normalizeDurationMin(value) {
+  const minutes = Math.round(Number(value));
+  if (!Number.isFinite(minutes) || minutes <= 0) return 60;
+  return clamp(minutes, 15, 8 * 60);
 }
 
 function normalizePlanView(value) {
@@ -1357,10 +1593,16 @@ function saveIconPositions() {
 function addTask() {
   const title = taskTitleInput.value.trim();
   const body = taskBodyInput.value.trim();
-  const dueDate = normalizeDueDate(taskDateInput.value);
+  const isEvent = getFormKind() === "event";
+  const parsedDate = normalizeDueDate(taskDateInput.value);
+  // Events are calendar items, so they always need a day. Fall back to the
+  // selected day (or today) instead of saving a floating event.
+  const dueDate = isEvent ? (parsedDate || getQuickCaptureDate()) : parsedDate;
+  const startTime = isEvent ? (normalizeStartTime(taskTimeInput.value) || "09:00") : "";
+  const durationMin = isEvent ? normalizeDurationMin(taskDurationInput.value) : 0;
 
   if (!title && !body) {
-    showToast("Write a task first.");
+    showToast(isEvent ? "Write an event first." : "Write a task first.");
     taskTitleInput.focus();
     return;
   }
@@ -1372,16 +1614,21 @@ function addTask() {
       title: title || body.split("\n")[0].slice(0, 80) || "Untitled",
       body: title ? body : "",
       dueDate,
+      startTime,
+      durationMin,
       updatedAt: Date.now()
     } : item);
   } else {
     items.unshift({
       id: createItemId(),
-      type: "task",
+      type: isEvent ? "event" : "task",
       title: title || body.split("\n")[0].slice(0, 80) || "Untitled",
       body: title ? body : "",
       dueDate,
+      startTime,
+      durationMin,
       done: false,
+      focusedMin: 0,
       createdAt: Date.now(),
       updatedAt: Date.now()
     });
@@ -1392,14 +1639,21 @@ function addTask() {
   const savedTask = editingTaskId
     ? items.find(item => item.id === editingTaskId)
     : items[0];
+  const savedKind = savedTask && savedTask.type === "event" ? "event" : "task";
   clearTaskEditMode();
   setTaskFormOpen(false);
   render();
-  const message = describeTaskVisibility(
-    savedTask,
-    wasEditing ? "Task updated." : "Task added.",
-    wasEditing ? "updated" : "added"
-  );
+  const message = savedKind === "event"
+    ? describeItemVisibility(
+        savedTask,
+        wasEditing ? "Event updated." : "Event added.",
+        wasEditing ? "updated" : "added"
+      )
+    : describeTaskVisibility(
+        savedTask,
+        wasEditing ? "Task updated." : "Task added.",
+        wasEditing ? "updated" : "added"
+      );
   announce(message);
   showToast(message);
   taskQuickInput.focus();
@@ -1421,6 +1675,17 @@ function describeTaskVisibility(task, baseMessage, verb = "added") {
     return isCalendarView(activeView)
       ? `Task ${verb} for ${dateLabel}, outside the calendar you are viewing.`
       : `Task ${verb} for ${dateLabel}. It will appear in Today on that date.`;
+  }
+  return baseMessage;
+}
+
+function describeItemVisibility(item, baseMessage, verb = "added") {
+  if (!item) return baseMessage;
+  const rendered = [...taskList.querySelectorAll("[data-id]"), ...calendarView.querySelectorAll("[data-id]")]
+    .some(node => node.dataset.id === item.id);
+  if (rendered) return baseMessage;
+  if (item.dueDate) {
+    return `Event ${verb} for ${formatDateLabel(item.dueDate)}.`;
   }
   return baseMessage;
 }
@@ -1472,44 +1737,54 @@ function addNote() {
 }
 
 function exportTasksToCalendar() {
-  const tasks = items
-    .filter(item => item.type === "task" && item.dueDate && !item.deletedAt)
-    .sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)) || Number(a.createdAt) - Number(b.createdAt));
+  const entries = items
+    .filter(item => (item.type === "task" || item.type === "event") && item.dueDate && !item.deletedAt)
+    .sort((a, b) => {
+      const dateSort = String(a.dueDate).localeCompare(String(b.dueDate));
+      if (dateSort) return dateSort;
+      return String(a.startTime || "").localeCompare(String(b.startTime || "")) ||
+        Number(a.createdAt) - Number(b.createdAt);
+    });
 
-  if (!tasks.length) {
-    showToast("No dated tasks to export.");
-    announce("No dated tasks to export.");
+  if (!entries.length) {
+    showToast("No dated tasks or events to export.");
+    announce("No dated tasks or events to export.");
     return;
   }
 
-  const confirmed = window.confirm(`Export ${tasks.length} ${tasks.length === 1 ? "task" : "tasks"} to a calendar file?`);
+  const hasEvents = entries.some(item => item.type === "event");
+  const noun = hasEvents ? (entries.length === 1 ? "item" : "items") : (entries.length === 1 ? "task" : "tasks");
+  const confirmed = window.confirm(`Export ${entries.length} ${noun} to a calendar file?`);
   if (!confirmed) {
     announce("Calendar export canceled.");
     return;
   }
 
-  downloadCalendarFile(tasks, `random-notes-calendar-${toDateInputValue(new Date())}.ics`);
-  showToast(`Exported ${tasks.length} ${tasks.length === 1 ? "task" : "tasks"}.`);
+  downloadCalendarFile(entries, `random-notes-calendar-${toDateInputValue(new Date())}.ics`);
+  const label = hasEvents ? (entries.length === 1 ? "item" : "items") : (entries.length === 1 ? "task" : "tasks");
+  showToast(`Exported ${entries.length} ${label}.`);
   announce("Calendar file exported.");
 }
 
-function exportTaskToCalendar(task) {
-  if (!task || task.type !== "task" || !task.dueDate || task.deletedAt) {
-    showToast("This task has no date to export.");
-    announce("This task has no date to export.");
+function exportItemToCalendar(item) {
+  const isEvent = item && item.type === "event";
+  const noun = isEvent ? "event" : "task";
+  if (!item || (item.type !== "task" && item.type !== "event") || !item.dueDate || item.deletedAt) {
+    showToast(`This ${noun} has no date to export.`);
+    announce(`This ${noun} has no date to export.`);
     return;
   }
 
-  const confirmed = window.confirm(`Add "${task.title || "Untitled task"}" to your calendar?`);
+  const confirmed = window.confirm(`Add "${item.title || `Untitled ${noun}`}" to your calendar?`);
   if (!confirmed) {
     announce("Calendar export canceled.");
     return;
   }
 
-  const date = task.dueDate || toDateInputValue(new Date());
-  downloadCalendarFile([task], `random-notes-${slugifyFilename(task.title || "task")}-${date}.ics`);
-  showToast("Task calendar file exported.");
-  announce("Task calendar file exported.");
+  const date = item.dueDate || toDateInputValue(new Date());
+  downloadCalendarFile([item], `random-notes-${slugifyFilename(item.title || noun)}-${date}.ics`);
+  showToast(`${isEvent ? "Event" : "Task"} calendar file exported.`);
+  announce(`${isEvent ? "Event" : "Task"} calendar file exported.`);
 }
 
 function downloadCalendarFile(tasks, filename) {
@@ -1525,35 +1800,56 @@ function downloadCalendarFile(tasks, filename) {
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-function buildCalendarFile(tasks) {
+function buildCalendarFile(entries) {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
     "PRODID:-//Random Notes//Local Planner//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
-    "X-WR-CALNAME:Random Notes Tasks"
+    "X-WR-CALNAME:Random Notes Planner"
   ];
 
-  tasks.forEach(task => {
-    const date = task.dueDate.replaceAll("-", "");
-    const nextDate = addDaysToDateValue(task.dueDate, 1).replaceAll("-", "");
-    const title = `${task.done ? "[Done] " : ""}${task.title || "Untitled task"}`;
+  entries.forEach(entry => {
+    const isTimedEvent = entry.type === "event" && Boolean(normalizeStartTime(entry.startTime));
+    const title = `${entry.done ? "[Done] " : ""}${entry.title || (entry.type === "event" ? "Untitled event" : "Untitled task")}`;
     const details = [
-      task.body || "",
-      task.done ? "Status: Done" : "Status: Open",
+      entry.body || "",
+      entry.type === "event" ? "" : (entry.done ? "Status: Done" : "Status: Open"),
       "Source: Random Notes"
     ].filter(Boolean).join("\\n\\n");
 
+    if (isTimedEvent) {
+      const start = parseLocalDate(entry.dueDate);
+      const [hours, minutes] = normalizeStartTime(entry.startTime).split(":").map(Number);
+      start.setHours(hours, minutes, 0, 0);
+      const end = new Date(start.getTime() + normalizeDurationMin(entry.durationMin) * 60 * 1000);
+      lines.push(
+        "BEGIN:VEVENT",
+        `UID:${sanitizeCalendarId(entry.id)}@random-notes.local`,
+        `DTSTAMP:${formatCalendarTimestamp(new Date(Number(entry.updatedAt) || Date.now()))}`,
+        `DTSTART:${formatCalendarTimestamp(start)}`,
+        `DTEND:${formatCalendarTimestamp(end)}`,
+        `SUMMARY:${escapeCalendarText(title)}`,
+        `DESCRIPTION:${escapeCalendarText(details)}`,
+        "STATUS:CONFIRMED",
+        "TRANSP:OPAQUE",
+        "END:VEVENT"
+      );
+      return;
+    }
+
+    const date = entry.dueDate.replaceAll("-", "");
+    const nextDate = addDaysToDateValue(entry.dueDate, 1).replaceAll("-", "");
     lines.push(
       "BEGIN:VEVENT",
-      `UID:${sanitizeCalendarId(task.id)}@random-notes.local`,
-      `DTSTAMP:${formatCalendarTimestamp(new Date(Number(task.updatedAt) || Date.now()))}`,
+      `UID:${sanitizeCalendarId(entry.id)}@random-notes.local`,
+      `DTSTAMP:${formatCalendarTimestamp(new Date(Number(entry.updatedAt) || Date.now()))}`,
       `DTSTART;VALUE=DATE:${date}`,
       `DTEND;VALUE=DATE:${nextDate}`,
       `SUMMARY:${escapeCalendarText(title)}`,
       `DESCRIPTION:${escapeCalendarText(details)}`,
-      `STATUS:${task.done ? "COMPLETED" : "CONFIRMED"}`,
+      `STATUS:${entry.done ? "COMPLETED" : "CONFIRMED"}`,
       "TRANSP:TRANSPARENT",
       "END:VEVENT"
     );
@@ -1630,8 +1926,8 @@ function foldCalendarLines(lines) {
 
 function render() {
   const calendarMode = activeView === "week" || activeView === "month";
-  const allTasks = getFilteredTasks();
-  const visibleTasks = calendarMode ? getCalendarTasks(allTasks) : getAgendaTasks(allTasks);
+  const allTasks = getFilteredItems();
+  const visibleTasks = calendarMode ? getCalendarItems(allTasks) : getAgendaItems(allTasks);
   const notes = items.filter(item => item.type === "note" && !item.deletedAt);
   const visibleNotes = getVisibleNotes(notes);
   taskList.innerHTML = "";
@@ -1639,15 +1935,18 @@ function render() {
   noteList.innerHTML = "";
   viewTitle.textContent = getViewTitle();
   viewSubtitle.textContent = getViewSubtitle(visibleTasks);
-  taskCountLabel.textContent = getTaskCountText(visibleTasks);
+  // Week and Month already state the counts in the subtitle; two copies of
+  // the same numbers in one header is noise.
+  taskCountLabel.hidden = calendarMode;
+  taskCountLabel.textContent = calendarMode ? "" : getTaskCountText(visibleTasks);
   noteCountLabel.textContent = getNoteCountText(visibleNotes.length, notes.length);
   readmeContent.textContent = getReadmeText();
   updateSidebarCounts(notes.length);
+  updateCaptureContext();
 
   taskList.hidden = calendarMode;
   calendarView.hidden = !calendarMode;
   calendarNav.hidden = !calendarMode;
-  calendarModeTabs.hidden = !calendarMode;
   plannerPane.classList.toggle("is-calendar", calendarMode);
 
   if (calendarMode) {
@@ -1657,6 +1956,9 @@ function render() {
   }
 
   if (!dayPopup.hidden) renderDayPopup(dayPopupDate);
+
+  renderFocusUi();
+  fitPlannerHeight();
 
   if (!notes.length) {
     const empty = document.createElement("p");
@@ -1690,20 +1992,36 @@ function renderAgenda(tasks) {
 
   const today = toDateInputValue(new Date());
   const groups = [
-    { label: "Overdue", items: tasks.filter(item => item.dueDate && item.dueDate < today) },
+    { label: "Overdue", items: tasks.filter(item => item.type === "task" && item.dueDate && item.dueDate < today) },
     { label: "Today", items: tasks.filter(item => item.dueDate === today) },
-    { label: "No date", items: tasks.filter(item => !item.dueDate) }
+    { label: "No date", items: tasks.filter(item => item.type === "task" && !item.dueDate) }
   ];
 
-  groups.forEach(({ label, items: groupItems }) => {
-    if (!groupItems.length) return;
+  const filledGroups = groups.filter(group => group.items.length);
+  // Headings exist to separate groups. A single group (the common Today case)
+  // needs no band repeating the page title.
+  const showGroupTitles = filledGroups.length > 1;
+
+  filledGroups.forEach(({ label, items: groupItems }) => {
     const sorted = groupItems.slice().sort((a, b) => {
+      const aTime = a.startTime || "99:99";
+      const bTime = b.startTime || "99:99";
+      const timeSort = aTime.localeCompare(bTime);
+      if (timeSort) return timeSort;
       if (a.done !== b.done) return a.done ? 1 : -1;
       return Number(b.createdAt) - Number(a.createdAt);
     });
     const group = document.createElement("div");
     group.className = "group";
-    group.innerHTML = `<h3 class="group-title">${escapeHtml(label)} <span>${sorted.length}</span></h3>`;
+    if (showGroupTitles) {
+      const title = document.createElement("h3");
+      title.className = "group-title";
+      title.textContent = label;
+      const count = document.createElement("span");
+      count.textContent = sorted.length;
+      title.appendChild(count);
+      group.appendChild(title);
+    }
     sorted.forEach(item => group.appendChild(createCard(item)));
     taskList.appendChild(group);
   });
@@ -1759,6 +2077,63 @@ function getQuickCaptureDate() {
   return toDateInputValue(new Date());
 }
 
+function getFormKind() {
+  if (editingTaskId) {
+    const item = items.find(entry => entry.id === editingTaskId);
+    if (item && item.type === "event") return "event";
+    return "task";
+  }
+  return isCalendarView(activeView) ? "event" : "task";
+}
+
+function timeToMinutes(value) {
+  const normalized = normalizeStartTime(value);
+  if (!normalized) return 0;
+  const [hours, minutes] = normalized.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function minutesToTime(total) {
+  const minutes = ((Math.round(total) % 1440) + 1440) % 1440;
+  return `${pad2(Math.floor(minutes / 60))}:${pad2(minutes % 60)}`;
+}
+
+function formatTimeLabel(value) {
+  const normalized = normalizeStartTime(value);
+  if (!normalized) return "";
+  const [hours, minutes] = normalized.split(":").map(Number);
+  return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" })
+    .format(new Date(2000, 0, 1, hours, minutes));
+}
+
+function formatDurationLabel(minutes) {
+  const total = Number(minutes) || 60;
+  if (total % 60 === 0) {
+    const hours = total / 60;
+    return `${hours} hour${hours === 1 ? "" : "s"}`;
+  }
+  if (total > 60) return `${Math.floor(total / 60)} hr ${total % 60} min`;
+  return `${total} min`;
+}
+
+function formatEventTimeRange(item) {
+  if (!item || !item.startTime) return "Event";
+  const start = formatTimeLabel(item.startTime);
+  const end = formatTimeLabel(minutesToTime(timeToMinutes(item.startTime) + (item.durationMin || 60)));
+  return `${start} – ${end}`;
+}
+
+function getDefaultEventStart(dateKey) {
+  if (quickEventStart) return quickEventStart;
+  const today = toDateInputValue(new Date());
+  if (dateKey !== today) return "09:00";
+  const now = new Date();
+  const minutes = now.getMinutes();
+  const rounded = minutes === 0 || minutes === 30 ? minutes : minutes < 30 ? 30 : 0;
+  const hours = rounded === 0 && minutes > 30 ? now.getHours() + 1 : now.getHours();
+  return minutesToTime(hours * 60 + rounded);
+}
+
 function restorePlannerViewState() {
   let stored = null;
   try {
@@ -1784,10 +2159,9 @@ function restorePlannerViewState() {
 }
 
 function persistPlannerViewState() {
-  const isCalendar = isCalendarView(activeView);
   try {
     localStorage.setItem(PLANNER_VIEW_KEY, JSON.stringify({
-      view: isCalendar ? "calendar" : "today",
+      view: activeView,
       calendarMode: lastCalendarMode
     }));
   } catch (error) {
@@ -1800,11 +2174,12 @@ function isCalendarView(view) {
 }
 
 function setPlannerView(view) {
+  const requested = view === "calendar" ? lastCalendarMode : view;
+  if (requested !== "today" && !isCalendarView(requested)) return;
   const wasCalendar = isCalendarView(activeView);
-  const targetView = view === "calendar" ? lastCalendarMode : view;
-  activeView = targetView;
-  if (isCalendarView(targetView)) {
-    lastCalendarMode = targetView;
+  activeView = requested;
+  if (isCalendarView(activeView)) {
+    lastCalendarMode = activeView;
     if (wasCalendar) {
       // Keep the day the user was looking at when switching Month <-> Week.
       calendarCursor = parseLocalDate(focusedDate || toDateInputValue(new Date()));
@@ -1866,15 +2241,21 @@ function getTasksByDate(tasks) {
 
 function createCalendarChip(task, dateKey, extraClass = "") {
   const todayKey = toDateInputValue(new Date());
-  const overdue = !task.done && Boolean(task.dueDate) && task.dueDate < todayKey;
+  const isEvent = task.type === "event";
+  const overdue = !isEvent && !task.done && Boolean(task.dueDate) && task.dueDate < todayKey;
   const chip = document.createElement("button");
   chip.type = "button";
-  chip.className = `calendar-chip${task.done ? " is-done" : ""}${overdue ? " is-overdue" : ""}${extraClass ? ` ${extraClass}` : ""}`;
+  chip.className = `calendar-chip${isEvent ? " is-event" : ""}${task.done ? " is-done" : ""}${overdue ? " is-overdue" : ""}${extraClass ? ` ${extraClass}` : ""}`;
   chip.dataset.id = task.id;
   chip.tabIndex = -1;
-  chip.title = task.title;
-  chip.setAttribute("aria-label", `${task.title}${task.done ? " (done)" : ""}${overdue ? " (overdue)" : ""}`);
-  chip.innerHTML = `<span class="calendar-chip-dot" aria-hidden="true"></span><span class="calendar-chip-title">${escapeHtml(task.title)}</span>`;
+  chip.title = isEvent ? `${formatEventTimeRange(task)} · ${task.title}` : task.title;
+  chip.setAttribute(
+    "aria-label",
+    isEvent
+      ? `${task.title}, ${formatEventTimeRange(task)}`
+      : `${task.title}${task.done ? " (done)" : ""}${overdue ? " (overdue)" : ""}`
+  );
+  chip.innerHTML = `<span class="calendar-chip-dot" aria-hidden="true"></span>${isEvent ? `<span class="calendar-chip-time">${escapeHtml(formatTimeLabel(task.startTime))}</span>` : ""}<span class="calendar-chip-title">${escapeHtml(task.title)}</span>`;
   chip.addEventListener("click", event => {
     event.stopPropagation();
     if (dateKey) focusedDate = dateKey;
@@ -1961,7 +2342,7 @@ function renderMonthView(allTasks) {
       cell.className = `calendar-day${outside ? " is-outside" : ""}${weekend ? " is-weekend" : ""}${dateKey === todayKey ? " is-today" : ""}`;
       cell.dataset.date = dateKey;
       cell.setAttribute("role", "gridcell");
-      cell.setAttribute("aria-label", `${formatFullDate(date)}${tasks.length ? `, ${tasks.length} task${tasks.length === 1 ? "" : "s"}` : ", no tasks"}`);
+      cell.setAttribute("aria-label", `${formatFullDate(date)}${tasks.length ? `, ${tasks.length} item${tasks.length === 1 ? "" : "s"}` : ", no items"}`);
       cell.tabIndex = dateKey === focusedDate ? 0 : -1;
       cell.addEventListener("focus", () => {
         if (focusedDate === dateKey) return;
@@ -1994,7 +2375,7 @@ function renderMonthView(allTasks) {
       add.className = "calendar-add-mini";
       add.tabIndex = -1;
       add.textContent = "+";
-      add.setAttribute("aria-label", `Add task on ${formatFullDate(date)}`);
+      add.setAttribute("aria-label", `Add event on ${formatFullDate(date)}`);
       add.addEventListener("click", event => {
         event.stopPropagation();
         startTaskForDate(dateKey);
@@ -2097,7 +2478,7 @@ function renderWeekView(allTasks) {
     add.type = "button";
     add.className = "calendar-add-day";
     add.textContent = "+ Add";
-    add.setAttribute("aria-label", `Add task on ${formatFullDate(date)}`);
+    add.setAttribute("aria-label", `Add event on ${formatFullDate(date)}`);
     add.addEventListener("click", () => startTaskForDate(dateKey));
     body.appendChild(add);
     column.appendChild(body);
@@ -2139,44 +2520,52 @@ function createNoDateTray(allTasks) {
 function renderDayPopup(dateKey) {
   if (!dateKey) return;
   const date = parseLocalDate(dateKey);
-  const tasks = getFilteredTasks().filter(task => task.dueDate === dateKey);
+  const tasks = getFilteredItems().filter(task => task.dueDate === dateKey);
   dayPopupTitle.textContent = formatDateLabel(dateKey);
   dayPopupList.innerHTML = "";
 
   if (!tasks.length) {
     const empty = document.createElement("p");
     empty.className = "day-popup-empty";
-    empty.textContent = "No tasks on this day yet.";
+    empty.textContent = "No items on this day yet.";
     dayPopupList.appendChild(empty);
     return;
   }
 
   tasks.forEach(task => {
+    const isEvent = task.type === "event";
     const row = document.createElement("div");
-    row.className = `day-popup-row${task.done ? " is-done" : ""}`;
+    row.className = `day-popup-row${task.done ? " is-done" : ""}${isEvent ? " is-event" : ""}`;
     row.dataset.dayTask = task.id;
 
-    const check = document.createElement("input");
-    check.type = "checkbox";
-    check.className = "check";
-    check.checked = task.done;
-    check.setAttribute("aria-label", `Mark ${task.title} as ${task.done ? "open" : "done"}`);
-    check.addEventListener("change", () => {
-      toggleDone(task.id, check.checked);
-      requestAnimationFrame(() => {
-        const rows = Array.from(dayPopupList.querySelectorAll(".day-popup-row"));
-        const nextRow = rows.find(entry => entry.dataset.dayTask === task.id);
-        const nextCheck = nextRow && nextRow.querySelector(".check");
-        if (nextCheck) nextCheck.focus();
+    if (isEvent) {
+      const time = document.createElement("span");
+      time.className = "day-popup-time";
+      time.textContent = formatTimeLabel(task.startTime);
+      row.appendChild(time);
+    } else {
+      const check = document.createElement("input");
+      check.type = "checkbox";
+      check.className = "check";
+      check.checked = task.done;
+      check.setAttribute("aria-label", `Mark ${task.title} as ${task.done ? "open" : "done"}`);
+      check.addEventListener("change", () => {
+        toggleDone(task.id, check.checked);
+        requestAnimationFrame(() => {
+          const rows = Array.from(dayPopupList.querySelectorAll(".day-popup-row"));
+          const nextRow = rows.find(entry => entry.dataset.dayTask === task.id);
+          const nextCheck = nextRow && nextRow.querySelector(".check");
+          if (nextCheck) nextCheck.focus();
+        });
       });
-    });
-    row.appendChild(check);
+      row.appendChild(check);
+    }
 
     const title = document.createElement("button");
     title.type = "button";
     title.className = "day-popup-task";
     title.textContent = task.title;
-    title.setAttribute("aria-label", `Edit ${task.title}`);
+    title.setAttribute("aria-label", `Edit ${isEvent ? "event" : "task"} ${task.title}`);
     title.addEventListener("click", () => {
       closeDayPopup();
       editItem(task.id);
@@ -2224,10 +2613,11 @@ function startTaskForDate(dateKey) {
   focusedDate = date;
   openWindow("planner");
   clearTaskEditMode();
-  setTaskFormOpen(true);
   taskDateInput.value = dateKey || "";
+  setTaskFormOpen(true);
   taskTitleInput.focus();
-  announce(`Adding a task on ${formatFullDate(parseLocalDate(date))}.`);
+  const kind = getFormKind() === "event" ? "event" : "task";
+  announce(`Adding ${kind === "event" ? "an event" : "a task"} on ${formatFullDate(parseLocalDate(date))}.`);
 }
 
 function focusDay(dateKey) {
@@ -2385,6 +2775,32 @@ function createCard(item) {
     return card;
   }
 
+  if (item.type === "event") {
+    card.classList.add("task-card", "event-card");
+    card.setAttribute("role", "group");
+    card.setAttribute("aria-label", `Event ${item.title}, ${formatEventTimeRange(item)}`);
+    card.innerHTML = `
+      <span class="event-marker" aria-hidden="true"></span>
+      <div class="task-main">
+        <h3 class="item-title">${escapeHtml(item.title)}</h3>
+        <p class="item-meta event-meta"><span class="event-time">${escapeHtml(formatEventTimeRange(item))}</span></p>
+        ${item.body ? `<p class="item-body task-details">${escapeHtml(item.body)}</p>` : ""}
+      </div>
+      ${item.dueDate === toDateInputValue(new Date()) && !isCalendarView(activeView)
+        ? ""
+        : `<p class="item-meta task-meta"><span class="task-date">${escapeHtml(formatDateLabel(item.dueDate))}</span></p>`}
+      <div class="actions">
+        ${item.dueDate ? `<button class="icon-btn task-calendar-btn" type="button" aria-label="Add ${escapeHtml(item.title)} to calendar" title="Add to calendar"><span class="action-icon task-calendar-icon" aria-hidden="true"></span></button>` : ""}
+        <button class="icon-btn edit-btn" type="button" aria-label="Edit event: ${escapeHtml(item.title)}" title="Edit event"><span class="action-icon edit-icon" aria-hidden="true"></span></button>
+        <button class="icon-btn delete-btn" type="button" aria-label="Delete event: ${escapeHtml(item.title)}" title="Delete event"><span class="action-icon delete-icon" aria-hidden="true"></span></button>
+      </div>
+    `;
+    card.querySelector(".task-calendar-btn")?.addEventListener("click", () => exportItemToCalendar(item));
+    card.querySelector(".edit-btn").addEventListener("click", () => editItem(item.id));
+    card.querySelector(".delete-btn").addEventListener("click", () => deleteItem(item.id));
+    return card;
+  }
+
   card.classList.add("task-card");
   if (item.body) {
     card.tabIndex = 0;
@@ -2394,9 +2810,20 @@ function createCard(item) {
   }
 
   const checkbox = `<input class="check" type="checkbox" ${item.done ? "checked" : ""} aria-label="Mark task as ${item.done ? "open" : "done"}: ${escapeHtml(item.title)}">`;
-  const dateLabel = formatDateLabel(item.dueDate);
+  const focusedMin = Math.max(0, Math.round(Number(item.focusedMin) || 0));
+  const focusCopy = item.done ? null : getFocusButtonCopy(item);
   const todayStamp = toDateInputValue(new Date());
   const overdue = !item.done && Boolean(item.dueDate) && item.dueDate < todayStamp;
+  // In Today every row shares the date already shown in the heading; only
+  // overdue and undated rows need a label of their own.
+  const dateLabel = item.dueDate === todayStamp && !isCalendarView(activeView)
+    ? ""
+    : formatDateLabel(item.dueDate);
+  const dateText = overdue ? `Overdue · ${dateLabel}` : dateLabel;
+  const metaHtml = [
+    dateText ? `<span class="task-date">${escapeHtml(dateText)}</span>` : "",
+    focusedMin ? `<span class="task-focused">${focusedMin} min focused</span>` : ""
+  ].join("");
   if (overdue) card.classList.add("is-overdue");
 
   card.innerHTML = `
@@ -2406,11 +2833,10 @@ function createCard(item) {
       ${item.body ? `<p class="item-body task-details">${escapeHtml(item.body)}</p>` : ""}
       ${item.body ? `<button class="task-toggle" type="button" aria-label="Show task details" aria-expanded="false">Details</button>` : ""}
     </div>
-    <p class="item-meta task-meta">
-      <span class="task-date">${overdue ? "Overdue · " : ""}${escapeHtml(dateLabel)}</span>
-    </p>
+    ${metaHtml ? `<p class="item-meta task-meta">${metaHtml}</p>` : ""}
     <div class="actions">
-      <button class="icon-btn task-calendar-btn" type="button" aria-label="Add ${escapeHtml(item.title)} to calendar" title="Add to calendar"><span class="action-icon task-calendar-icon" aria-hidden="true"></span></button>
+      ${focusCopy ? `<button class="icon-btn task-focus-btn" type="button" aria-label="${escapeHtml(focusCopy.label)}" title="${escapeHtml(focusCopy.title)}"><span class="action-icon focus-icon" aria-hidden="true"></span></button>` : ""}
+      ${item.dueDate ? `<button class="icon-btn task-calendar-btn" type="button" aria-label="Add ${escapeHtml(item.title)} to calendar" title="Add to calendar"><span class="action-icon task-calendar-icon" aria-hidden="true"></span></button>` : ""}
       <button class="icon-btn edit-btn" type="button" aria-label="Edit task: ${escapeHtml(item.title)}" title="Edit ${item.type}"><span class="action-icon edit-icon" aria-hidden="true"></span></button>
       <button class="icon-btn delete-btn" type="button" aria-label="Delete task: ${escapeHtml(item.title)}" title="Delete ${item.type}"><span class="action-icon delete-icon" aria-hidden="true"></span></button>
     </div>
@@ -2445,37 +2871,52 @@ function createCard(item) {
 
   const check = card.querySelector(".check");
   if (check) check.addEventListener("change", () => toggleDone(item.id, check.checked));
-  card.querySelector(".task-calendar-btn").addEventListener("click", () => exportTaskToCalendar(item));
+  const focusButton = card.querySelector(".task-focus-btn");
+  if (focusButton) focusButton.addEventListener("click", () => focusFromTaskCard(item.id));
+  card.querySelector(".task-calendar-btn")?.addEventListener("click", () => exportItemToCalendar(item));
   card.querySelector(".edit-btn").addEventListener("click", () => editItem(item.id));
   card.querySelector(".delete-btn").addEventListener("click", () => deleteItem(item.id));
   return card;
 }
 
-function getFilteredTasks() {
+function compareAgendaItems(a, b) {
+  const aDate = a.dueDate || "9999-12-31";
+  const bDate = b.dueDate || "9999-12-31";
+  const dateSort = aDate.localeCompare(bDate);
+  if (dateSort) return dateSort;
+  const aTime = a.startTime || "99:99";
+  const bTime = b.startTime || "99:99";
+  const timeSort = aTime.localeCompare(bTime);
+  if (timeSort) return timeSort;
+  if (a.done !== b.done) return a.done ? 1 : -1;
+  return Number(b.createdAt) - Number(a.createdAt);
+}
+
+function getFilteredItems() {
   return items
-    .filter(item => item.type === "task" && !item.deletedAt)
+    .filter(item => (item.type === "task" || item.type === "event") && !item.deletedAt)
     .filter(item => {
+      // The status filter is about tasks. Events happen regardless of it.
+      if (item.type === "event") return true;
       if (taskFilter === "open") return !item.done;
       if (taskFilter === "done") return item.done;
       return true;
     })
-    .sort((a, b) => {
-      const aDate = a.dueDate || "9999-12-31";
-      const bDate = b.dueDate || "9999-12-31";
-      const dateSort = aDate.localeCompare(bDate);
-      if (dateSort) return dateSort;
-      if (a.done !== b.done) return a.done ? 1 : -1;
-      return Number(b.createdAt) - Number(a.createdAt);
-    });
+    .sort(compareAgendaItems);
 }
 
-function getAgendaTasks(tasks) {
+function getAgendaItems(tasks) {
   const today = toDateInputValue(new Date());
-  return (tasks || getFilteredTasks()).filter(item => !item.dueDate || item.dueDate <= today);
+  return (tasks || getFilteredItems()).filter(item => {
+    // Today is an agenda, not a backlog: past events should not linger as
+    // overdue, while past tasks still need attention.
+    if (item.type === "event") return item.dueDate === today;
+    return !item.dueDate || item.dueDate <= today;
+  });
 }
 
-function getCalendarTasks(tasks) {
-  const filtered = tasks || getFilteredTasks();
+function getCalendarItems(tasks) {
+  const filtered = tasks || getFilteredItems();
   if (activeView === "month") {
     // Match what the grid actually renders, including the neighbouring days
     // that fill out complete weeks.
@@ -2512,6 +2953,7 @@ function getNoteCountText(visible, total) {
 }
 
 function toggleDone(id, done) {
+  if (done) stopFocusForTask(id);
   items = items.map(item => item.id === id ? { ...item, done, updatedAt: Date.now() } : item);
   saveItems();
   render();
@@ -2548,17 +2990,20 @@ function editItem(id) {
   setTaskEditMode(item);
   render();
   taskTitleInput.focus();
-  announce("Task ready to edit.");
-  showToast("Editing task.");
+  const label = item.type === "event" ? "Event" : "Task";
+  announce(`${label} ready to edit.`);
+  showToast(`Editing ${label.toLowerCase()}.`);
 }
 
 function deleteItem(id) {
   const item = items.find(entry => entry.id === id);
-  const confirmed = window.confirm(`Delete this ${item && item.type === "note" ? "note" : "task"}? This cannot be undone.`);
+  const noun = item && item.type === "note" ? "note" : item && item.type === "event" ? "event" : "task";
+  const confirmed = window.confirm(`Delete this ${noun}? This cannot be undone.`);
   if (!confirmed) {
     showToast("Item kept.");
     return;
   }
+  if (item && item.type === "task") stopFocusForTask(id);
   items = items.map(entry => entry.id === id ? { ...entry, deletedAt: Date.now(), updatedAt: Date.now() } : entry);
   if (id === editingTaskId) {
     clearTaskEditMode();
@@ -2654,31 +3099,19 @@ function getMonthGridRange(date) {
 }
 
 function updateSidebarCounts(noteCount) {
-  const counts = { today: 0, calendar: 0 };
-  const now = new Date();
-  const today = toDateInputValue(now);
-  const weekStart = toDateInputValue(startOfWeek(calendarCursor));
-  const weekEnd = toDateInputValue(addDays(startOfWeek(calendarCursor), 6));
-  const monthGrid = getMonthGridRange(calendarCursor);
+  let todayCount = 0;
+  const today = toDateInputValue(new Date());
   items.forEach(item => {
-    if (item.type !== "task" || item.deletedAt || item.done) return;
-    if (!item.dueDate || item.dueDate <= today) counts.today += 1;
-    if (!item.dueDate) return;
-    if (activeView === "week") {
-      if (item.dueDate >= weekStart && item.dueDate <= weekEnd) counts.calendar += 1;
-    } else if (activeView === "month") {
-      // The month grid also shows chips from the neighbouring days needed to
-      // fill complete weeks, so its badge should count those too.
-      if (item.dueDate >= monthGrid.start && item.dueDate <= monthGrid.end) counts.calendar += 1;
+    if (item.deletedAt) return;
+    if (item.type === "event") {
+      if (item.dueDate === today) todayCount += 1;
+      return;
     }
+    if (item.type !== "task" || item.done) return;
+    if (!item.dueDate || item.dueDate <= today) todayCount += 1;
   });
-  Object.entries(counts).forEach(([view, count]) => {
-    const label = document.querySelector(`[data-side-count="${view}"]`);
-    if (!label) return;
-    const shouldShow = view === "today" || isCalendarView(activeView);
-    label.hidden = !shouldShow;
-    label.textContent = String(count);
-  });
+  const todayLabel = document.querySelector('[data-side-count="today"]');
+  if (todayLabel) todayLabel.textContent = String(todayCount);
   const noteLabel = document.querySelector('[data-side-count="notes"]');
   if (noteLabel) noteLabel.textContent = String(noteCount || 0);
 }
@@ -2694,6 +3127,7 @@ function refreshDayIfNeeded() {
   if (!taskDateInput.value || taskDateInput.value === previous) {
     taskDateInput.value = stamp;
   }
+  rollFocusDayIfNeeded();
   render();
 }
 
@@ -2706,6 +3140,651 @@ function updateMenuClock() {
   menuClock.textContent = `${day.replace(",", "")} · ${time}`;
 }
 
+/* ==========================================================================
+   Focus sessions
+   --------------------------------------------------------------------------
+   One task runs at a time and every sprint starts from an explicit click.
+   Starting, pausing, breaking, and completing a task are always explicit
+   actions. Minutes live on the task item so they travel with sync/backups;
+   the daily total and session record live in a separate local key so a
+   refresh can resume from an absolute end time.
+   ========================================================================== */
+
+function freshFocusSession() {
+  return {
+    phase: "idle",       // idle | focus | break | offer
+    offer: null,         // sprint | break
+    taskId: null,
+    running: false,
+    endsAt: 0,
+    remainingMs: 0,
+    totalMs: 0,
+    loggedMin: 0
+  };
+}
+
+function createDefaultFocusState() {
+  return {
+    day: toDateInputValue(new Date()),
+    dayMin: 0,
+    settings: { ...FOCUS_DEFAULT_SETTINGS },
+    session: freshFocusSession()
+  };
+}
+
+function clampFocusNumber(value, fallback, min, max) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(max, Math.max(min, Math.round(number)));
+}
+
+function loadFocusState() {
+  const today = toDateInputValue(new Date());
+  focusState = createDefaultFocusState();
+
+  let data = null;
+  try {
+    data = JSON.parse(localStorage.getItem(FOCUS_KEY) || "null");
+  } catch (error) {
+    data = null;
+  }
+  if (!data || typeof data !== "object") {
+    saveFocusState();
+    return;
+  }
+
+  const settings = data.settings && typeof data.settings === "object" ? data.settings : {};
+  focusState.settings.focusMin = clampFocusNumber(settings.focusMin, FOCUS_DEFAULT_SETTINGS.focusMin, 5, 90);
+  focusState.settings.breakMin = clampFocusNumber(settings.breakMin, FOCUS_DEFAULT_SETTINGS.breakMin, 1, 30);
+  focusState.settings.goalMin = clampFocusNumber(settings.goalMin, FOCUS_DEFAULT_SETTINGS.goalMin, 15, 180);
+
+  const savedDay = /^\d{4}-\d{2}-\d{2}$/.test(String(data.day || "")) ? String(data.day) : today;
+  focusState.day = today;
+  focusState.dayMin = savedDay === today ? Math.max(0, Math.round(Number(data.dayMin) || 0)) : 0;
+
+  const taskIds = new Set(
+    items
+      .filter(item => item.type === "task" && !item.deletedAt)
+      .map(item => item.id)
+  );
+
+  const saved = data.session && typeof data.session === "object" ? data.session : null;
+  if (saved) {
+    const phase = ["idle", "focus", "break", "offer"].includes(saved.phase) ? saved.phase : "idle";
+    const session = {
+      phase,
+      offer: saved.offer === "sprint" || saved.offer === "break" ? saved.offer : null,
+      taskId: taskIds.has(String(saved.taskId)) ? String(saved.taskId) : null,
+      running: Boolean(saved.running),
+      endsAt: Math.max(0, Number(saved.endsAt) || 0),
+      remainingMs: Math.max(0, Number(saved.remainingMs) || 0),
+      totalMs: Math.max(0, Number(saved.totalMs) || 0),
+      loggedMin: Math.max(0, Math.round(Number(saved.loggedMin) || 0))
+    };
+
+    if (session.phase === "idle" || !session.totalMs) {
+      focusState.session = freshFocusSession();
+    } else if ((session.phase === "focus" || session.phase === "break") && !session.taskId) {
+      focusState.session = freshFocusSession();
+    } else {
+      if (session.phase === "offer" && !session.offer) session.offer = "sprint";
+      if (session.running && !session.endsAt) session.running = false;
+      focusState.session = session;
+    }
+  }
+
+  saveFocusState();
+}
+
+function saveFocusState() {
+  try {
+    localStorage.setItem(FOCUS_KEY, JSON.stringify(focusState));
+  } catch (error) {
+    // Focus still works in memory if storage is unavailable.
+  }
+}
+
+function getFocusTask(id) {
+  return items.find(item => item.id === id && item.type === "task" && !item.deletedAt) || null;
+}
+
+function activeFocusTask() {
+  return getFocusTask(focusState.session.taskId);
+}
+
+function firstOpenFocusTask() {
+  // "Up next" follows the same agenda order the Today list shows, and stays
+  // inside Today (overdue and undated included). It is only a suggestion:
+  // nothing starts or advances without a click.
+  const today = toDateInputValue(new Date());
+  return items
+    .filter(item => item.type === "task" && !item.deletedAt && !item.done)
+    .filter(item => !item.dueDate || item.dueDate <= today)
+    .sort(compareAgendaItems)[0] || null;
+}
+
+function focusRemainingMs() {
+  const session = focusState.session;
+  if (!session.running) return Math.max(0, session.remainingMs);
+  return Math.max(0, session.endsAt - Date.now());
+}
+
+function formatFocusTimer(ms) {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
+}
+
+function formatFocusMinutes(minutes) {
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (!rest) return `${hours} hour${hours === 1 ? "" : "s"}`;
+  return `${hours} h ${rest} min`;
+}
+
+function formatFocusClock(ms) {
+  if (!ms) return "";
+  return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(ms));
+}
+
+function logFocusedMinutes(minutes) {
+  const amount = Math.max(0, Math.round(minutes));
+  if (!amount) return 0;
+  focusState.dayMin += amount;
+  const taskId = focusState.session.taskId;
+  if (taskId) {
+    items = items.map(item => item.id === taskId ? {
+      ...item,
+      focusedMin: Math.max(0, Math.round(Number(item.focusedMin) || 0)) + amount,
+      updatedAt: Date.now()
+    } : item);
+    saveItems();
+  }
+  return amount;
+}
+
+function beginFocus(taskId = null) {
+  const task = taskId ? getFocusTask(taskId) : firstOpenFocusTask();
+  if (!task || task.done) {
+    const message = taskId ? "That task is already done." : "Add a task to start.";
+    announce(message);
+    showToast(message);
+    return;
+  }
+
+  const session = focusState.session;
+  session.phase = "focus";
+  session.offer = null;
+  session.taskId = task.id;
+  session.running = true;
+  session.totalMs = Math.max(60000, Math.round(focusState.settings.focusMin * 60000));
+  session.remainingMs = session.totalMs;
+  session.endsAt = Date.now() + session.totalMs;
+  session.loggedMin = 0;
+  focusLastTickSecond = null;
+  saveFocusState();
+  render();
+  const message = `Focusing on ${task.title}.`;
+  announce(message);
+  showToast(message);
+}
+
+function pauseFocus() {
+  const session = focusState.session;
+  if (!session.running) return;
+  session.remainingMs = focusRemainingMs();
+  session.running = false;
+  session.endsAt = 0;
+  saveFocusState();
+  render();
+  announce("Paused. Nothing is counting down.");
+  showToast("Paused. Nothing is counting down.");
+}
+
+function resumeFocus() {
+  const session = focusState.session;
+  if (session.running || (session.phase !== "focus" && session.phase !== "break")) return;
+  if (!session.remainingMs) session.remainingMs = session.totalMs;
+  session.endsAt = Date.now() + session.remainingMs;
+  session.running = true;
+  focusLastTickSecond = null;
+  saveFocusState();
+  render();
+  announce("Resumed.");
+  showToast("Resumed.");
+}
+
+function finishFocus() {
+  const session = focusState.session;
+  if (session.phase !== "focus") return;
+  const elapsed = Math.max(0, session.totalMs - focusRemainingMs());
+  const minutes = Math.max(1, Math.round(elapsed / 60000));
+  logFocusedMinutes(minutes);
+  openFocusOffer("sprint", minutes);
+  const message = `${minutes} min logged.`;
+  announce(message);
+  showToast(message);
+}
+
+function openFocusOffer(reason, minutes = null) {
+  const session = focusState.session;
+  session.phase = "offer";
+  session.offer = reason;
+  session.running = false;
+  session.endsAt = 0;
+  session.remainingMs = session.totalMs || focusState.settings.focusMin * 60000;
+  if (minutes !== null) session.loggedMin = minutes;
+  saveFocusState();
+  render();
+}
+
+function takeFocusBreak() {
+  const session = focusState.session;
+  session.phase = "break";
+  session.offer = null;
+  session.running = true;
+  session.totalMs = Math.max(60000, Math.round(focusState.settings.breakMin * 60000));
+  session.remainingMs = session.totalMs;
+  session.endsAt = Date.now() + session.totalMs;
+  session.loggedMin = 0;
+  focusLastTickSecond = null;
+  saveFocusState();
+  render();
+  announce("Break started.");
+  showToast("Break started.");
+}
+
+function endFocus() {
+  const session = focusState.session;
+  let logged = 0;
+  if (session.phase === "focus") {
+    const minutes = Math.max(0, Math.round((session.totalMs - focusRemainingMs()) / 60000));
+    if (minutes > 0) logged = logFocusedMinutes(minutes);
+  }
+  focusState.session = freshFocusSession();
+  saveFocusState();
+  render();
+  const message = logged ? `Done for now. ${logged} min saved.` : "Done for now. Minutes are saved.";
+  announce(message);
+  showToast(message);
+}
+
+function stopFocusForTask(id) {
+  const session = focusState.session;
+  if (session.taskId !== id || session.phase === "idle") return false;
+  if (session.phase === "focus") {
+    const minutes = Math.max(0, Math.round((session.totalMs - focusRemainingMs()) / 60000));
+    if (minutes > 0) logFocusedMinutes(minutes);
+  }
+  focusState.session = freshFocusSession();
+  saveFocusState();
+  return true;
+}
+
+function settleFocus(now) {
+  const session = focusState.session;
+  if (!session.running || !session.endsAt || now < session.endsAt) return;
+
+  if (session.phase === "focus") {
+    finishFocus();
+  } else if (session.phase === "break") {
+    openFocusOffer("break");
+    announce("Break over.");
+    showToast("Break over.");
+  }
+}
+
+function rollFocusDayIfNeeded() {
+  const today = toDateInputValue(new Date());
+  if (focusState.day === today) return false;
+  focusState.day = today;
+  focusState.dayMin = 0;
+  saveFocusState();
+  return true;
+}
+
+function resumeFocusSession() {
+  const session = focusState.session;
+  if (session.phase === "idle") return;
+
+  if ((session.phase === "focus" || session.phase === "break") && session.running && Date.now() >= session.endsAt) {
+    if (session.phase === "focus") {
+      finishFocus();
+      showToast("A sprint finished while you were away.");
+    } else {
+      openFocusOffer("break");
+      showToast("Break finished while you were away.");
+    }
+    return;
+  }
+
+  if ((session.phase === "focus" || session.phase === "break") && session.taskId) {
+    showToast(session.running ? "Focus session resumed." : "Paused focus restored.");
+  }
+}
+
+function focusTick() {
+  settleFocus(Date.now());
+  rollFocusDayIfNeeded();
+  if (focusState.session.running) {
+    const second = Math.ceil(focusRemainingMs() / 1000);
+    if (second !== focusLastTickSecond) {
+      focusLastTickSecond = second;
+      renderFocusClock();
+    }
+  }
+}
+
+function getFocusButtonCopy(task) {
+  const session = focusState.session;
+  if (session.phase === "idle" || session.taskId !== task.id) {
+    if (session.phase === "focus" || session.phase === "break") {
+      return { label: `Switch focus to ${task.title}`, title: "Switch focus" };
+    }
+    return { label: `Start focus on ${task.title}`, title: "Start focus" };
+  }
+  if (session.phase === "focus") {
+    return session.running
+      ? { label: `Show focus session for ${task.title}`, title: "Show focus session" }
+      : { label: `Resume focus on ${task.title}`, title: "Resume focus" };
+  }
+  return { label: `Start a new sprint on ${task.title}`, title: "Start a new sprint" };
+}
+
+function focusFromTaskCard(id) {
+  const task = getFocusTask(id);
+  if (!task || task.done) return;
+  const session = focusState.session;
+
+  if (session.taskId === id) {
+    if (session.phase === "focus" && session.running) {
+      revealFocusDock();
+      const message = `Focusing on ${task.title}.`;
+      announce(message);
+      showToast(message);
+      return;
+    }
+    if (session.phase === "focus") {
+      resumeFocus();
+      return;
+    }
+    // A finished sprint or a break can be left behind by starting again.
+    beginFocus(id);
+    restoreFocusOnTaskButton(id);
+    return;
+  }
+
+  const previous = activeFocusTask();
+  let saved = 0;
+  if (session.phase === "focus") {
+    const minutes = Math.max(0, Math.round((session.totalMs - focusRemainingMs()) / 60000));
+    if (minutes > 0) saved = logFocusedMinutes(minutes);
+  }
+
+  beginFocus(id);
+  if (focusState.session.taskId !== id) return;
+  restoreFocusOnTaskButton(id);
+
+  if (saved && previous) {
+    const message = `${saved} min saved on ${previous.title}. Focusing on ${task.title}.`;
+    announce(message);
+    showToast(message);
+  }
+}
+
+function stepFocusSetting(kind, delta) {
+  const settings = focusState.settings;
+  if (kind === "focus") {
+    settings.focusMin = clampFocusNumber(settings.focusMin + delta, settings.focusMin, 5, 90);
+  } else if (kind === "goal") {
+    settings.goalMin = clampFocusNumber(settings.goalMin + delta, settings.goalMin, 15, 180);
+  }
+  saveFocusState();
+  renderFocusSettings();
+  renderFocusClock();
+
+  const phase = focusState.session.phase;
+  if (kind === "focus" && (phase === "focus" || phase === "break")) {
+    showToast("New sprint length applies to the next sprint.");
+  }
+}
+
+function setFocusSettingsOpen(open) {
+  focusSettingsOpen = Boolean(open);
+  focusSettings.hidden = !focusSettingsOpen;
+  focusSettingsButton.setAttribute("aria-expanded", String(focusSettingsOpen));
+  if (focusSettingsOpen) {
+    const first = focusSettings.querySelector("button");
+    if (first) first.focus();
+  }
+}
+
+function closeFocusSettings() {
+  if (!focusSettingsOpen) return;
+  setFocusSettingsOpen(false);
+  focusSettingsButton.focus();
+}
+
+function revealFocusDock() {
+  openWindow("planner");
+  if (activeView !== "today") setPlannerView("today");
+  requestAnimationFrame(() => {
+    focusDock.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    focusPanel.classList.remove("focus-flash");
+    void focusPanel.offsetWidth;
+    focusPanel.classList.add("focus-flash");
+    window.setTimeout(() => focusPanel.classList.remove("focus-flash"), 900);
+    const target = !focusStartButton.hidden && !focusStartButton.disabled
+      ? focusStartButton
+      : !focusPauseButton.hidden
+        ? focusPauseButton
+        : focusSettingsButton;
+    if (target) target.focus({ preventScroll: true });
+  });
+}
+
+function restoreFocusOnTaskButton(id) {
+  requestAnimationFrame(() => {
+    const card = Array.from(taskList.querySelectorAll(".task-card")).find(node => node.dataset.id === id);
+    const button = card && card.querySelector(".task-focus-btn");
+    if (button && button.getClientRects().length) button.focus({ preventScroll: true });
+  });
+}
+
+function renderFocusUi() {
+  if (!focusDock) return;
+  const calendarMode = isCalendarView(activeView);
+  focusDock.hidden = calendarMode;
+  if (!calendarMode) {
+    renderFocusPanel();
+    renderFocusSettings();
+  }
+  renderFocusClock();
+  renderFocusPill();
+}
+
+function renderFocusPanel() {
+  const session = focusState.session;
+  const task = activeFocusTask();
+  const phase = session.phase;
+  const isOffer = phase === "offer";
+  const idle = phase === "idle";
+  const upNext = firstOpenFocusTask();
+
+  focusPanel.classList.toggle("is-break", phase === "break");
+  focusPanel.classList.toggle("is-idle", idle);
+  focusPanel.classList.toggle("is-offer", isOffer);
+  // An empty planner does not need an inert timer: reveal the dock once there
+  // is something to start (or minutes already logged today).
+  focusDock.hidden = idle && !upNext && focusState.dayMin === 0;
+  if (focusDock.hidden && focusSettingsOpen) setFocusSettingsOpen(false);
+  focusPhase.className = `focus-phase${idle ? " ready" : phase === "break" ? " break" : ""}`;
+  focusPhase.textContent = idle
+    ? "Ready"
+    : phase === "focus"
+      ? "Focus"
+      : phase === "break"
+        ? "Break"
+        : session.offer === "break" ? "Break over" : "Sprint done";
+
+  focusTask.innerHTML = phase === "focus" && task
+    ? `<strong>${escapeHtml(task.title)}</strong>`
+    : phase === "break"
+      ? `Step away.${task ? ` <strong>${escapeHtml(task.title)}</strong> is waiting.` : ""}`
+      : isOffer
+        ? session.offer === "break"
+          ? task ? `<strong>${escapeHtml(task.title)}</strong> is still open.` : "Ready when you are."
+          : task ? `<strong>${escapeHtml(task.title)}</strong>` : "Sprint finished."
+        : upNext
+          ? `<span class="focus-upnext">Up next: </span><strong>${escapeHtml(upNext.title)}</strong>`
+          : focusState.dayMin
+            ? "Everything open is done."
+            : "Add a task below to start.";
+
+  focusStartButton.hidden = !idle;
+  focusStartButton.disabled = !upNext;
+  focusStartButton.textContent = `Start ${focusState.settings.focusMin} min`;
+  focusStartButton.title = upNext ? "" : "No open tasks";
+  focusPauseButton.hidden = idle || isOffer;
+  focusPauseButton.textContent = session.running ? "Pause" : "Resume";
+  focusFinishButton.hidden = phase !== "focus";
+  focusSkipButton.hidden = phase !== "break";
+  focusEndButton.hidden = idle || isOffer;
+
+  focusOffer.hidden = !isOffer;
+  if (isOffer) {
+    const reason = session.offer;
+    focusOfferCopy.textContent = reason === "break"
+      ? "Break over. Back to it, or stop for now?"
+      : `${session.loggedMin} min logged · what next?`;
+    focusOfferBreakButton.textContent = reason === "break" ? "Back to work" : `${focusState.settings.breakMin} min break`;
+    focusOfferKeepButton.hidden = reason === "break";
+  } else {
+    focusOfferCopy.textContent = "";
+  }
+}
+
+function renderFocusClock() {
+  const session = focusState.session;
+  const phase = session.phase;
+  const isOffer = phase === "offer";
+  const task = activeFocusTask();
+  const remaining = phase === "idle"
+    ? focusState.settings.focusMin * 60000
+    : isOffer ? 0 : focusRemainingMs();
+
+  focusTime.textContent = isOffer
+    ? (session.offer === "break" ? "Ready" : "Done")
+    : formatFocusTimer(remaining);
+  focusTime.classList.toggle("is-idle", phase === "idle" || isOffer);
+
+  // Minutes are only committed when a sprint ends, switches, or is stopped, so
+  // add the live sprint time to keep the panel honest while it runs.
+  const sprintMin = phase === "focus"
+    ? Math.max(0, Math.floor((session.totalMs - remaining) / 60000))
+    : 0;
+  const dayMin = focusState.dayMin + sprintMin;
+  const goalPct = Math.min(1, Math.max(0, dayMin / Math.max(1, focusState.settings.goalMin))) * 100;
+  focusFill.style.width = `${goalPct}%`;
+  // An empty track at 0% is just another line; show it once it can say something.
+  focusPanel.classList.toggle("has-progress", dayMin > 0);
+  // The header already reports the open count; this line is only about the
+  // task in front of you.
+  focusMins.textContent = task
+    ? `${Math.max(0, Math.round(Number(task.focusedMin) || 0)) + sprintMin} min on this task`
+    : "";
+  focusGoal.textContent = `${dayMin} / ${focusState.settings.goalMin} min today`;
+  focusGoal.title = `${Math.round(goalPct)}% of the daily goal`;
+
+  focusNext.textContent = phase === "idle"
+    ? `${focusState.settings.focusMin} min sprint`
+    : phase === "focus"
+      ? (session.running ? `ends ${formatFocusClock(session.endsAt)}` : "paused")
+      : phase === "break"
+        ? (session.running ? `back at ${formatFocusClock(session.endsAt)}` : "paused")
+        : "nothing running";
+
+  renderFocusPill();
+}
+
+function renderFocusPill() {
+  const session = focusState.session;
+  const idle = session.phase === "idle";
+  focusPill.hidden = idle;
+  if (idle) return;
+
+  const task = activeFocusTask();
+  const offer = session.phase === "offer";
+  focusPill.classList.toggle("is-break", session.phase === "break");
+  focusPillTime.hidden = offer;
+  if (offer) {
+    focusPillTime.textContent = "";
+    focusPillLabel.textContent = session.offer === "break" ? "Break over" : "Sprint done";
+  } else {
+    focusPillTime.textContent = formatFocusTimer(focusRemainingMs());
+    focusPillLabel.textContent = session.phase === "focus" ? "Focus" : "Break";
+  }
+  const label = offer
+    ? (session.offer === "break" ? "Break over" : "Sprint done")
+    : (session.phase === "focus" ? "Focus" : "Break");
+  focusPill.title = task ? `${label} · ${task.title}` : label;
+  focusPill.setAttribute("aria-label", `Return to focus session: ${label}${task ? ` · ${task.title}` : ""}`);
+}
+
+function renderFocusSettings() {
+  focusValue.textContent = `${focusState.settings.focusMin} min`;
+  focusGoalValue.textContent = formatFocusMinutes(focusState.settings.goalMin);
+  document.querySelectorAll("[data-focus-step]").forEach(button => {
+    const kind = button.dataset.focusStep;
+    const delta = Number(button.dataset.delta);
+    const value = kind === "focus"
+      ? focusState.settings.focusMin
+      : focusState.settings.goalMin;
+    const min = kind === "focus" ? 5 : 15;
+    const max = kind === "focus" ? 90 : 180;
+    button.disabled = delta < 0 ? value <= min : value >= max;
+  });
+}
+
+/* Focus controls */
+focusStartButton.addEventListener("click", () => beginFocus());
+focusPauseButton.addEventListener("click", () => {
+  if (focusState.session.running) pauseFocus();
+  else resumeFocus();
+});
+focusFinishButton.addEventListener("click", finishFocus);
+focusSkipButton.addEventListener("click", () => {
+  openFocusOffer("break");
+  announce("Break skipped.");
+  showToast("Break skipped.");
+});
+focusEndButton.addEventListener("click", endFocus);
+focusOfferBreakButton.addEventListener("click", () => {
+  if (focusState.session.offer === "break") beginFocus(focusState.session.taskId);
+  else takeFocusBreak();
+});
+focusOfferKeepButton.addEventListener("click", () => beginFocus(focusState.session.taskId));
+focusOfferDoneButton.addEventListener("click", endFocus);
+focusPill.addEventListener("click", revealFocusDock);
+focusSettingsButton.addEventListener("click", () => setFocusSettingsOpen(!focusSettingsOpen));
+
+document.querySelectorAll("[data-focus-step]").forEach(button => {
+  button.addEventListener("click", () => stepFocusSetting(button.dataset.focusStep, Number(button.dataset.delta)));
+});
+
+document.addEventListener("click", event => {
+  if (!focusSettingsOpen) return;
+  if (event.target.closest("#focus-settings") || event.target.closest("#focus-settings-btn")) return;
+  setFocusSettingsOpen(false);
+});
+
+document.addEventListener("keydown", event => {
+  if (event.key === "Escape" && focusSettingsOpen) {
+    event.preventDefault();
+    closeFocusSettings();
+  }
+});
+
 function setActiveTab() {
   tabs.forEach(tab => {
     const isActive = tab.dataset.view === activeView;
@@ -2714,16 +3793,7 @@ function setActiveTab() {
     tab.tabIndex = isActive ? 0 : -1;
   });
   sideViewButtons.forEach(button => {
-    const isActive = button.dataset.view === "calendar"
-      ? isCalendarView(activeView)
-      : button.dataset.view === activeView;
-    button.classList.toggle("active", isActive);
-    button.setAttribute("aria-current", isActive ? "page" : "false");
-  });
-  plannerViewButtons.forEach(button => {
-    const isActive = button.dataset.plannerView === "calendar"
-      ? isCalendarView(activeView)
-      : button.dataset.plannerView === activeView;
+    const isActive = button.dataset.view === activeView;
     button.classList.toggle("active", isActive);
     button.setAttribute("aria-current", isActive ? "page" : "false");
   });
@@ -2748,13 +3818,35 @@ function setTaskFilter() {
   icon.className = `task-filter-icon ${taskFilter === "done" ? "done-icon" : taskFilter === "open" ? "open-icon" : "all-icon"}`;
 }
 
+function applyFormKind() {
+  const isEvent = getFormKind() === "event";
+  taskForm.classList.toggle("is-event", isEvent);
+  taskTitleLabel.textContent = isEvent ? "Event" : "Task";
+  taskTitleInput.placeholder = isEvent ? "Add an event" : "Add a task";
+  taskTimeField.hidden = !isEvent;
+  taskDurationField.hidden = !isEvent;
+  if (isEvent) {
+    const dateKey = normalizeDueDate(taskDateInput.value) || getQuickCaptureDate();
+    if (!taskTimeInput.value) taskTimeInput.value = getDefaultEventStart(dateKey);
+    if (!taskDurationInput.value) taskDurationInput.value = String(quickEventDuration);
+  }
+  taskForm.setAttribute(
+    "aria-label",
+    editingTaskId
+      ? (isEvent ? "Edit event" : "Edit task")
+      : (isEvent ? "Add event" : "Add task")
+  );
+}
+
 function setTaskEditMode(item) {
   editingTaskId = item.id;
   taskTitleInput.value = item.title;
   taskBodyInput.value = item.body || "";
   taskDateInput.value = item.dueDate || "";
-  taskSubmitButton.textContent = "Update Task";
-  taskForm.setAttribute("aria-label", "Edit task");
+  taskTimeInput.value = item.startTime || "";
+  taskDurationInput.value = String(item.durationMin || quickEventDuration);
+  taskSubmitButton.textContent = item.type === "event" ? "Update Event" : "Update Task";
+  applyFormKind();
   setTaskFormOpen(true);
 }
 
@@ -2762,9 +3854,11 @@ function clearTaskEditMode() {
   editingTaskId = null;
   taskTitleInput.value = "";
   taskBodyInput.value = "";
+  taskTimeInput.value = "";
+  taskDurationInput.value = String(quickEventDuration);
   taskDateInput.value = taskDateInput.value || toDateInputValue(new Date());
   taskSubmitButton.textContent = "Save";
-  taskForm.setAttribute("aria-label", "Add task");
+  applyFormKind();
 }
 
 function setNoteEditMode(item) {
@@ -2791,6 +3885,7 @@ function setTaskFormOpen(open) {
   taskAddToggle.hidden = true; // always hidden; quick form takes its place
   taskCancelEditButton.hidden = !open;
   taskAddToggle.setAttribute("aria-expanded", String(open));
+  if (open) applyFormKind();
 }
 
 // The windows clip their contents, so a popover that always opens downward can
@@ -2964,8 +4059,48 @@ function getMinWindowTop(gridRect) {
 function getWindowHeightLimit(top = 0) {
   const gridRect = desktopGrid.getBoundingClientRect();
   const minTop = getMinWindowTop(gridRect);
-  const available = window.innerHeight - gridRect.top - Math.max(top, minTop) - 34;
+  const available = window.innerHeight - gridRect.top - Math.max(top, minTop) - 12;
   return Math.max(240, available);
+}
+
+// Focus mode made the Planner taller than it used to be. On screens shorter
+// than roughly 1000px its natural height pushes quick capture below the fold,
+// so cap it at the space above the dock and let the task list scroll instead.
+function fitPlannerHeight() {
+  const surface = surfaces.find(item => item.dataset.surface === "planner");
+  if (!surface) return;
+
+  surface.style.maxHeight = "";
+  surface.classList.remove("window-height-capped");
+
+  if (
+    !canDragWindows() ||
+    surface.classList.contains("window-closed") ||
+    surface.classList.contains("window-minimized") ||
+    surface.classList.contains("window-resized") ||
+    surface.classList.contains("window-fullscreen")
+  ) {
+    return;
+  }
+
+  const rect = surface.getBoundingClientRect();
+  if (!rect.height) return;
+
+  // The floating dock sits above the bottom of the viewport; stop the window
+  // above it so quick capture and the status line are never hidden behind it.
+  const taskbar = document.querySelector(".taskbar");
+  const taskbarRect = taskbar ? taskbar.getBoundingClientRect() : null;
+  const overlapsDock =
+    taskbarRect &&
+    taskbarRect.width > 0 &&
+    rect.left < taskbarRect.right &&
+    rect.right > taskbarRect.left;
+  const bottomLimit = overlapsDock ? Math.min(window.innerHeight, taskbarRect.top) : window.innerHeight;
+  const available = Math.floor(bottomLimit - rect.top - 12);
+  if (available > 0 && rect.height > available) {
+    surface.style.maxHeight = `${Math.max(320, available)}px`;
+    surface.classList.add("window-height-capped");
+  }
 }
 
 function applyWindowPositions() {
@@ -3155,6 +4290,8 @@ function startWindowResize(event) {
   const top = rect.top - gridRect.top;
 
   surface.classList.add("window-dragged", "window-resized", "is-resizing");
+  surface.style.maxHeight = "";
+  surface.classList.remove("window-height-capped");
   surface.style.left = `${left}px`;
   surface.style.top = `${top}px`;
   surface.style.width = `${Math.min(rect.width, getWindowWidthLimit())}px`;
@@ -3233,6 +4370,7 @@ function endWindowResize(event) {
   delete surface.dataset.resizeEdge;
   if (surface.hasPointerCapture(event.pointerId)) surface.releasePointerCapture(event.pointerId);
   resizeState = null;
+  fitPlannerHeight();
 }
 
 // Keyboard parity for dragging/resizing: focus a window title bar and use the
@@ -3267,6 +4405,8 @@ function handleTitlebarKeys(event) {
     nextWidth = clamp(nextWidth, min.width, getWindowWidthLimit());
     nextHeight = clamp(nextHeight, min.height, getWindowHeightLimit(top));
     surface.classList.add("window-resized");
+    surface.style.maxHeight = "";
+    surface.classList.remove("window-height-capped");
     surface.style.left = `${left}px`;
     surface.style.top = `${top}px`;
     surface.style.width = `${nextWidth}px`;
@@ -3412,6 +4552,7 @@ function openWindow(name, animate = false) {
   setActiveSurface();
   keepWindowInView(name);
   bringWindowForward(name);
+  if (name === "planner") fitPlannerHeight();
   if (animate) {
     state.launching = true;
     setActiveSurface();
@@ -3427,7 +4568,7 @@ function openWindow(name, animate = false) {
   // Auto-focus the task quick-input when Planner opens (unless editing)
   if (name === "planner") {
     requestAnimationFrame(() => {
-      if (!editingTaskId && taskForm.hidden) taskQuickInput.focus();
+      if (!editingTaskId && taskForm.hidden) taskQuickInput.focus({ preventScroll: true });
     });
   }
   announce(`${capitalize(name)} opened.`);
@@ -3474,6 +4615,7 @@ function handleWindowAction(name, action) {
   }
 
   setActiveSurface();
+  fitPlannerHeight();
   announce(`${capitalize(name)} ${action}.`);
 }
 
@@ -3496,14 +4638,16 @@ function getViewTitle() {
 function getViewSubtitle(visibleTasks) {
   if (activeView === "week" || activeView === "month") {
     const tasks = visibleTasks || [];
-    const open = tasks.filter(item => !item.done).length;
-    return `${open} open · ${tasks.length} ${tasks.length === 1 ? "task" : "tasks"} · all-day`;
+    const open = tasks.filter(item => item.type === "task" && !item.done).length;
+    return `${open} open · ${tasks.length} ${tasks.length === 1 ? "item" : "items"}`;
   }
   return new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric" }).format(new Date());
 }
 
 function getTaskCountText(visible) {
-  const open = visible.filter(item => !item.done).length;
+  const open = visible.filter(item => item.type === "task" && !item.done).length;
+  const hasEvents = visible.some(item => item.type === "event");
+  if (hasEvents) return `${visible.length} ${visible.length === 1 ? "item" : "items"} | ${open} open`;
   return `${visible.length} ${visible.length === 1 ? "task" : "tasks"} | ${open} open`;
 }
 
@@ -3519,6 +4663,9 @@ function getReadmeText() {
   const todayDone = todayTasks.filter(item => item.done);
   const overdue = tasks.filter(item => item.dueDate && item.dueDate < today && !item.done);
   const weekOpen = tasks.filter(item => item.dueDate && !item.done && isSameWeek(parseLocalDate(item.dueDate), new Date()));
+  const todayEvents = items
+    .filter(item => item.type === "event" && item.dueDate === today && !item.deletedAt)
+    .sort((a, b) => String(a.startTime).localeCompare(String(b.startTime)));
   const notes = items.filter(item => item.type === "note" && !item.deletedAt);
   const lines = [
     "README.txt",
@@ -3542,6 +4689,13 @@ function getReadmeText() {
     if (todayDone.length > limit) lines.push(`... ${todayDone.length - limit} more done`);
   }
 
+  if (todayEvents.length) {
+    lines.push("");
+    lines.push("SCHEDULE");
+    todayEvents.slice(0, limit).forEach(item => lines.push(`${formatTimeLabel(item.startTime)}  ${item.title}`));
+    if (todayEvents.length > limit) lines.push(`... ${todayEvents.length - limit} more in Calendar`);
+  }
+
   lines.push("");
   lines.push("OVERDUE");
   if (overdue.length) {
@@ -3552,7 +4706,7 @@ function getReadmeText() {
   }
 
   lines.push("");
-  lines.push(`Today: ${todayTasks.length} tasks, ${todayOpen.length} open`);
+  lines.push(`Today: ${todayTasks.length} tasks, ${todayOpen.length} open${todayEvents.length ? ` | ${todayEvents.length} event${todayEvents.length === 1 ? "" : "s"}` : ""}`);
   lines.push(`Week: ${weekOpen.length} open | Notes: ${notes.length}`);
   lines.push("");
   lines.push("Edit tasks in Planner.");
@@ -3563,9 +4717,9 @@ function getReadmeText() {
 function getEmptyText() {
   if (taskFilter === "open") return "No open tasks in this view.";
   if (taskFilter === "done") return "No completed tasks in this view.";
-  if (activeView === "week") return "No tasks planned for this week.";
-  if (activeView === "month") return "No tasks planned for this month.";
-  return "No tasks for today.";
+  if (activeView === "week") return "No tasks or events planned for this week.";
+  if (activeView === "month") return "No tasks or events planned for this month.";
+  return "No tasks or events for today.";
 }
 
 function makeNotePreview(body) {

@@ -1,0 +1,1909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="only light">
+<title>Focus &amp; queue — Random Notes prototype</title>
+<style>
+  /* ---------------------------------------------------------------- tokens */
+  :root {
+    color-scheme: only light;
+    --accent: #6d6bc6;
+    --accent-hover: #7a78d1;
+    --accent-press: #4f4c9d;
+    --ink: #24232a;
+    --support: #51505a;
+    --secondary: #6d6c75;
+    --muted: #85838d;
+    --hairline: rgba(71, 64, 85, 0.2);
+    --hairline-soft: rgba(71, 64, 85, 0.12);
+    --glass: rgba(249, 245, 251, 0.91);
+    --paper: #fffdfd;
+    --sidebar: rgba(240, 232, 242, 0.82);
+    --selected: rgba(109, 107, 198, 0.14);
+    --window-shadow: 0 28px 64px rgba(44, 35, 70, 0.3), 0 4px 14px rgba(44, 35, 70, 0.18);
+    --danger: #bf4d63;
+    --focus-ring: 0 0 0 2px rgba(109, 107, 198, 0.28);
+    --font: "Lucida Grande", "Helvetica Neue", Arial, sans-serif;
+    --mono: "SF Mono", "Menlo", "Consolas", monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body { height: 100%; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: var(--font);
+    color: var(--ink);
+    background: #cfc6d8 url("../bg-2.jpg") center / cover fixed no-repeat;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button { font: inherit; color: inherit; }
+  button:focus-visible,
+  input:focus-visible {
+    outline: 2px solid rgba(109, 107, 198, 0.6);
+    outline-offset: 2px;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  /* ------------------------------------------------------------- menu bar */
+  .menu-bar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    height: 30px;
+    padding: 0 12px;
+    border-bottom: 1px solid rgba(71, 64, 85, 0.18);
+    background: rgba(250, 247, 251, 0.84);
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    font-size: 11px;
+    color: var(--support);
+  }
+
+  .menu-brand {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--ink);
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+  }
+
+  .menu-brand img { width: 14px; height: 14px; border-radius: 3px; }
+
+  .menu-items { display: flex; gap: 12px; }
+  .menu-item { color: var(--support); }
+
+  .menu-tabs {
+    display: flex;
+    gap: 2px;
+    margin-left: 4px;
+    padding: 2px;
+    border-radius: 7px;
+    background: rgba(116, 104, 124, 0.1);
+    box-shadow: inset 0 1px 2px rgba(60, 48, 69, 0.1);
+  }
+
+  .menu-tab {
+    min-height: 20px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--support);
+    font-size: 10.5px;
+    cursor: pointer;
+  }
+
+  .menu-tab.active {
+    background: rgba(255, 255, 255, 0.94);
+    color: var(--ink);
+    font-weight: 500;
+    box-shadow: 0 1px 2px rgba(55, 45, 67, 0.18);
+  }
+
+  .menu-tail {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  .menu-meta { color: var(--muted); font-size: 10.5px; }
+
+  .menu-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 21px;
+    padding: 0 9px;
+    border: 1px solid rgba(109, 107, 198, 0.32);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.86);
+    color: var(--accent-press);
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(44, 35, 70, 0.1);
+  }
+
+  .menu-pill[hidden] { display: none; }
+
+  .menu-pill .dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+    box-shadow: 0 0 0 3px rgba(109, 107, 198, 0.16);
+  }
+
+  .menu-pill.is-break { border-color: rgba(67, 140, 108, 0.3); color: #2f7d59; }
+  .menu-pill.is-break .dot { box-shadow: 0 0 0 3px rgba(67, 140, 108, 0.16); }
+
+  /* --------------------------------------------------------------- stage */
+  .stage {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 22px;
+    width: 100%;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 26px 26px 92px;
+  }
+
+  .window {
+    border: 1px solid var(--hairline);
+    border-radius: 13px;
+    background: var(--glass);
+    box-shadow: var(--window-shadow);
+    overflow: hidden;
+    backdrop-filter: blur(18px) saturate(1.25);
+    -webkit-backdrop-filter: blur(18px) saturate(1.25);
+  }
+
+  .titlebar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 33px;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--hairline-soft);
+    background: linear-gradient(rgba(255, 255, 255, 0.62), rgba(247, 241, 249, 0.55));
+  }
+
+  .traffic { display: flex; gap: 7px; }
+
+  .light {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.22), inset 0 1px 1px rgba(255, 255, 255, 0.55), 0 0.5px 1px rgba(0, 0, 0, 0.12);
+  }
+
+  .light.close { background: radial-gradient(circle at 35% 30%, #ff9a90, #e8574c 62%, #c43c33); }
+  .light.min { background: radial-gradient(circle at 35% 30%, #ffd88c, #f2b23c 62%, #cf8d1d); }
+  .light.max { background: radial-gradient(circle at 35% 30%, #a9e6a0, #4fb648 62%, #338a2e); }
+
+  .title {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--support);
+    font-size: 11.5px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .title-icon {
+    width: 13px;
+    height: 13px;
+    border-radius: 3px;
+    background: url("../assets/icons/planner.png") center / cover no-repeat;
+  }
+
+  .title-meta { margin-left: auto; color: var(--muted); font-size: 10.5px; }
+
+  /* ------------------------------------------------------------- planner */
+  .planner { width: min(880px, 100%); }
+
+  .planner-body { display: flex; min-height: 560px; background: var(--paper); }
+
+  .sidebar {
+    flex: 0 0 186px;
+    padding: 14px 10px;
+    border-right: 1px solid var(--hairline-soft);
+    background: var(--sidebar);
+  }
+
+  .side-label {
+    margin: 10px 8px 5px;
+    color: var(--muted);
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .side-row {
+    display: grid;
+    grid-template-columns: 18px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 7px;
+    width: 100%;
+    min-height: 29px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--support);
+    font-size: 12px;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .side-row:hover { background: rgba(109, 107, 198, 0.1); }
+
+  .side-row.active {
+    background: var(--selected);
+    color: var(--accent-press);
+    font-weight: 500;
+  }
+
+  .side-icon { width: 14px; height: 14px; color: currentColor; }
+
+  .side-icon svg { display: block; width: 100%; height: 100%; }
+
+  .side-count {
+    color: var(--secondary);
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .side-row.active .side-count { color: var(--accent-press); }
+
+  .main { flex: 1 1 auto; min-width: 0; padding: 16px 20px 14px; }
+
+  .pane-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 13px;
+  }
+
+  .pane-head h1 {
+    margin: 0 0 3px;
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  }
+
+  .pane-sub { margin: 0; color: var(--muted); font-size: 11px; }
+
+  .new-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 26px;
+    padding: 0 10px;
+    border: 1px solid var(--hairline);
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--support);
+    font-size: 11px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .new-btn:hover { background: #fff; }
+  .new-btn .plus { color: var(--accent-press); font-weight: 600; }
+
+  /* ----------------------------------------------------------------- queue */
+  .queue {
+    margin-bottom: 13px;
+    padding: 9px 11px 10px;
+    border: 1px solid rgba(109, 107, 198, 0.24);
+    border-radius: 9px;
+    background: linear-gradient(rgba(246, 243, 252, 0.9), rgba(250, 248, 253, 0.9));
+  }
+
+  .queue-head {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .queue-head strong {
+    color: var(--accent-press);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+
+  .queue-summary {
+    margin-left: auto;
+    color: var(--muted);
+    font-size: 9.5px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .queue-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .queue-empty {
+    color: var(--muted);
+    font-size: 10.5px;
+    line-height: 1.5;
+  }
+
+  .queue-empty strong { color: var(--support); font-weight: 500; }
+
+  .queue-card {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    padding: 4px 5px 4px 4px;
+    border: 1px solid var(--hairline-soft);
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 1px 1.5px rgba(44, 35, 70, 0.06);
+  }
+
+  .queue-card.current {
+    border-color: rgba(109, 107, 198, 0.48);
+    box-shadow: 0 0 0 2px rgba(109, 107, 198, 0.1);
+  }
+
+  .queue-card.done { opacity: 0.55; }
+
+  .q-start {
+    display: grid;
+    place-items: center;
+    width: 19px;
+    height: 19px;
+    border: 0;
+    border-radius: 5px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 8px;
+    cursor: pointer;
+  }
+
+  .q-start:hover { background: var(--accent-hover); }
+  .q-start[disabled] { opacity: 0.35; cursor: default; }
+
+  .q-order {
+    color: var(--muted);
+    font-size: 9px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .q-title {
+    max-width: 190px;
+    overflow: hidden;
+    font-size: 10.5px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .q-meta {
+    color: var(--muted);
+    font-size: 9px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .q-tools { display: flex; gap: 1px; }
+
+  .q-tool {
+    display: grid;
+    place-items: center;
+    width: 17px;
+    height: 17px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 10px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .q-tool:hover { background: rgba(109, 107, 198, 0.12); color: var(--accent-press); }
+  .q-tool.remove:hover { background: rgba(191, 77, 99, 0.12); color: var(--danger); }
+  .q-tool[disabled] { opacity: 0.25; cursor: default; background: transparent; }
+
+  /* ------------------------------------------------------------------ tasks */
+  .task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .task-row {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 5px 7px;
+    border-radius: 7px;
+  }
+
+  .task-row:hover { background: rgba(109, 107, 198, 0.06); }
+  .task-row.is-active { background: rgba(109, 107, 198, 0.09); }
+
+  .task-check {
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    accent-color: var(--accent);
+    cursor: pointer;
+  }
+
+  .task-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+  .task-title {
+    overflow: hidden;
+    color: var(--ink);
+    font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .task-row.done .task-title {
+    color: var(--muted);
+    text-decoration: line-through;
+  }
+
+  .task-meta {
+    color: var(--muted);
+    font-size: 9.5px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .task-side {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 76px;
+    justify-content: flex-end;
+  }
+
+  .row-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    height: 21px;
+    padding: 0 7px;
+    border: 1px solid var(--hairline-soft);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--secondary);
+    font-size: 9.5px;
+    opacity: 0;
+    transition: opacity 120ms ease;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .task-row:hover .row-action,
+  .task-row:focus-within .row-action,
+  .row-action:focus-visible { opacity: 1; }
+
+  .row-action:hover {
+    border-color: rgba(109, 107, 198, 0.4);
+    color: var(--accent-press);
+  }
+
+  .queue-tag {
+    padding: 2px 6px;
+    border-radius: 5px;
+    background: rgba(109, 107, 198, 0.12);
+    color: var(--accent-press);
+    font-size: 9px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .list-foot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    padding-top: 9px;
+    border-top: 1px solid var(--hairline-soft);
+    color: var(--muted);
+    font-size: 10px;
+  }
+
+  .list-foot .open-count {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .quick {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 9px;
+    padding: 0 10px;
+    height: 34px;
+    border: 1px solid var(--hairline);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.86);
+    box-shadow: inset 0 1px 2px rgba(55, 45, 67, 0.06);
+  }
+
+  .quick .plus { color: var(--accent-press); font-size: 14px; font-weight: 500; }
+
+  .quick input {
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    font-size: 11.5px;
+  }
+
+  .quick input::placeholder { color: var(--muted); }
+  .quick input:focus { outline: 0; }
+
+  .quick .kbd {
+    padding: 1px 5px;
+    border: 1px solid var(--hairline-soft);
+    border-radius: 4px;
+    color: var(--muted);
+    font-size: 9px;
+  }
+
+  /* ----------------------------------------------------------------- focus */
+  .focus { width: 340px; flex: 0 0 340px; }
+
+  .focus-body { padding: 15px 16px 14px; background: rgba(255, 253, 253, 0.96); }
+
+  .focus-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .phase {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 19px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: rgba(109, 107, 198, 0.13);
+    color: var(--accent-press);
+    font-size: 9.5px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+  }
+
+  .phase::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .phase.break {
+    background: rgba(67, 140, 108, 0.14);
+    color: #2f7d59;
+  }
+
+  .phase.ready {
+    background: rgba(116, 104, 124, 0.12);
+    color: var(--support);
+  }
+
+  .focus-next {
+    color: var(--muted);
+    font-size: 9.5px;
+    text-align: right;
+    line-height: 1.35;
+  }
+
+  .focus-time {
+    margin: 2px 0 4px;
+    color: var(--ink);
+    font-size: 46px;
+    font-weight: 300;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+    line-height: 1;
+  }
+
+  .focus-time.is-idle { color: #9b99a4; }
+
+  .focus-task {
+    min-height: 30px;
+    margin: 4px 0 10px;
+    color: var(--support);
+    font-size: 11.5px;
+    line-height: 1.4;
+  }
+
+  .focus-task strong { font-weight: 500; }
+
+  .focus-bar {
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(116, 104, 124, 0.14);
+    overflow: hidden;
+  }
+
+  .focus-fill {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--accent);
+    transition: width 180ms linear;
+  }
+
+  .focus-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 7px;
+  }
+
+  .focus-mins {
+    color: var(--secondary);
+    font-size: 9.5px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .focus-goal {
+    color: var(--muted);
+    font-size: 9.5px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .focus-actions {
+    display: flex;
+    gap: 5px;
+    margin-top: 13px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    height: 30px;
+    padding: 0 12px;
+    border: 1px solid var(--hairline);
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.94);
+    color: var(--support);
+    font-size: 11px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .btn:hover { background: #fff; border-color: rgba(109, 107, 198, 0.34); }
+  .btn:active { transform: translateY(0.5px); }
+  .btn[hidden] { display: none; }
+  .btn[disabled] { opacity: 0.45; cursor: default; }
+
+  .btn.primary {
+    flex: 1;
+    border-color: transparent;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 500;
+    box-shadow: 0 1px 2px rgba(44, 35, 70, 0.18);
+  }
+
+  .btn.primary:hover { background: var(--accent-hover); }
+  .btn.primary[disabled] { background: var(--accent); }
+
+  .offer {
+    margin-top: 12px;
+    padding: 10px 11px;
+    border: 1px solid rgba(109, 107, 198, 0.3);
+    border-radius: 9px;
+    background: rgba(109, 107, 198, 0.08);
+  }
+
+  .offer[hidden] { display: none; }
+
+  .offer-copy {
+    margin: 0 0 8px;
+    color: var(--accent-press);
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+
+  .offer .focus-actions { margin-top: 0; flex-wrap: wrap; }
+
+  .focus-settings {
+    display: grid;
+    gap: 6px;
+    margin-top: 13px;
+    padding-top: 11px;
+    border-top: 1px solid var(--hairline-soft);
+  }
+
+  .setting {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-height: 24px;
+  }
+
+  .setting-label { color: var(--secondary); font-size: 10.5px; }
+  .setting-label span { display: block; color: var(--muted); font-size: 9px; }
+
+  .stepper {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--hairline-soft);
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.8);
+  }
+
+  .stepper button {
+    width: 21px;
+    height: 21px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--secondary);
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  .stepper button:hover { background: rgba(109, 107, 198, 0.12); color: var(--accent-press); }
+  .stepper button[disabled] { opacity: 0.3; cursor: default; background: transparent; }
+
+  .stepper output {
+    min-width: 46px;
+    color: var(--support);
+    font-size: 10.5px;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+  }
+
+  .focus-foot {
+    margin-top: 11px;
+    padding-top: 9px;
+    border-top: 1px solid var(--hairline-soft);
+    color: var(--muted);
+    font-size: 9.5px;
+    line-height: 1.5;
+  }
+
+  /* ------------------------------------------------------------- demo bar */
+  .demo-bar {
+    position: fixed;
+    left: 50%;
+    bottom: 14px;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    max-width: calc(100vw - 24px);
+    padding: 6px 8px 6px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    border-radius: 999px;
+    background: rgba(38, 31, 54, 0.72);
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 10px;
+    box-shadow: 0 8px 24px rgba(24, 18, 38, 0.32);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    transform: translateX(-50%);
+  }
+
+  .demo-bar .demo-label { white-space: nowrap; }
+
+  .seg {
+    display: inline-flex;
+    gap: 1px;
+    padding: 2px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .seg button {
+    height: 19px;
+    padding: 0 8px;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 9.5px;
+    cursor: pointer;
+  }
+
+  .seg button.on {
+    background: rgba(255, 255, 255, 0.9);
+    color: #2d2740;
+    font-weight: 600;
+  }
+
+  .demo-reset {
+    height: 23px;
+    padding: 0 9px;
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 999px;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.82);
+    font-size: 9.5px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .demo-reset:hover { background: rgba(255, 255, 255, 0.12); }
+
+  .demo-hint {
+    color: rgba(255, 255, 255, 0.48);
+    font-size: 9px;
+    white-space: nowrap;
+  }
+
+  /* --------------------------------------------------------------- toast */
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 58px;
+    z-index: 40;
+    padding: 7px 12px;
+    border-radius: 8px;
+    background: rgba(36, 35, 42, 0.9);
+    color: #fff;
+    font-size: 10.5px;
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 6px);
+    transition: opacity 160ms ease, transform 160ms ease;
+    white-space: nowrap;
+  }
+
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ----------------------------------------------------------- responsive */
+  @media (hover: none) {
+    .row-action { opacity: 1; }
+  }
+
+  @media (max-width: 1180px) {
+    .stage { flex-wrap: wrap; padding: 20px 18px 92px; }
+    .planner { width: 100%; }
+    .focus { width: 100%; flex: 1 1 100%; max-width: 880px; }
+  }
+
+  @media (max-width: 840px) {
+    .sidebar { display: none; }
+    .planner-body { min-height: 0; }
+    .stage { padding: 12px 12px 18px; gap: 14px; }
+    .demo-bar {
+      position: static;
+      margin: 0 auto 20px;
+      width: max-content;
+      max-width: calc(100% - 24px);
+      transform: none;
+    }
+    .main { padding: 14px 14px 12px; }
+    .menu-items, .menu-meta { display: none; }
+    .pane-head h1 { font-size: 18px; }
+    .q-title { max-width: 116px; }
+    .list-foot .hint { display: none; }
+    .focus-time { font-size: 40px; }
+    .demo-bar .demo-label { display: none; }
+    .demo-hint { display: none; }
+  }
+
+  @media (max-width: 460px) {
+    .menu-tabs { display: none; }
+    .queue-list { gap: 5px; }
+    .queue-card { flex: 1 1 100%; }
+    .q-title { max-width: none; flex: 1; }
+    .focus-task { min-height: 0; }
+    .task-side { min-width: 64px; }
+    .row-action { height: 20px; padding: 0 6px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<header class="menu-bar">
+  <span class="menu-brand">
+    <img src="../assets/icons/planner.png" alt="">
+    Random Notes
+  </span>
+  <div class="menu-items" aria-hidden="true">
+    <span class="menu-item">Planner</span>
+    <span class="menu-item">File</span>
+    <span class="menu-item">Edit</span>
+    <span class="menu-item">View</span>
+  </div>
+  <nav class="menu-tabs" aria-label="App sections">
+    <button class="menu-tab active" type="button">Planner</button>
+    <button class="menu-tab" type="button">Notes</button>
+    <button class="menu-tab" type="button">README.txt</button>
+  </nav>
+  <div class="menu-tail">
+    <button class="menu-pill" id="menu-pill" type="button" hidden>
+      <span class="dot" aria-hidden="true"></span>
+      <time id="pill-time">25:00</time>
+      <span id="pill-phase">Focus</span>
+    </button>
+    <span class="menu-meta">All saved locally</span>
+    <span class="menu-meta" id="menu-clock">Thu 12 Nov · 10:42</span>
+  </div>
+</header>
+
+<main class="stage">
+  <!-- ----------------------------------------------------------- planner -->
+  <section class="window planner" aria-label="Planner">
+    <div class="titlebar">
+      <div class="traffic" aria-hidden="true">
+        <span class="light close"></span>
+        <span class="light min"></span>
+        <span class="light max"></span>
+      </div>
+      <span class="title"><span class="title-icon" aria-hidden="true"></span>Planner</span>
+      <span class="title-meta">Local</span>
+    </div>
+
+    <div class="planner-body">
+      <aside class="sidebar" aria-label="Planner navigation">
+        <p class="side-label">Plan</p>
+        <button class="side-row active" type="button">
+          <span class="side-icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="3.1"/><path d="M8 1.6v1.4M8 13v1.4M1.6 8H3M13 8h1.4M3.5 3.5l1 1M11.5 11.5l1 1M3.5 12.5l1-1M11.5 4.5l1-1"/></svg></span>
+          Today
+          <span class="side-count" id="side-today">0</span>
+        </button>
+        <button class="side-row" type="button">
+          <span class="side-icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.2" y="3.4" width="11.6" height="9.8" rx="1.7"/><path d="M2.2 6.6h11.6M5.4 2.2v2.2M10.6 2.2v2.2M5.4 9.2h1.6M9 9.2h1.6M5.4 11.4h1.6"/></svg></span>
+          Week
+        </button>
+        <button class="side-row" type="button">
+          <span class="side-icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.2" y="3.4" width="11.6" height="9.8" rx="1.7"/><path d="M2.2 6.6h11.6M5.4 2.2v2.2M10.6 2.2v2.2"/></svg></span>
+          Month
+        </button>
+
+        <p class="side-label">Places</p>
+        <button class="side-row" type="button">
+          <span class="side-icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M4 4.3h8M4 8h8M4 11.7h5.2"/></svg></span>
+          Notes
+          <span class="side-count">7</span>
+        </button>
+        <button class="side-row" type="button">
+          <span class="side-icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2.8h7.4v10.4H4.9A1.9 1.9 0 0 1 3 11.3V4.7a1.9 1.9 0 0 1 1.9-1.9z"/><path d="M4 11.1h7.4"/></svg></span>
+          Logbook
+        </button>
+
+        <p class="side-label">Focus</p>
+        <button class="side-row" type="button" id="side-focus">
+          <span class="side-icon" aria-hidden="true"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8.6" r="5.1"/><path d="M8 5.9v3l2 1.2M6.3 2h3.4"/></svg></span>
+          Timer
+          <span class="side-count" id="side-time">Off</span>
+        </button>
+      </aside>
+
+      <section class="main" aria-label="Today">
+        <header class="pane-head">
+          <div>
+            <h1>Today</h1>
+            <p class="pane-sub" id="pane-sub">Thursday, November 12</p>
+          </div>
+          <button class="new-btn" type="button" id="new-btn"><span class="plus" aria-hidden="true">+</span>New task</button>
+        </header>
+
+        <section class="queue" id="queue" aria-label="Today's focus queue">
+          <div class="queue-head">
+            <strong>Today's focus</strong>
+            <span class="queue-summary" id="queue-summary"></span>
+          </div>
+          <div class="queue-list" id="queue-list"></div>
+        </section>
+
+        <ul class="task-list" id="task-list" aria-label="Tasks"></ul>
+
+        <div class="list-foot">
+          <span class="hint" id="hint">Hover a task, then choose + Queue.</span>
+          <span class="open-count" id="open-count">0 open</span>
+        </div>
+
+        <form class="quick" id="quick" aria-label="Quick add">
+          <span class="plus" aria-hidden="true">+</span>
+          <input id="quick-input" type="text" maxlength="120" placeholder="Add a task… (Enter to save)" autocomplete="off">
+          <span class="kbd" aria-hidden="true">↵</span>
+        </form>
+      </section>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------- focus -->
+  <section class="window focus" id="focus" aria-label="Focus session">
+    <div class="titlebar">
+      <div class="traffic" aria-hidden="true">
+        <span class="light close"></span>
+        <span class="light min"></span>
+        <span class="light max"></span>
+      </div>
+      <span class="title">
+        <span class="title-icon" style="border-radius:50%;background:none;display:grid;place-items:center;color:var(--accent-press)" aria-hidden="true">
+          <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8.6" r="5.1"/><path d="M8 5.9v3l2 1.2M6.3 2h3.4"/></svg>
+        </span>
+        Focus
+      </span>
+      <span class="title-meta">Sprint</span>
+    </div>
+
+    <div class="focus-body">
+      <div class="focus-top">
+        <span class="phase ready" id="phase">Ready</span>
+        <span class="focus-next" id="focus-next">25 min sprint</span>
+      </div>
+
+      <div class="focus-time is-idle" id="focus-time">25:00</div>
+      <p class="focus-task" id="focus-task">Queue a task to begin.</p>
+
+      <div class="focus-bar"><span class="focus-fill" id="focus-fill"></span></div>
+      <div class="focus-meta">
+        <span class="focus-mins" id="focus-mins">0 min on this task</span>
+        <span class="focus-goal" id="focus-goal">43 / 60 min today</span>
+      </div>
+
+      <div class="focus-actions">
+        <button class="btn primary" id="start" type="button">Start focus</button>
+        <button class="btn" id="pause" type="button" hidden>Pause</button>
+        <button class="btn" id="finish" type="button" hidden>Finish sprint now</button>
+        <button class="btn" id="skip" type="button" hidden>Skip break</button>
+        <button class="btn" id="end" type="button" hidden>End</button>
+      </div>
+
+      <div class="offer" id="offer" hidden>
+        <p class="offer-copy" id="offer-copy"></p>
+        <div class="focus-actions">
+          <button class="btn primary" id="offer-break" type="button">5 min break</button>
+          <button class="btn" id="offer-keep" type="button">Keep going</button>
+          <button class="btn" id="offer-done" type="button">Done for now</button>
+        </div>
+      </div>
+
+      <div class="focus-settings">
+        <div class="setting">
+          <span class="setting-label">Focus<span>one sprint</span></span>
+          <span class="stepper" role="group" aria-label="Focus length">
+            <button type="button" data-step="focus" data-delta="-5" aria-label="Shorter sprint">−</button>
+            <output id="focus-value">25 min</output>
+            <button type="button" data-step="focus" data-delta="5" aria-label="Longer sprint">+</button>
+          </span>
+        </div>
+        <div class="setting">
+          <span class="setting-label">Break<span>optional</span></span>
+          <span class="stepper" role="group" aria-label="Break length">
+            <button type="button" data-step="break" data-delta="-1" aria-label="Shorter break">−</button>
+            <output id="break-value">5 min</output>
+            <button type="button" data-step="break" data-delta="1" aria-label="Longer break">+</button>
+          </span>
+        </div>
+        <div class="setting">
+          <span class="setting-label">Goal<span>focused time</span></span>
+          <span class="stepper" role="group" aria-label="Daily goal">
+            <button type="button" data-step="goal" data-delta="-15" aria-label="Lower daily goal">−</button>
+            <output id="goal-value">1 hour</output>
+            <button type="button" data-step="goal" data-delta="15" aria-label="Raise daily goal">+</button>
+          </span>
+        </div>
+      </div>
+
+      <p class="focus-foot" id="focus-foot">The queue sets the order. Nothing starts on its own — you choose when to begin.</p>
+    </div>
+  </section>
+</main>
+
+<div class="demo-bar" role="group" aria-label="Prototype controls">
+  <span class="demo-label">Demo speed</span>
+  <span class="seg" id="speed">
+    <button type="button" data-speed="1" class="on" aria-pressed="true">1×</button>
+    <button type="button" data-speed="20" aria-pressed="false">20×</button>
+    <button type="button" data-speed="60" aria-pressed="false">60×</button>
+  </span>
+  <button class="demo-reset" id="reset" type="button">Reset demo</button>
+  <span class="demo-hint">Refresh mid-sprint to test resume</span>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="sr-only" id="announce" aria-live="polite"></div>
+
+<script>
+/* ==========================================================================
+   Prototype knobs — edit this block to try different content and timings.
+   ========================================================================== */
+const DEMO = {
+  focusMin: 25,
+  breakMin: 5,
+  goalMin: 60,
+  dayMin: 43,
+  tasks: [
+    { id: "t1", title: "Draft Q4 report",               meta: "Today · due 4:00 PM", focusedMin: 18 },
+    { id: "t2", title: "Reply to Anita about the deck", meta: "Today",               focusedMin: 0 },
+    { id: "t3", title: "Book studio B for the shoot",   meta: "No date",             focusedMin: 0 },
+    { id: "t4", title: "Prep standup notes for Monday", meta: "Today",               focusedMin: 0 },
+    { id: "t5", title: "Send invoice #1042",            meta: "Done · Nov 5",        focusedMin: 25, done: true }
+  ],
+  queue: ["t1", "t2"]
+};
+
+const STORE_KEY = "random-notes-focus-demo-v1";
+/* ========================================================================== */
+
+const $ = id => document.getElementById(id);
+
+const state = {
+  speed: 1,
+  focusMin: DEMO.focusMin,
+  breakMin: DEMO.breakMin,
+  goalMin: DEMO.goalMin,
+  dayMin: DEMO.dayMin,
+  tasks: [],
+  queue: [],
+  session: freshSession()
+};
+
+function freshSession() {
+  return {
+    phase: "idle",       // idle | focus | break | offer
+    offer: null,         // sprint | break
+    taskId: null,
+    running: false,
+    endsAt: 0,
+    remainingMs: 0,
+    totalMs: 0,
+    loggedMin: 0
+  };
+}
+
+function defaultState() {
+  state.speed = 1;
+  state.focusMin = DEMO.focusMin;
+  state.breakMin = DEMO.breakMin;
+  state.goalMin = DEMO.goalMin;
+  state.dayMin = DEMO.dayMin;
+  state.tasks = DEMO.tasks.map(task => ({ focusedMin: 0, done: false, ...task }));
+  state.queue = DEMO.queue.slice();
+  state.session = freshSession();
+}
+
+function resetDemo() {
+  defaultState();
+  try { localStorage.removeItem(STORE_KEY); } catch {}
+  setSpeedUi();
+  renderAll();
+  setStatus("Demo reset.");
+}
+
+/* --------------------------------------------------------------- helpers */
+const taskById = id => state.tasks.find(task => task.id === id) || null;
+const openTasks = () => state.tasks.filter(task => !task.done);
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const pad = value => String(value).padStart(2, "0");
+
+function fmtTimer(ms) {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(total / 60)}:${pad(total % 60)}`;
+}
+
+function fmtMinutes(minutes) {
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  if (!rest) return `${hours} hour${hours === 1 ? "" : "s"}`;
+  return `${hours} h ${rest} min`;
+}
+
+function fmtClock(ms) {
+  if (!ms) return "";
+  return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(ms));
+}
+
+function esc(value) {
+  return String(value).replace(/[&<>"']/g, character => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[character]));
+}
+
+function remainingVirtual() {
+  const session = state.session;
+  if (!session.running) return Math.max(0, session.remainingMs);
+  return Math.max(0, (session.endsAt - Date.now()) * state.speed);
+}
+
+function firstQueuedTask() {
+  return state.queue.map(taskById).find(task => task && !task.done) || null;
+}
+
+function queueOpenCount() {
+  return state.queue.filter(id => {
+    const task = taskById(id);
+    return task && !task.done;
+  }).length;
+}
+
+function activeTask() {
+  return taskById(state.session.taskId);
+}
+
+/* ------------------------------------------------------------ persistence */
+function save() {
+  try {
+    localStorage.setItem(STORE_KEY, JSON.stringify({
+      focusMin: state.focusMin,
+      breakMin: state.breakMin,
+      goalMin: state.goalMin,
+      speed: state.speed,
+      dayMin: state.dayMin,
+      tasks: state.tasks,
+      queue: state.queue,
+      session: state.session
+    }));
+  } catch {}
+}
+
+function restore() {
+  let raw = null;
+  try { raw = localStorage.getItem(STORE_KEY); } catch { return false; }
+  if (!raw) return false;
+
+  let data = null;
+  try { data = JSON.parse(raw); } catch { return false; }
+  if (!data || !Array.isArray(data.tasks) || !Array.isArray(data.queue)) return false;
+
+  state.focusMin = clamp(Number(data.focusMin) || DEMO.focusMin, 5, 90);
+  state.breakMin = clamp(Number(data.breakMin) || DEMO.breakMin, 1, 30);
+  state.goalMin = clamp(Number(data.goalMin) || DEMO.goalMin, 15, 180);
+  state.speed = [1, 20, 60].includes(Number(data.speed)) ? Number(data.speed) : 1;
+  state.dayMin = Math.max(0, Math.round(Number(data.dayMin) || 0));
+
+  state.tasks = data.tasks
+    .filter(task => task && typeof task.title === "string")
+    .map(task => ({
+      id: String(task.id || `t${Math.random().toString(36).slice(2, 8)}`),
+      title: String(task.title),
+      meta: typeof task.meta === "string" ? task.meta : "No date",
+      done: !!task.done,
+      focusedMin: Math.max(0, Math.round(Number(task.focusedMin) || 0))
+    }));
+
+  const ids = new Set(state.tasks.map(task => task.id));
+  state.queue = data.queue.map(String).filter(id => ids.has(id));
+
+  const saved = data.session && typeof data.session === "object" ? data.session : {};
+  const phase = ["idle", "focus", "break", "offer"].includes(saved.phase) ? saved.phase : "idle";
+
+  state.session = {
+    phase,
+    offer: saved.offer === "sprint" || saved.offer === "break" ? saved.offer : null,
+    taskId: ids.has(String(saved.taskId)) ? String(saved.taskId) : null,
+    running: !!saved.running,
+    endsAt: Number(saved.endsAt) || 0,
+    remainingMs: Math.max(0, Number(saved.remainingMs) || 0),
+    totalMs: Math.max(0, Number(saved.totalMs) || 0),
+    loggedMin: Math.max(0, Math.round(Number(saved.loggedMin) || 0))
+  };
+
+  if (state.session.phase === "idle" || !state.session.totalMs) {
+    state.session = freshSession();
+  } else if (state.session.phase === "offer" && !state.session.offer) {
+    state.session.offer = "sprint";
+  }
+
+  if (state.session.phase === "focus" && state.session.running && !state.session.endsAt) {
+    state.session.running = false;
+  }
+
+  return true;
+}
+
+function resumeSession() {
+  const session = state.session;
+  if (session.phase === "idle") return;
+
+  if (session.phase === "focus" && session.running && Date.now() >= session.endsAt) {
+    finishFocus();
+    setStatus("A sprint finished while you were away.");
+    return;
+  }
+
+  if (session.phase === "break" && session.running && Date.now() >= session.endsAt) {
+    openOffer("break");
+    setStatus("Break finished while you were away.");
+    return;
+  }
+
+  if ((session.phase === "focus" || session.phase === "break") && session.taskId) {
+    setStatus(session.running ? "Picked up where you left off." : "Paused sprint restored.");
+  }
+}
+
+/* ----------------------------------------------------------- transitions */
+function beginFocus(taskId = null) {
+  let task = taskId ? taskById(taskId) : null;
+  if (!task || task.done) task = firstQueuedTask();
+
+  if (!task) {
+    setStatus(state.queue.length ? "That task is already done." : "Queue a task first.");
+    return;
+  }
+
+  if (!state.queue.includes(task.id)) state.queue.push(task.id);
+
+  const session = state.session;
+  session.phase = "focus";
+  session.offer = null;
+  session.taskId = task.id;
+  session.running = true;
+  session.totalMs = Math.max(60000, Math.round(state.focusMin * 60000));
+  session.remainingMs = session.totalMs;
+  session.endsAt = Date.now() + session.totalMs / state.speed;
+  session.loggedMin = 0;
+  lastTickSecond = -1;
+  save();
+  renderAll();
+  setStatus(`Focusing on ${task.title}.`);
+}
+
+function pauseFocus() {
+  const session = state.session;
+  if (!session.running) return;
+  session.remainingMs = remainingVirtual();
+  session.running = false;
+  session.endsAt = 0;
+  save();
+  renderAll();
+  setStatus("Paused. Nothing is counting down.");
+}
+
+function resumeFocus() {
+  const session = state.session;
+  if (session.running || (session.phase !== "focus" && session.phase !== "break")) return;
+  if (!session.remainingMs) session.remainingMs = session.totalMs;
+  session.endsAt = Date.now() + session.remainingMs / state.speed;
+  session.running = true;
+  save();
+  renderAll();
+  setStatus("Resumed.");
+}
+
+function logFocus(minutes) {
+  const amount = Math.max(0, Math.round(minutes));
+  if (!amount) return 0;
+  state.dayMin += amount;
+  const task = activeTask();
+  if (task) task.focusedMin += amount;
+  return amount;
+}
+
+function finishFocus() {
+  const session = state.session;
+  if (session.phase !== "focus") return;
+  const elapsed = Math.max(0, session.totalMs - remainingVirtual());
+  const minutes = Math.max(1, Math.round(elapsed / 60000));
+  logFocus(minutes);
+  openOffer("sprint", minutes);
+  setStatus(`${minutes} min logged.`);
+}
+
+function openOffer(reason, minutes = null) {
+  const session = state.session;
+  session.phase = "offer";
+  session.offer = reason;
+  session.running = false;
+  session.endsAt = 0;
+  session.remainingMs = session.totalMs || state.focusMin * 60000;
+  if (minutes !== null) session.loggedMin = minutes;
+  save();
+  renderAll();
+}
+
+function takeBreak() {
+  const session = state.session;
+  session.phase = "break";
+  session.offer = null;
+  session.running = true;
+  session.totalMs = Math.max(60000, Math.round(state.breakMin * 60000));
+  session.remainingMs = session.totalMs;
+  session.endsAt = Date.now() + session.totalMs / state.speed;
+  session.loggedMin = 0;
+  lastTickSecond = -1;
+  save();
+  renderAll();
+  setStatus("Break started.");
+}
+
+function endFocus() {
+  const session = state.session;
+  session.phase = "idle";
+  session.offer = null;
+  session.taskId = null;
+  session.running = false;
+  session.endsAt = 0;
+  session.remainingMs = 0;
+  session.totalMs = 0;
+  session.loggedMin = 0;
+  save();
+  renderAll();
+  setStatus("Done for now. Minutes are saved.");
+}
+
+function settle(now) {
+  const session = state.session;
+  if (!session.running || now < session.endsAt) return;
+
+  if (session.phase === "focus") {
+    finishFocus();
+  } else if (session.phase === "break") {
+    openOffer("break");
+    setStatus("Break over.");
+  }
+}
+
+/* -------------------------------------------------------------- actions */
+function toggleQueue(taskId) {
+  if (state.queue.includes(taskId)) {
+    removeFromQueue(taskId);
+    return;
+  }
+  const task = taskById(taskId);
+  if (!task || task.done) return;
+  state.queue.push(taskId);
+  renderAll();
+  setStatus(`${task.title} queued.`);
+}
+
+function removeFromQueue(taskId) {
+  state.queue = state.queue.filter(id => id !== taskId);
+  if (state.session.taskId === taskId && state.session.phase !== "idle") {
+    endFocus();
+    setStatus("Removed from the queue · focus stopped.");
+  } else {
+    renderAll();
+  }
+}
+
+function moveQueue(taskId, direction) {
+  const index = state.queue.indexOf(taskId);
+  const target = index + direction;
+  if (index < 0 || target < 0 || target >= state.queue.length) return;
+  [state.queue[index], state.queue[target]] = [state.queue[target], state.queue[index]];
+  renderAll();
+}
+
+function toggleDone(taskId, done) {
+  const task = taskById(taskId);
+  if (!task) return;
+  task.done = done;
+  if (done) {
+    state.queue = state.queue.filter(id => id !== taskId);
+    if (state.session.taskId === taskId && state.session.phase !== "idle") endFocus();
+  }
+  save();
+  renderAll();
+  setStatus(done ? `Checked off ${task.title}.` : `${task.title} reopened.`);
+}
+
+function addTask(title) {
+  const clean = title.trim();
+  if (!clean) return;
+  state.tasks.unshift({ id: `t${Date.now()}`, title: clean, meta: "No date", done: false, focusedMin: 0 });
+  renderAll();
+  setStatus("Task added.");
+}
+
+/* -------------------------------------------------------------- steppers */
+function stepSetting(kind, delta) {
+  if (kind === "focus") {
+    state.focusMin = clamp(state.focusMin + delta, 5, 90);
+    if (state.session.phase === "focus" || state.session.phase === "break") {
+      setStatus("New sprint length applies to the next sprint.");
+    }
+  } else if (kind === "break") {
+    state.breakMin = clamp(state.breakMin + delta, 1, 30);
+    if (state.session.phase === "break") {
+      setStatus("New break length applies to the next break.");
+    }
+  } else if (kind === "goal") {
+    state.goalMin = clamp(state.goalMin + delta, 15, 180);
+  }
+  renderAll();
+}
+
+/* ----------------------------------------------------------------- render */
+function renderAll() {
+  renderTasks();
+  renderQueue();
+  renderFocus();
+  renderSettings();
+  save();
+}
+
+function renderTasks() {
+  const session = state.session;
+
+  $("task-list").innerHTML = state.tasks.map(task => {
+    const queued = state.queue.indexOf(task.id);
+    const active = session.taskId === task.id && session.phase !== "idle";
+    const side = task.done
+      ? ""
+      : active && session.phase === "focus"
+        ? `<span class="queue-tag">Focusing</span>`
+        : queued >= 0
+          ? `<span class="queue-tag">${queued + 1} in queue</span>`
+          : `<button class="row-action" type="button" data-queue="${task.id}" aria-label="Add ${esc(task.title)} to the focus queue">+ Queue</button>`;
+
+    const meta = task.focusedMin > 0
+      ? `${task.meta} · ${task.focusedMin} min focused`
+      : task.meta;
+
+    return `<li class="task-row${task.done ? " done" : ""}${active ? " is-active" : ""}" data-id="${task.id}">
+      <input class="task-check" type="checkbox" ${task.done ? "checked" : ""} aria-label="Mark ${esc(task.title)} done">
+      <span class="task-main">
+        <span class="task-title">${esc(task.title)}</span>
+        <span class="task-meta">${esc(meta)}</span>
+      </span>
+      <span class="task-side">${side}</span>
+    </li>`;
+  }).join("");
+
+  const open = openTasks().length;
+  $("open-count").textContent = `${open} open`;
+  $("side-today").textContent = String(open);
+}
+
+function renderQueue() {
+  $("queue-summary").textContent = state.queue.length
+    ? `${state.queue.length} task${state.queue.length === 1 ? "" : "s"} in order`
+    : "Empty";
+
+  if (!state.queue.length) {
+    $("queue-list").innerHTML = `<span class="queue-empty">Hover a task below and choose <strong>+ Queue</strong>. The queue is just the order — nothing starts on its own.</span>`;
+    return;
+  }
+
+  const session = state.session;
+
+  $("queue-list").innerHTML = state.queue.map((id, index) => {
+    const task = taskById(id);
+    if (!task) return "";
+    const isCurrent = session.taskId === id && session.phase !== "idle" && !task.done;
+    const minutes = task.focusedMin > 0 ? `${task.focusedMin} min` : "";
+
+    return `<div class="queue-card${isCurrent ? " current" : ""}${task.done ? " done" : ""}">
+      <button class="q-start" type="button" data-qstart="${id}" aria-label="Start focus on ${esc(task.title)}"${task.done ? " disabled" : ""}>▶</button>
+      <span class="q-order">${index + 1}.</span>
+      <span class="q-title" title="${esc(task.title)}">${esc(task.title)}</span>
+      ${minutes ? `<span class="q-meta">${minutes}</span>` : ""}
+      <span class="q-tools">
+        <button class="q-tool" type="button" data-move="${id}" data-dir="-1" aria-label="Move ${esc(task.title)} up"${index === 0 ? " disabled" : ""}>↑</button>
+        <button class="q-tool" type="button" data-move="${id}" data-dir="1" aria-label="Move ${esc(task.title)} down"${index === state.queue.length - 1 ? " disabled" : ""}>↓</button>
+        <button class="q-tool remove" type="button" data-remove="${id}" aria-label="Remove ${esc(task.title)} from the queue">×</button>
+      </span>
+    </div>`;
+  }).join("");
+}
+
+function renderFocus() {
+  const session = state.session;
+  const task = activeTask();
+  const phase = session.phase;
+  const running = session.running;
+  const isOffer = phase === "offer";
+  const remaining = phase === "idle"
+    ? state.focusMin * 60000
+    : running ? remainingVirtual() : Math.max(0, session.remainingMs);
+
+  $("focus").classList.toggle("is-break", phase === "break");
+
+  const pill = $("phase");
+  pill.className = `phase${phase === "idle" ? " ready" : phase === "break" ? " break" : ""}`;
+  pill.textContent = phase === "idle"
+    ? "Ready"
+    : phase === "focus"
+      ? "Focus"
+      : phase === "break"
+        ? "Break"
+        : session.offer === "break" ? "Break over" : "Sprint done";
+
+  const time = $("focus-time");
+  time.textContent = isOffer ? (session.offer === "break" ? "Ready" : "Done") : fmtTimer(remaining);
+  time.classList.toggle("is-idle", phase === "idle" || isOffer);
+
+  const upNext = firstQueuedTask();
+  $("focus-task").innerHTML = phase === "focus" && task
+    ? `<strong>${esc(task.title)}</strong>`
+    : phase === "break"
+      ? `Step away.${task ? ` <strong>${esc(task.title)}</strong> is waiting.` : ""}`
+      : isOffer
+        ? session.offer === "break"
+          ? task ? `<strong>${esc(task.title)}</strong> is still open.` : "Ready when you are."
+          : task ? `<strong>${esc(task.title)}</strong>` : "Sprint finished."
+        : upNext
+          ? `Up next: <strong>${esc(upNext.title)}</strong>`
+          : "Queue a task to begin.";
+
+  const goalPct = clamp(state.dayMin / Math.max(1, state.goalMin), 0, 1) * 100;
+  $("focus-fill").style.width = `${goalPct}%`;
+  $("focus-mins").textContent = task ? `${task.focusedMin} min on this task` : `${openTasks().length} open`;
+  $("focus-goal").textContent = `${state.dayMin} / ${state.goalMin} min today`;
+  $("focus-goal").title = `${Math.round(goalPct)}% of the daily goal`;
+
+  $("focus-next").textContent = phase === "idle"
+    ? (upNext ? `${queueOpenCount()} queued` : `${state.focusMin} min sprint`)
+    : phase === "focus"
+      ? (running ? `ends ${fmtClock(session.endsAt)}` : "paused")
+      : phase === "break"
+        ? (running ? `back at ${fmtClock(session.endsAt)}` : "paused")
+        : "nothing running";
+
+  const idle = phase === "idle";
+  $("start").hidden = !idle;
+  $("start").disabled = !upNext;
+  $("start").title = upNext ? "" : "Queue a task first";
+  $("pause").hidden = idle || isOffer;
+  $("finish").hidden = phase !== "focus";
+  $("skip").hidden = phase !== "break";
+  $("end").hidden = idle || isOffer;
+  $("pause").textContent = running ? "Pause" : "Resume";
+
+  $("offer").hidden = !isOffer;
+  if (isOffer) {
+    const reason = session.offer;
+    $("offer-copy").textContent = reason === "break"
+      ? "Break over. Back to it, or stop for now?"
+      : `${session.loggedMin} min logged · what next?`;
+    $("offer-break").textContent = reason === "break" ? "Back to work" : `${state.breakMin} min break`;
+    $("offer-keep").hidden = reason === "break";
+  } else {
+    $("offer-copy").textContent = "";
+  }
+
+  $("focus-foot").textContent = phase === "idle"
+    ? "The queue sets the order. Nothing starts on its own — you choose when to begin."
+    : phase === "focus"
+      ? "The timer stops at the end. Then you choose: break, keep going, or done for now."
+      : phase === "break"
+        ? "Breaks are optional. The task stays open until you check it off."
+        : session.offer === "break"
+          ? "Back to work when you're ready."
+          : "Minutes are logged to the task and to today. Nothing is checked off automatically.";
+
+  $("side-time").textContent = phase === "idle" ? "Off" : isOffer ? "Done" : fmtTimer(remaining);
+
+  const menuPill = $("menu-pill");
+  menuPill.hidden = idle;
+  menuPill.classList.toggle("is-break", phase === "break");
+  if (!idle) {
+    $("pill-time").textContent = isOffer ? "Done" : fmtTimer(remaining);
+    $("pill-phase").textContent = phase === "focus"
+      ? (task ? task.title : "Focus")
+      : phase === "break"
+        ? "Break"
+        : session.offer === "break" ? "Break over" : "Sprint done";
+  }
+}
+
+function renderSettings() {
+  $("focus-value").textContent = `${state.focusMin} min`;
+  $("break-value").textContent = `${state.breakMin} min`;
+  $("goal-value").textContent = fmtMinutes(state.goalMin);
+  document.querySelectorAll("[data-step]").forEach(button => {
+    const kind = button.dataset.step;
+    const delta = Number(button.dataset.delta);
+    const value = kind === "focus" ? state.focusMin : kind === "break" ? state.breakMin : state.goalMin;
+    const min = kind === "focus" ? 5 : kind === "break" ? 1 : 15;
+    const max = kind === "focus" ? 90 : kind === "break" ? 30 : 180;
+    button.disabled = delta < 0 ? value <= min : value >= max;
+  });
+}
+
+/* ---------------------------------------------------------------- status */
+let toastTimer = 0;
+function setStatus(message) {
+  const toast = $("toast");
+  toast.textContent = message;
+  toast.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove("show"), 2400);
+  $("announce").textContent = message;
+}
+
+/* ------------------------------------------------------------------ wire */
+$("start").addEventListener("click", () => beginFocus());
+$("pause").addEventListener("click", () => {
+  if (state.session.running) pauseFocus();
+  else resumeFocus();
+});
+$("finish").addEventListener("click", finishFocus);
+$("skip").addEventListener("click", () => {
+  openOffer("break");
+  setStatus("Break skipped.");
+});
+$("end").addEventListener("click", endFocus);
+
+$("offer-break").addEventListener("click", () => {
+  if (state.session.offer === "break") beginFocus(state.session.taskId);
+  else takeBreak();
+});
+$("offer-keep").addEventListener("click", () => beginFocus(state.session.taskId));
+$("offer-done").addEventListener("click", endFocus);
+
+$("queue-list").addEventListener("click", event => {
+  const start = event.target.closest("[data-qstart]");
+  if (start) { beginFocus(start.dataset.qstart); return; }
+  const move = event.target.closest("[data-move]");
+  if (move) { moveQueue(move.dataset.move, Number(move.dataset.dir)); return; }
+  const remove = event.target.closest("[data-remove]");
+  if (remove) removeFromQueue(remove.dataset.remove);
+});
+
+$("task-list").addEventListener("click", event => {
+  const action = event.target.closest("[data-queue]");
+  if (action) toggleQueue(action.dataset.queue);
+});
+
+$("task-list").addEventListener("change", event => {
+  const check = event.target.closest(".task-check");
+  if (!check) return;
+  const row = check.closest(".task-row");
+  toggleDone(row.dataset.id, check.checked);
+});
+
+$("quick").addEventListener("submit", event => {
+  event.preventDefault();
+  const input = $("quick-input");
+  if (!input.value.trim()) return;
+  addTask(input.value);
+  input.value = "";
+  input.focus();
+});
+
+$("new-btn").addEventListener("click", () => {
+  $("quick-input").focus();
+  $("quick-input").scrollIntoView({ block: "nearest" });
+});
+
+document.querySelectorAll("[data-step]").forEach(button => {
+  button.addEventListener("click", () => {
+    stepSetting(button.dataset.step, Number(button.dataset.delta));
+  });
+});
+
+$("speed").addEventListener("click", event => {
+  const button = event.target.closest("[data-speed]");
+  if (!button) return;
+  setSpeed(Number(button.dataset.speed));
+});
+
+function setSpeed(speed) {
+  if (speed === state.speed) return;
+  const virtual = state.session.running ? remainingVirtual() : 0;
+  state.speed = speed;
+  if (state.session.running) state.session.endsAt = Date.now() + virtual / speed;
+  setSpeedUi();
+  renderFocus();
+  save();
+  setStatus(speed === 1 ? "Real time." : `Demo speed ×${speed}.`);
+}
+
+function setSpeedUi() {
+  document.querySelectorAll("#speed [data-speed]").forEach(button => {
+    const on = Number(button.dataset.speed) === state.speed;
+    button.classList.toggle("on", on);
+    button.setAttribute("aria-pressed", String(on));
+  });
+}
+
+$("reset").addEventListener("click", resetDemo);
+
+$("side-focus").addEventListener("click", revealFocus);
+$("menu-pill").addEventListener("click", revealFocus);
+
+function revealFocus() {
+  $("focus").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  $("focus").animate(
+    [{ boxShadow: "0 0 0 3px rgba(109,107,198,.35), var(--window-shadow)" }, { boxShadow: "var(--window-shadow)" }],
+    { duration: 700, easing: "ease-out" }
+  );
+}
+
+/* ----------------------------------------------------------------- clock */
+function tickClock() {
+  const now = new Date();
+  const weekday = new Intl.DateTimeFormat(undefined, { weekday: "short" }).format(now);
+  const month = new Intl.DateTimeFormat(undefined, { month: "short" }).format(now);
+  $("menu-clock").textContent = `${weekday} ${now.getDate()} ${month} · ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  $("pane-sub").textContent = new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric" }).format(now);
+}
+
+/* ------------------------------------------------------------------ loop */
+let lastTickSecond = -1;
+
+function frame() {
+  const session = state.session;
+  if (session.running) {
+    settle(Date.now());
+    if (session.running) {
+      const second = Math.ceil(remainingVirtual() / 1000);
+      if (second !== lastTickSecond) {
+        lastTickSecond = second;
+        renderFocus();
+      }
+    }
+  }
+  requestAnimationFrame(frame);
+}
+
+function boot() {
+  defaultState();
+  const restored = restore();
+  tickClock();
+  setSpeedUi();
+  renderAll();
+  if (restored) resumeSession();
+  requestAnimationFrame(frame);
+  setInterval(tickClock, 30000);
+}
+
+boot();
+</script>
+</body>
+</html>
