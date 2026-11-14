@@ -98,7 +98,7 @@ test("planner UI fits the viewport", async ({ page }) => {
   await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
   await expect(page.getByPlaceholder("Add a task for today")).toHaveCount(0);
   await expect(page.getByLabel("Focus timer")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Export tasks and events to calendar" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export today's tasks and events to calendar" })).toBeVisible();
 
   const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   expect(horizontalOverflow).toBe(false);
@@ -451,19 +451,25 @@ test("keyboard shortcuts jump straight to task and note capture", async ({ page 
   await expect(page.getByRole("textbox", { name: "body" })).toBeFocused();
 });
 
-test("exports dated tasks to a calendar file", async ({ page }) => {
+test("exports only today's tasks to a calendar file", async ({ page }) => {
+  await page.evaluate(tomorrow => {
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "later", type: "task", title: "Tomorrow's task", body: "", dueDate: tomorrow, done: false, createdAt: Date.now() - 1, updatedAt: Date.now() - 1 }
+    ]));
+  }, addDaysValue(1));
+  await page.reload({ waitUntil: "domcontentloaded" });
   await openPlannerSurface(page);
   await page.locator("#task-quick-input").fill("Review calendar sync");
   await page.locator("#task-quick-input").press("Enter");
 
   page.once("dialog", async dialog => {
-    expect(dialog.message()).toContain("Export 1 task to a calendar file?");
+    expect(dialog.message()).toContain("Export 1 task from today to a calendar file?");
     await dialog.accept();
   });
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export tasks and events to calendar" }).click();
+  await page.getByRole("button", { name: "Export today's tasks and events to calendar" }).click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toMatch(/^random-notes-calendar-\d{4}-\d{2}-\d{2}\.ics$/);
+  expect(download.suggestedFilename()).toBe(`random-notes-today-${todayValue()}.ics`);
 
   const path = await download.path();
   const content = require("fs").readFileSync(path, "utf8");
@@ -472,33 +478,8 @@ test("exports dated tasks to a calendar file", async ({ page }) => {
   expect(content).toContain("SUMMARY:Review calendar sync");
   expect(content).toContain(`DTSTART;VALUE=DATE:${todayValue().replaceAll("-", "")}`);
   expect(content).toContain("DESCRIPTION:Status: Open");
+  expect(content).not.toContain("Tomorrow's task");
   expect(content).toContain("END:VCALENDAR");
-});
-
-test("exports one selected task to a calendar file", async ({ page }) => {
-  const today = todayValue();
-  await page.evaluate(dueDate => {
-    localStorage.setItem("random_notes_v1", JSON.stringify([
-      { id: "one", type: "task", title: "Call the venue", body: "", dueDate, planView: "today", done: false, createdAt: Date.now(), updatedAt: Date.now() },
-      { id: "two", type: "task", title: "Buy tape", body: "", dueDate, planView: "today", done: false, createdAt: Date.now() - 1, updatedAt: Date.now() - 1 }
-    ]));
-  }, today);
-  await page.reload({ waitUntil: "domcontentloaded" });
-  await openPlannerSurface(page);
-
-  page.once("dialog", async dialog => {
-    expect(dialog.message()).toContain('Add "Call the venue" to your calendar?');
-    await dialog.accept();
-  });
-  const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Add Call the venue to calendar" }).click();
-  const download = await downloadPromise;
-  expect(download.suggestedFilename()).toBe(`random-notes-call-the-venue-${today}.ics`);
-
-  const path = await download.path();
-  const content = require("fs").readFileSync(path, "utf8");
-  expect(content).toContain("SUMMARY:Call the venue");
-  expect(content).not.toContain("SUMMARY:Buy tape");
 });
 
 test("calendar views place tasks by due date", async ({ page }) => {
@@ -722,7 +703,7 @@ test("quick-adds an event with a start time and duration", async ({ page }) => {
   await expect(page.locator('#calendar-view [data-id]', { hasText: "Shoot day prep" })).toBeVisible();
 });
 
-test("events appear in Today without a task checkbox and ignore the task filter", async ({ page }) => {
+test("events appear in Today without a task checkbox", async ({ page }) => {
   const today = todayValue();
   const tomorrow = addDaysValue(1);
   await page.evaluate(({ today, tomorrow }) => {
@@ -741,12 +722,6 @@ test("events appear in Today without a task checkbox and ignore the task filter"
   await expect(eventCard.locator(".check")).toHaveCount(0);
   await expect(page.locator("#task-list .task-card", { hasText: "Write the brief" }).locator(".check")).toBeVisible();
   await expect(page.getByText("Studio booking", { exact: true })).toBeHidden();
-
-  await page.locator("#task-filter-toggle").click();
-  await page.locator('[data-task-filter="done"]').click();
-  // Scope to the list: the focus dock still offers this open task as up next.
-  await expect(page.locator("#task-list").getByText("Write the brief", { exact: true })).toBeHidden();
-  await expect(eventCard).toBeVisible();
 });
 
 test("editing an event keeps its type and updates the time", async ({ page }) => {
@@ -788,7 +763,7 @@ test("exports a timed event with start and end times", async ({ page }) => {
 
   page.once("dialog", dialog => dialog.accept());
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export tasks and events to calendar" }).click();
+  await page.getByRole("button", { name: "Export today's tasks and events to calendar" }).click();
   const content = require("fs").readFileSync(await (await downloadPromise).path(), "utf8");
 
   expect(content).toContain("SUMMARY:Dentist");
@@ -1266,28 +1241,37 @@ test("edit updates a task in place", async ({ page }) => {
   await expect(page.locator("#toast")).toHaveText("Task updated.");
 });
 
-test("planner filters open and completed tasks", async ({ page }) => {
-  await page.evaluate(today => {
+test("Today keeps today\'s work and hides tasks finished on earlier days", async ({ page }) => {
+  const today = todayValue();
+  const yesterday = addDaysValue(-1);
+  const lastWeek = addDaysValue(-9);
+  await page.evaluate(({ today, yesterday, lastWeek }) => {
     localStorage.setItem("random_notes_v1", JSON.stringify([
-      { id: "one", type: "task", title: "Open task", body: "", dueDate: today, done: false, createdAt: Date.now(), updatedAt: Date.now() },
-      { id: "two", type: "task", title: "Done task", body: "", dueDate: today, done: true, createdAt: Date.now() - 1, updatedAt: Date.now() - 1 }
+      { id: "open", type: "task", title: "Open task", body: "", dueDate: today, done: false, createdAt: Date.now(), updatedAt: Date.now() },
+      { id: "done", type: "task", title: "Done today", body: "", dueDate: today, done: true, createdAt: Date.now() - 1, updatedAt: Date.now() - 1 },
+      { id: "late", type: "task", title: "Late but open", body: "", dueDate: yesterday, done: false, createdAt: Date.now() - 2, updatedAt: Date.now() - 2 },
+      { id: "old-done", type: "task", title: "Done last week", body: "", dueDate: lastWeek, done: true, createdAt: Date.now() - 3, updatedAt: Date.now() - 9 * 86400000 }
     ]));
-  }, todayValue());
+  }, { today, yesterday, lastWeek });
   await page.reload({ waitUntil: "domcontentloaded" });
   await openPlannerSurface(page);
 
-  await expect(page.getByLabel("Saved tasks").getByText("Open task")).toBeVisible();
-  await expect(page.getByLabel("Saved tasks").getByText("Done task")).toBeVisible();
+  const saved = page.getByLabel("Saved tasks");
+  await expect(saved.getByText("Open task")).toBeVisible();
+  await expect(saved.getByText("Late but open")).toBeVisible();
+  await expect(saved.getByText("Done today")).toBeVisible();
+  await expect(saved.getByText("Done last week")).toHaveCount(0);
 
-  await page.getByRole("button", { name: "Task status filter" }).click();
-  await page.getByRole("button", { name: "Open", exact: true }).click();
-  await expect(page.getByLabel("Saved tasks").getByText("Open task")).toBeVisible();
-  await expect(page.getByLabel("Saved tasks").getByText("Done task")).toBeHidden();
+  // A checked task has to read as finished, not just sit behind a filled box.
+  const decoration = await page
+    .locator("#task-list .task-card", { hasText: "Done today" })
+    .locator(".item-title")
+    .evaluate(element => getComputedStyle(element).textDecorationLine);
+  expect(decoration).toBe("line-through");
 
-  await page.getByRole("button", { name: "Task status filter" }).click();
-  await page.getByRole("button", { name: "Done", exact: true }).click();
-  await expect(page.getByLabel("Saved tasks").getByText("Open task")).toBeHidden();
-  await expect(page.getByLabel("Saved tasks").getByText("Done task")).toBeVisible();
+  // There is no status filter any more: Today is the filter.
+  await expect(page.getByRole("button", { name: "Task status filter" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "All", exact: true })).toHaveCount(0);
 });
 
 test("migrates old note and todo entries", async ({ page }) => {
@@ -1868,7 +1852,7 @@ test("today count includes open undated tasks but not completed ones", async ({ 
   await expect(page.locator("#calendar-view").getByRole("button", { name: "Today open" })).toBeVisible();
 });
 
-test("tablists and filter menus support arrow keys", async ({ page }) => {
+test("tablists support arrow keys", async ({ page }) => {
   await openPlannerSurface(page);
   // Opening Planner focuses quick capture on the next frame; let that settle so
   // it cannot steal focus from the tablist mid-test.
@@ -1897,22 +1881,6 @@ test("tablists and filter menus support arrow keys", async ({ page }) => {
     await openTodayView(page);
     await expect(viewSwitch(page, "today")).toHaveClass(/active/);
   }
-
-  const filterToggle = page.getByRole("button", { name: "Task status filter" });
-  const allOption = page.getByRole("button", { name: "All", exact: true });
-  await filterToggle.focus();
-  await page.keyboard.press("ArrowDown");
-  await expect(allOption).toBeFocused();
-  await page.keyboard.press("ArrowDown");
-  const openOption = page.getByRole("button", { name: "Open", exact: true });
-  await expect(openOption).toBeFocused();
-  await page.keyboard.press("ArrowDown");
-  await expect(page.getByRole("button", { name: "Done", exact: true })).toBeFocused();
-  await page.keyboard.press("Home");
-  await expect(allOption).toBeFocused();
-  await page.keyboard.press("Enter");
-  await expect(filterToggle).toHaveAttribute("aria-expanded", "false");
-  await expect(filterToggle).toBeFocused();
 
   // On the mobile/tablet layout the surface switch is a real tablist too.
   if (await page.locator(".surface-switch").isVisible()) {
@@ -2019,12 +1987,7 @@ test("quick capture explains when a new task is not visible", async ({ page }) =
   await page.locator("#task-date").fill("2026-11-20");
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.locator("#toast")).toContainText("will appear in Today");
-
-  await page.getByRole("button", { name: "Task status filter" }).click();
-  await page.getByRole("button", { name: "Done", exact: true }).click();
-  await page.locator("#task-quick-input").fill("Hidden task");
-  await page.locator("#task-quick-input").press("Enter");
-  await expect(page.locator("#toast")).toContainText("Done filter hides it");
+  await expect(page.locator("#task-list").getByText("Future task")).toHaveCount(0);
 });
 
 test("calendar export folds non-ASCII lines at 75 octets", async ({ page }) => {
@@ -2039,7 +2002,7 @@ test("calendar export folds non-ASCII lines at 75 octets", async ({ page }) => {
 
   page.once("dialog", dialog => dialog.accept());
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export tasks and events to calendar" }).click();
+  await page.getByRole("button", { name: "Export today's tasks and events to calendar" }).click();
   const download = await downloadPromise;
   const content = require("fs").readFileSync(await download.path(), "utf8");
   const encoder = new TextEncoder();

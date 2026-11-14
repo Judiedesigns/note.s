@@ -727,8 +727,6 @@ button { cursor: pointer; }
 
 .surface-tab,
 .planner-view-tab,
-.task-filter-toggle,
-.task-filter,
 .calendar-export-btn,
 .note-filter-toggle,
 .note-filter,
@@ -838,7 +836,6 @@ button { cursor: pointer; }
 }
 
 .calendar-export-btn,
-.task-filter-toggle,
 .note-filter-toggle {
   display: inline-grid;
   place-items: center;
@@ -852,12 +849,10 @@ button { cursor: pointer; }
 
 @media (hover: hover) and (pointer: fine) {
   .calendar-export-btn:hover,
-  .task-filter-toggle:hover,
   .note-filter-toggle:hover { background: rgba(0, 0, 0, 0.06); color: var(--ink); }
 }
 
 .calendar-export-btn:active,
-.task-filter-toggle:active,
 .note-filter-toggle:active { transform: scale(0.94); }
 
 .calendar-export-icon {
@@ -870,47 +865,13 @@ button { cursor: pointer; }
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='3.5'/%3E%3Cpath d='M3 10h18M8 3v4M16 3v4'/%3E%3Cpath d='M12 13.5v5m0 0 2-2m-2 2-2-2'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
-.task-filter-menu {
-  position: relative;
-  width: auto;
-}
-
 /* The note popover is absolutely positioned, so its trigger must establish the
    containing block; otherwise it anchors to the notes list far below. */
 .note-filter-menu {
   position: relative;
 }
 
-.task-filter-icon {
-  display: block;
-  width: var(--icon-size);
-  height: var(--icon-size);
-  background-color: currentColor;
-  -webkit-mask-position: center;
-  -webkit-mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  mask-position: center;
-  mask-size: contain;
-  mask-repeat: no-repeat;
-}
-
-.all-icon {
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M4 7h16M4 12h16M4 17h16'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='M4 7h16M4 12h16M4 17h16'/%3E%3C/svg%3E");
-}
-
-.open-icon {
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='1.9'%3E%3Ccircle cx='12' cy='12' r='8'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='1.9'%3E%3Ccircle cx='12' cy='12' r='8'/%3E%3C/svg%3E");
-}
-
-.done-icon {
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='8.5'/%3E%3Cpath d='m8 12.2 2.7 2.8L16 9'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='8.5'/%3E%3Cpath d='m8 12.2 2.7 2.8L16 9'/%3E%3C/svg%3E");
-}
-
 /* Frosted popover menus */
-.task-filter-options,
 .note-filter-options {
   position: absolute;
   top: calc(100% + 6px);
@@ -927,20 +888,17 @@ button { cursor: pointer; }
   box-shadow: var(--shadow-popover);
 }
 
-.task-filter-toggle[aria-expanded="true"] + .task-filter-options,
 .note-filter-toggle[aria-expanded="true"] + .note-filter-options {
   display: grid;
   gap: 1px;
 }
 
 /* Open upward when the window does not have room below the trigger. */
-.task-filter-options.opens-up,
 .note-filter-options.opens-up {
   top: auto;
   bottom: calc(100% + 6px);
 }
 
-.task-filter,
 .note-filter {
   width: 100%;
   min-height: 27px;
@@ -952,11 +910,9 @@ button { cursor: pointer; }
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .task-filter:hover,
   .note-filter:hover { background: var(--accent); color: #fff; }
 }
 
-.task-filter.active,
 .note-filter.active {
   background: var(--accent);
   color: #fff;
@@ -1596,10 +1552,6 @@ button { cursor: pointer; }
 .delete-btn { color: var(--danger); }
 .copy-btn { color: #48484a; }
 
-.task-calendar-btn {
-  color: #111;
-}
-
 .action-icon {
   display: block;
   width: var(--icon-size);
@@ -1611,14 +1563,6 @@ button { cursor: pointer; }
   mask-position: center;
   mask-size: contain;
   mask-repeat: no-repeat;
-}
-
-/* Same monochrome stroke family as Edit and Delete: the old multicolour
-   calendar read as clip-art beside the line icons. The plus matches the
-   header's "export to calendar" glyph so the action reads the same everywhere. */
-.task-calendar-icon {
-  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='3.5'/%3E%3Cpath d='M3 10h18M8 3v4M16 3v4'/%3E%3Cpath d='M12 13.5v5m0 0 2-2m-2 2-2-2'/%3E%3C/svg%3E");
-  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000000' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='3.5'/%3E%3Cpath d='M3 10h18M8 3v4M16 3v4'/%3E%3Cpath d='M12 13.5v5m0 0 2-2m-2 2-2-2'/%3E%3C/svg%3E");
 }
 
 .edit-icon {
@@ -2668,8 +2612,7 @@ body {
 
 .planner-tools { gap: 4px; }
 
-.calendar-export-btn,
-.task-filter-toggle {
+.calendar-export-btn {
   width: var(--icon-hit);
   height: var(--icon-hit);
   border: 1px solid rgba(77, 69, 88, 0.24);
@@ -2679,8 +2622,7 @@ body {
   box-shadow: 0 1px 1px rgba(56, 46, 66, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.85);
 }
 
-.calendar-export-btn:hover,
-.task-filter-toggle:hover {
+.calendar-export-btn:hover {
   background: linear-gradient(180deg, #fff, #f4eef5);
   color: var(--accent-press);
 }
@@ -3127,7 +3069,16 @@ body {
 .item-card:hover { background: rgba(255, 255, 255, 0.78); }
 
 .item-card.done { background: rgba(255, 255, 255, 0.4); }
-.item-card.done .item-title { color: var(--ns-secondary); text-decoration: none; }
+
+/* A checked task has to read as finished at a glance. A later rule used to
+   reset the strike-through to `none`, which left ticked rows looking open. */
+.item-card.done .item-title {
+  color: var(--ns-secondary);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.item-card.done .item-meta { color: var(--muted-2); }
 
 .task-card {
   grid-template-columns: 22px minmax(0, 1fr) max-content auto;
@@ -3562,7 +3513,6 @@ body {
 .readme-text { color: var(--ink-soft); font-size: 11.5px; line-height: 1.7; }
 
 /* Filter popovers */
-.task-filter-options,
 .note-filter-options {
   border: 1px solid rgba(76, 67, 86, 0.24);
   border-radius: 10px;
@@ -3572,11 +3522,8 @@ body {
   box-shadow: var(--shadow-popover);
 }
 
-.task-filter,
 .note-filter { border-radius: 6px; font-size: 12px; font-weight: 400; }
-.task-filter:hover,
 .note-filter:hover { background: var(--accent); color: #fff; }
-.task-filter.active,
 .note-filter.active { background: var(--accent); color: #fff; font-weight: 500; }
 
 .sync-panel {
@@ -3990,7 +3937,6 @@ body {
   .icon-btn,
   .focus-settings-btn,
   .calendar-export-btn,
-  .task-filter-toggle,
   .note-filter-toggle {
     width: var(--icon-hit-touch);
     min-width: var(--icon-hit-touch);
@@ -4002,8 +3948,7 @@ body {
   .settings-icon,
   .side-icon,
   .filter-icon,
-  .calendar-export-icon,
-  .task-filter-icon {
+  .calendar-export-icon {
     width: var(--icon-size-touch);
     height: var(--icon-size-touch);
   }
@@ -4742,7 +4687,6 @@ body {
 
   .surface-tab.active,
   .planner-view-tab.active,
-  .task-filter.active,
   .note-filter.active,
   .side-row.active,
   .calendar-day.is-today,

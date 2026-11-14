@@ -21,7 +21,7 @@
 <meta name="twitter:image" content="bg-2.jpg">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <!-- Bump ?v= whenever styles.css changes so cached copies refresh. -->
-<link rel="stylesheet" href="styles.css?v=ui-20261113b">
+<link rel="stylesheet" href="styles.css?v=ui-20261114">
 </head>
 <body>
 <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -133,19 +133,9 @@
                 <button class="new-item-btn" id="new-item-btn" type="button" aria-label="New task for today">
                   <span class="new-item-plus" aria-hidden="true">+</span><span id="new-item-label">New task</span>
                 </button>
-                <button class="calendar-export-btn" id="calendar-export" type="button" aria-label="Export tasks and events to calendar" title="Export tasks and events to calendar">
+                <button class="calendar-export-btn" id="calendar-export" type="button" aria-label="Export today's tasks and events to calendar" title="Export today's plan">
                   <span class="calendar-export-icon" aria-hidden="true"></span>
                 </button>
-                <div class="task-filter-menu">
-                  <button class="task-filter-toggle" id="task-filter-toggle" type="button" aria-label="Task status filter" aria-expanded="false" aria-haspopup="true" aria-controls="task-filter-options" title="Task status filter">
-                    <span class="task-filter-icon all-icon" aria-hidden="true"></span>
-                  </button>
-                  <div class="task-filter-options" id="task-filter-options" role="group" aria-label="Task status filter">
-                    <button class="task-filter active" type="button" data-task-filter="all" aria-pressed="true">All</button>
-                    <button class="task-filter" type="button" data-task-filter="open" aria-pressed="false">Open</button>
-                    <button class="task-filter" type="button" data-task-filter="done" aria-pressed="false">Done</button>
-                  </div>
-                </div>
               </div>
             </div>
             <section class="focus-dock" id="focus-dock" aria-label="Focus session">
@@ -482,7 +472,6 @@ let activeSurface = "planner";
 let noteQuery = "";
 let noteFilter = "all";
 let visibleNoteLimit = NOTE_PAGE_SIZE;
-let taskFilter = "all";
 let editingTaskId = null;
 let editingNoteId = null;
 let quickEventStart = "";
@@ -537,7 +526,6 @@ const taskTimeInput = document.getElementById("task-time");
 const taskDurationField = document.getElementById("task-duration-field");
 const taskDurationInput = document.getElementById("task-duration");
 const calendarExportButton = document.getElementById("calendar-export");
-const taskFilterToggle = document.getElementById("task-filter-toggle");
 const noteForm = document.getElementById("note-form");
 const noteBodyInput = document.getElementById("note-body");
 const noteSubmitButton = document.getElementById("note-submit");
@@ -616,9 +604,7 @@ const focusGoalValue = document.getElementById("focus-goal-value");
 const focusPill = document.getElementById("focus-pill");
 const focusPillTime = document.getElementById("focus-pill-time");
 const focusPillLabel = document.getElementById("focus-pill-label");
-const taskFilterOptions = document.getElementById("task-filter-options");
 const noteFilterOptions = document.getElementById("note-filter-options");
-const taskFilterButtons = Array.from(document.querySelectorAll(".task-filter"));
 const noteFilterButtons = Array.from(document.querySelectorAll(".note-filter"));
 const surfaceTabs = Array.from(document.querySelectorAll(".surface-tab"));
 const surfaces = Array.from(document.querySelectorAll("[data-surface]"));
@@ -671,7 +657,6 @@ render();
 applyWindowPositions();
 applyIconPositions();
 setActiveSurface();
-setTaskFilter();
 setActiveTab();
 updateMenuClock();
 resumeFocusSession();
@@ -871,23 +856,6 @@ dayPopupAddButton.addEventListener("click", () => {
   startTaskForDate(date);
 });
 
-taskFilterToggle.addEventListener("click", () => {
-  const open = taskFilterToggle.getAttribute("aria-expanded") === "true";
-  setTaskFilterMenuOpen(!open, !open);
-});
-
-taskFilterToggle.addEventListener("keydown", event => {
-  if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
-  event.preventDefault();
-  setTaskFilterMenuOpen(true, true);
-  const options = taskFilterButtons;
-  if (event.key === "ArrowUp" && options.length) options[options.length - 1].focus();
-});
-
-taskFilterOptions.addEventListener("keydown", event => {
-  handleFilterMenuKeys(event, taskFilterButtons, () => setTaskFilterMenuOpen(false), taskFilterToggle);
-});
-
 noteForm.addEventListener("submit", event => {
   event.preventDefault();
   addNote();
@@ -944,10 +912,8 @@ noteFilterButtons.forEach(button => {
 });
 
 document.addEventListener("click", event => {
-  if (event.target.closest(".task-filter-menu")) return;
   if (event.target.closest(".note-filter-menu")) return;
   if (event.target.closest(".sync-menu")) return;
-  setTaskFilterMenuOpen(false);
   setNoteFilterMenuOpen(false);
   setSyncPanelOpen(false);
 });
@@ -1042,16 +1008,6 @@ sideViewButtons.forEach(button => {
 sideOpenButtons.forEach(button => {
   button.addEventListener("click", () => {
     openWindow(button.dataset.sideOpen, true);
-  });
-});
-
-taskFilterButtons.forEach(button => {
-  button.addEventListener("click", () => {
-    taskFilter = button.dataset.taskFilter;
-    setTaskFilter();
-    setTaskFilterMenuOpen(false);
-    render();
-    taskFilterToggle.focus();
   });
 });
 
@@ -1667,9 +1623,6 @@ function describeTaskVisibility(task, baseMessage, verb = "added") {
   const rendered = [...taskList.querySelectorAll("[data-id]"), ...calendarView.querySelectorAll("[data-id]")]
     .some(node => node.dataset.id === task.id);
   if (rendered) return baseMessage;
-  if (taskFilter !== "all") {
-    return `Task ${verb}, but the ${capitalize(taskFilter)} filter hides it.`;
-  }
   if (task.dueDate) {
     const dateLabel = formatDateLabel(task.dueDate);
     return isCalendarView(activeView)
@@ -1736,55 +1689,34 @@ function addNote() {
   noteBodyInput.focus();
 }
 
+// The planner exports one thing: today's plan. Per-row export duplicated
+// this button and turned every task into a four-icon toolbar.
 function exportTasksToCalendar() {
+  const today = toDateInputValue(new Date());
   const entries = items
-    .filter(item => (item.type === "task" || item.type === "event") && item.dueDate && !item.deletedAt)
+    .filter(item => (item.type === "task" || item.type === "event") && item.dueDate === today && !item.deletedAt)
     .sort((a, b) => {
-      const dateSort = String(a.dueDate).localeCompare(String(b.dueDate));
-      if (dateSort) return dateSort;
       return String(a.startTime || "").localeCompare(String(b.startTime || "")) ||
         Number(a.createdAt) - Number(b.createdAt);
     });
 
   if (!entries.length) {
-    showToast("No dated tasks or events to export.");
-    announce("No dated tasks or events to export.");
+    showToast("Nothing planned for today to export.");
+    announce("Nothing planned for today to export.");
     return;
   }
 
   const hasEvents = entries.some(item => item.type === "event");
   const noun = hasEvents ? (entries.length === 1 ? "item" : "items") : (entries.length === 1 ? "task" : "tasks");
-  const confirmed = window.confirm(`Export ${entries.length} ${noun} to a calendar file?`);
+  const confirmed = window.confirm(`Export ${entries.length} ${noun} from today to a calendar file?`);
   if (!confirmed) {
     announce("Calendar export canceled.");
     return;
   }
 
-  downloadCalendarFile(entries, `random-notes-calendar-${toDateInputValue(new Date())}.ics`);
-  const label = hasEvents ? (entries.length === 1 ? "item" : "items") : (entries.length === 1 ? "task" : "tasks");
-  showToast(`Exported ${entries.length} ${label}.`);
+  downloadCalendarFile(entries, `random-notes-today-${today}.ics`);
+  showToast(`Exported ${entries.length} ${noun} from today.`);
   announce("Calendar file exported.");
-}
-
-function exportItemToCalendar(item) {
-  const isEvent = item && item.type === "event";
-  const noun = isEvent ? "event" : "task";
-  if (!item || (item.type !== "task" && item.type !== "event") || !item.dueDate || item.deletedAt) {
-    showToast(`This ${noun} has no date to export.`);
-    announce(`This ${noun} has no date to export.`);
-    return;
-  }
-
-  const confirmed = window.confirm(`Add "${item.title || `Untitled ${noun}`}" to your calendar?`);
-  if (!confirmed) {
-    announce("Calendar export canceled.");
-    return;
-  }
-
-  const date = item.dueDate || toDateInputValue(new Date());
-  downloadCalendarFile([item], `random-notes-${slugifyFilename(item.title || noun)}-${date}.ics`);
-  showToast(`${isEvent ? "Event" : "Task"} calendar file exported.`);
-  announce(`${isEvent ? "Event" : "Task"} calendar file exported.`);
 }
 
 function downloadCalendarFile(tasks, filename) {
@@ -1882,15 +1814,6 @@ function sanitizeCalendarId(value) {
   return String(value || Date.now()).replace(/[^a-zA-Z0-9-]/g, "-");
 }
 
-function slugifyFilename(value) {
-  return String(value || "task")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 48) || "task";
-}
-
 function escapeCalendarText(value) {
   return String(value || "")
     .replace(/\\/g, "\\\\")
@@ -1926,7 +1849,7 @@ function foldCalendarLines(lines) {
 
 function render() {
   const calendarMode = activeView === "week" || activeView === "month";
-  const allTasks = getFilteredItems();
+  const allTasks = getActiveItems();
   const visibleTasks = calendarMode ? getCalendarItems(allTasks) : getAgendaItems(allTasks);
   const notes = items.filter(item => item.type === "note" && !item.deletedAt);
   const visibleNotes = getVisibleNotes(notes);
@@ -2520,7 +2443,7 @@ function createNoDateTray(allTasks) {
 function renderDayPopup(dateKey) {
   if (!dateKey) return;
   const date = parseLocalDate(dateKey);
-  const tasks = getFilteredItems().filter(task => task.dueDate === dateKey);
+  const tasks = getActiveItems().filter(task => task.dueDate === dateKey);
   dayPopupTitle.textContent = formatDateLabel(dateKey);
   dayPopupList.innerHTML = "";
 
@@ -2790,12 +2713,10 @@ function createCard(item) {
         ? ""
         : `<p class="item-meta task-meta"><span class="task-date">${escapeHtml(formatDateLabel(item.dueDate))}</span></p>`}
       <div class="actions">
-        ${item.dueDate ? `<button class="icon-btn task-calendar-btn" type="button" aria-label="Add ${escapeHtml(item.title)} to calendar" title="Add to calendar"><span class="action-icon task-calendar-icon" aria-hidden="true"></span></button>` : ""}
         <button class="icon-btn edit-btn" type="button" aria-label="Edit event: ${escapeHtml(item.title)}" title="Edit event"><span class="action-icon edit-icon" aria-hidden="true"></span></button>
         <button class="icon-btn delete-btn" type="button" aria-label="Delete event: ${escapeHtml(item.title)}" title="Delete event"><span class="action-icon delete-icon" aria-hidden="true"></span></button>
       </div>
     `;
-    card.querySelector(".task-calendar-btn")?.addEventListener("click", () => exportItemToCalendar(item));
     card.querySelector(".edit-btn").addEventListener("click", () => editItem(item.id));
     card.querySelector(".delete-btn").addEventListener("click", () => deleteItem(item.id));
     return card;
@@ -2836,7 +2757,6 @@ function createCard(item) {
     ${metaHtml ? `<p class="item-meta task-meta">${metaHtml}</p>` : ""}
     <div class="actions">
       ${focusCopy ? `<button class="icon-btn task-focus-btn" type="button" aria-label="${escapeHtml(focusCopy.label)}" title="${escapeHtml(focusCopy.title)}"><span class="action-icon focus-icon" aria-hidden="true"></span></button>` : ""}
-      ${item.dueDate ? `<button class="icon-btn task-calendar-btn" type="button" aria-label="Add ${escapeHtml(item.title)} to calendar" title="Add to calendar"><span class="action-icon task-calendar-icon" aria-hidden="true"></span></button>` : ""}
       <button class="icon-btn edit-btn" type="button" aria-label="Edit task: ${escapeHtml(item.title)}" title="Edit ${item.type}"><span class="action-icon edit-icon" aria-hidden="true"></span></button>
       <button class="icon-btn delete-btn" type="button" aria-label="Delete task: ${escapeHtml(item.title)}" title="Delete ${item.type}"><span class="action-icon delete-icon" aria-hidden="true"></span></button>
     </div>
@@ -2873,7 +2793,6 @@ function createCard(item) {
   if (check) check.addEventListener("change", () => toggleDone(item.id, check.checked));
   const focusButton = card.querySelector(".task-focus-btn");
   if (focusButton) focusButton.addEventListener("click", () => focusFromTaskCard(item.id));
-  card.querySelector(".task-calendar-btn")?.addEventListener("click", () => exportItemToCalendar(item));
   card.querySelector(".edit-btn").addEventListener("click", () => editItem(item.id));
   card.querySelector(".delete-btn").addEventListener("click", () => deleteItem(item.id));
   return card;
@@ -2892,31 +2811,33 @@ function compareAgendaItems(a, b) {
   return Number(b.createdAt) - Number(a.createdAt);
 }
 
-function getFilteredItems() {
+function getActiveItems() {
   return items
     .filter(item => (item.type === "task" || item.type === "event") && !item.deletedAt)
-    .filter(item => {
-      // The status filter is about tasks. Events happen regardless of it.
-      if (item.type === "event") return true;
-      if (taskFilter === "open") return !item.done;
-      if (taskFilter === "done") return item.done;
-      return true;
-    })
     .sort(compareAgendaItems);
+}
+
+function isCompletedToday(item) {
+  const stamp = Number(item.updatedAt) || Number(item.createdAt) || 0;
+  return stamp > 0 && toDateInputValue(new Date(stamp)) === toDateInputValue(new Date());
 }
 
 function getAgendaItems(tasks) {
   const today = toDateInputValue(new Date());
-  return (tasks || getFilteredItems()).filter(item => {
-    // Today is an agenda, not a backlog: past events should not linger as
-    // overdue, while past tasks still need attention.
+  return (tasks || getActiveItems()).filter(item => {
+    // Today is today's work, not a history view: past events should not
+    // linger, and tasks finished on an earlier day belong to that day. What
+    // is still open (today, overdue, or undated) stays, and so does anything
+    // checked off today so the strike-through is visible until tomorrow.
     if (item.type === "event") return item.dueDate === today;
-    return !item.dueDate || item.dueDate <= today;
+    const relevantDate = !item.dueDate || item.dueDate <= today;
+    if (!relevantDate) return false;
+    return item.done ? isCompletedToday(item) : true;
   });
 }
 
 function getCalendarItems(tasks) {
-  const filtered = tasks || getFilteredItems();
+  const filtered = tasks || getActiveItems();
   if (activeView === "month") {
     // Match what the grid actually renders, including the neighbouring days
     // that fill out complete weeks.
@@ -3808,16 +3729,6 @@ function setNoteFilter() {
   noteFilterLabel.textContent = capitalize(noteFilter);
 }
 
-function setTaskFilter() {
-  taskFilterButtons.forEach(button => {
-    const isActive = button.dataset.taskFilter === taskFilter;
-    button.classList.toggle("active", isActive);
-    button.setAttribute("aria-pressed", String(isActive));
-  });
-  const icon = taskFilterToggle.querySelector(".task-filter-icon");
-  icon.className = `task-filter-icon ${taskFilter === "done" ? "done-icon" : taskFilter === "open" ? "open-icon" : "all-icon"}`;
-}
-
 function applyFormKind() {
   const isEvent = getFormKind() === "event";
   taskForm.classList.toggle("is-event", isEvent);
@@ -3914,19 +3825,6 @@ function setNoteFilterMenuOpen(open, focusOption = false) {
   }
   if (open && focusOption) {
     const selected = noteFilterButtons.find(button => button.dataset.noteFilter === noteFilter) || noteFilterButtons[0];
-    if (selected) selected.focus();
-  }
-}
-
-function setTaskFilterMenuOpen(open, focusOption = false) {
-  taskFilterToggle.setAttribute("aria-expanded", String(open));
-  if (open) {
-    positionFilterMenu(taskFilterOptions, taskFilterToggle);
-  } else {
-    taskFilterOptions.classList.remove("opens-up");
-  }
-  if (open && focusOption) {
-    const selected = taskFilterButtons.find(button => button.classList.contains("active")) || taskFilterButtons[0];
     if (selected) selected.focus();
   }
 }
@@ -4715,8 +4613,6 @@ function getReadmeText() {
 }
 
 function getEmptyText() {
-  if (taskFilter === "open") return "No open tasks in this view.";
-  if (taskFilter === "done") return "No completed tasks in this view.";
   if (activeView === "week") return "No tasks or events planned for this week.";
   if (activeView === "month") return "No tasks or events planned for this month.";
   return "No tasks or events for today.";

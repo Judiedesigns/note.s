@@ -15,7 +15,8 @@ Everything is saved in `localStorage` first, so it still works in the same brows
 - Keyboard window control: focus a title bar and use arrow keys to move, or Shift plus arrow keys to resize
 - Three planner views — Today, Week, and Month — with no separate Calendar destination
 - The active view survives a reload, and Week or Month keeps the last period you were looking at
-- Today shows an agenda grouped into Overdue, Today, and No date; the group heading only appears when more than one group has items
+- Today shows only what is still on the plate: open tasks due today, open overdue tasks, undated tasks, and today's events; anything checked off today stays visible struck through, while tasks finished on an earlier day stay on that day
+- Overdue, Today, and No date only earn a group heading when more than one group has items
 - Today includes a local focus dock that stays out of the way until there is a task: start a sprint from any task, run one at a time, and log focused minutes to the task and to today
 - Focus sprints stop at the end and offer a short break, keeping going, or stopping; nothing starts, advances, or checks off on its own
 - A daily focus goal is the main progress bar, and the menu-bar pill keeps the running timer visible from any view
@@ -23,13 +24,13 @@ Everything is saved in `localStorage` first, so it still works in the same brows
 - Week shows day columns, Month shows a calendar grid with `+N more` expansion
 - The Today sidebar count includes open undated tasks and today's events
 - On mobile the sidebar is replaced by a compact Today / Week / Month switch
-- Tab lists and filter menus support arrow keys, Home/End, and Escape
+- Tab lists and the Notes filter menu support arrow keys, Home/End, and Escape
 - Tasks without a date are allowed and collect in the No date tray
 - Quick-capture task bar: type a title, then press Enter or click the visible **Save** button
 - The create button follows the view: **New task** in Today, **New event** in Week or Month
 - Events are real calendar items with a start time and duration; they do not have a Done checkbox or a focus sprint
 - Quick event capture includes clickable time and duration chips; the full form exposes both fields
-- If a new task is hidden by a filter or a future date, the toast explains where it went
+- If a new task belongs to a future date, the toast explains where it went
 - Quick capture in Week or Month defaults to the selected day
 - Click a Month day (or press Enter on it) to open a day popover listing that day's tasks and events
 - Week and Month support arrow-key day navigation, Home/End, and PageUp/PageDown
@@ -42,9 +43,8 @@ Everything is saved in `localStorage` first, so it still works in the same brows
 - Week boundaries follow your browser locale (Sunday-first in the US, Monday-first in the UK/EU)
 - IME-safe: Enter during Japanese/Chinese/Korean composition does not save a partial title
 - Task creation with one task field and an optional due date
-- Task completion, edit, delete, and status filtering
-- `.ics` calendar export with confirmation before download, including timed events with start and end times
-- Per-item `.ics` calendar export for adding one task or event to a calendar
+- Task completion, edit, and delete
+- `.ics` export of today's plan with confirmation before download, including timed events with their start and end times
 - UTF-8-safe `.ics` line folding for long non-ASCII titles
 - Offline app shell (service worker) so the page itself reloads without a network; requires HTTPS or localhost
 - Notes window for loose thoughts separate from tasks
