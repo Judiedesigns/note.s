@@ -21,7 +21,7 @@
 <meta name="twitter:image" content="bg-2.jpg">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <!-- Bump ?v= whenever styles.css changes so cached copies refresh. -->
-<link rel="stylesheet" href="styles.css?v=ui-20261114">
+<link rel="stylesheet" href="styles.css?v=ui-20261115b">
 </head>
 <body>
 <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -96,6 +96,14 @@
                 <span>Month</span>
               </button>
             </div>
+            <p class="sidebar-label">Timer</p>
+            <div class="sidebar-group">
+              <button class="side-row focus-row" id="focus-row" type="button" aria-haspopup="dialog" aria-controls="focus-desk" aria-expanded="false" aria-label="Focus">
+                <span class="side-icon focus-icon" aria-hidden="true"></span>
+                <span>Focus</span>
+                <span class="side-count focus-row-state" id="focus-row-state" aria-hidden="true">Off</span>
+              </button>
+            </div>
             <p class="sidebar-label">Places</p>
             <div class="sidebar-group">
               <button class="side-row" type="button" data-side-open="notes">
@@ -138,6 +146,27 @@
                 </button>
               </div>
             </div>
+            <!-- Start a focus sprint: the deliberate setup step from the Focus desk
+                 iteration. The dock still runs the timer; this panel chooses what
+                 and for how long before anything starts. -->
+            <div class="focus-desk" id="focus-desk" role="dialog" aria-label="Start a focus sprint" hidden>
+              <div class="focus-desk-head">
+                <strong>Start a focus sprint</strong>
+                <button class="focus-desk-close" id="focus-desk-close" type="button" aria-label="Close focus setup">×</button>
+              </div>
+              <p class="focus-desk-label" id="focus-desk-label">What are you working on?</p>
+              <div class="focus-desk-tasks" id="focus-desk-tasks" role="group" aria-labelledby="focus-desk-label"></div>
+              <div class="focus-desk-row">
+                <span>Sprint</span>
+                <div class="focus-desk-seg" id="focus-desk-duration" role="group" aria-label="Sprint length">
+                  <button type="button" data-focus-min="15" aria-pressed="false">15</button>
+                  <button type="button" data-focus-min="25" aria-pressed="true">25</button>
+                  <button type="button" data-focus-min="50" aria-pressed="false">50</button>
+                </div>
+              </div>
+              <p class="focus-desk-note" id="focus-desk-note">25 min focus · 5 min break</p>
+              <button class="focus-desk-start" id="focus-desk-start" type="button">Start focus</button>
+            </div>
             <section class="focus-dock" id="focus-dock" aria-label="Focus session">
               <div class="focus-panel">
                 <div class="focus-head">
@@ -157,7 +186,7 @@
                   </div>
                 </div>
                 <div class="focus-actions" id="focus-actions">
-                  <button class="focus-action primary" id="focus-start" type="button">Start 25 min</button>
+                  <button class="focus-action primary" id="focus-start" type="button" aria-haspopup="dialog" aria-controls="focus-desk" aria-expanded="false">Start 25 min</button>
                   <button class="focus-action" id="focus-pause" type="button" hidden>Pause</button>
                   <button class="focus-action" id="focus-finish" type="button" hidden>Finish sprint now</button>
                   <button class="focus-action" id="focus-skip" type="button" hidden>Skip break</button>
@@ -487,6 +516,9 @@ let activePopupNoteText = "";
 let notePopupReturnFocus = null;
 let focusState = createDefaultFocusState();
 let focusSettingsOpen = false;
+let focusDeskOpen = false;
+let focusDeskTaskId = null;
+let focusDeskMin = 25;
 let focusLastTickSecond = null;
 let syncDb = null;
 let syncUser = null;
@@ -599,6 +631,14 @@ const focusOfferKeepButton = document.getElementById("focus-offer-keep");
 const focusOfferDoneButton = document.getElementById("focus-offer-done");
 const focusSettingsButton = document.getElementById("focus-settings-btn");
 const focusSettings = document.getElementById("focus-settings");
+const focusDesk = document.getElementById("focus-desk");
+const focusDeskCloseButton = document.getElementById("focus-desk-close");
+const focusDeskTasks = document.getElementById("focus-desk-tasks");
+const focusDeskDuration = document.getElementById("focus-desk-duration");
+const focusDeskNote = document.getElementById("focus-desk-note");
+const focusDeskStartButton = document.getElementById("focus-desk-start");
+const focusRow = document.getElementById("focus-row");
+const focusRowState = document.getElementById("focus-row-state");
 const focusValue = document.getElementById("focus-value");
 const focusGoalValue = document.getElementById("focus-goal-value");
 const focusPill = document.getElementById("focus-pill");
@@ -620,7 +660,7 @@ const taskbarStartButton = document.querySelector("[data-taskbar-start]");
 const isMacPlatform = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
 const usesTouchInput = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
 const dateShortcutLabel = isMacPlatform ? "⌘↵" : "Ctrl+↵";
-taskQuickInput.placeholder = "Add a task…";
+taskQuickInput.placeholder = usesTouchInput ? "Add a task…" : "Add a task… (↵ save)";
 taskQuickInput.title = usesTouchInput ? "" : `Enter saves · ${dateShortcutLabel} sets a date`;
 taskQuickOptsBtn.title = usesTouchInput ? "Set date" : `Set date (${dateShortcutLabel})`;
 if (usesTouchInput) {
@@ -757,8 +797,10 @@ function updateCaptureContext() {
   taskQuickSave.setAttribute("aria-label", isEvent ? "Save event" : "Save task");
   taskQuickSave.title = isEvent ? "Save event (Enter)" : "Save task (Enter)";
   // The shortcut hint lives in the tooltip and the screen-reader hint; the
-  // placeholder stays quiet so the bar reads as one action.
-  taskQuickInput.placeholder = isEvent ? "Add an event…" : "Add a task…";
+  // The hint rides in the placeholder; the Save pill carries it on touch
+  // devices, where a Return key would be a lie.
+  const addHint = usesTouchInput ? "" : " (↵ save)";
+  taskQuickInput.placeholder = `${isEvent ? "Add an event…" : "Add a task…"}${addHint}`;
 
   quickTimeChip.hidden = !isEvent;
   quickDurationChip.hidden = !isEvent;
@@ -921,7 +963,10 @@ document.addEventListener("click", event => {
 document.addEventListener("keydown", event => {
   if (isComposing(event)) return;
   if (event.key === "Escape") {
-    setTaskFilterMenuOpen(false);
+    if (focusDeskOpen) {
+      closeFocusDesk();
+      return;
+    }
     setNoteFilterMenuOpen(false);
     setSyncPanelOpen(false);
     closeNotePopup();
@@ -2099,6 +2144,7 @@ function isCalendarView(view) {
 function setPlannerView(view) {
   const requested = view === "calendar" ? lastCalendarMode : view;
   if (requested !== "today" && !isCalendarView(requested)) return;
+  if (focusDeskOpen) closeFocusDesk(false);
   const wasCalendar = isCalendarView(activeView);
   activeView = requested;
   if (isCalendarView(activeView)) {
@@ -3475,6 +3521,8 @@ function setFocusSettingsOpen(open) {
   focusSettings.hidden = !focusSettingsOpen;
   focusSettingsButton.setAttribute("aria-expanded", String(focusSettingsOpen));
   if (focusSettingsOpen) {
+    // One focus popover at a time, and the desk never opens underneath it.
+    if (focusDeskOpen) closeFocusDesk(false);
     const first = focusSettings.querySelector("button");
     if (first) first.focus();
   }
@@ -3484,6 +3532,116 @@ function closeFocusSettings() {
   if (!focusSettingsOpen) return;
   setFocusSettingsOpen(false);
   focusSettingsButton.focus();
+}
+
+/* Start-a-focus-sprint desk. The dock runs the timer; this panel is the
+   deliberate setup step: pick the task, pick the sprint, then start. */
+function focusDeskOptions() {
+  return items
+    .filter(item => item.type === "task" && !item.deletedAt && !item.done)
+    .sort(compareAgendaItems);
+}
+
+function focusDeskMeta(task) {
+  const parts = [formatDateLabel(task.dueDate)];
+  const focused = Math.max(0, Math.round(Number(task.focusedMin) || 0));
+  if (focused) parts.push(`${focused} min focused`);
+  return parts.join(" · ");
+}
+
+function renderFocusDesk() {
+  const options = focusDeskOptions();
+  if (!options.some(task => task.id === focusDeskTaskId)) {
+    focusDeskTaskId = options.length ? options[0].id : null;
+  }
+
+  focusDeskTasks.innerHTML = options.length
+    ? options.map(task => `<button class="focus-desk-task" type="button" data-focus-task="${escapeHtml(task.id)}" aria-pressed="${task.id === focusDeskTaskId}">
+        <span class="focus-desk-radio" aria-hidden="true"></span>
+        <span class="focus-desk-copy"><span class="focus-desk-task-title">${escapeHtml(task.title)}</span><span class="focus-desk-task-meta">${escapeHtml(focusDeskMeta(task))}</span></span>
+      </button>`).join("")
+    : `<p class="focus-desk-empty">No open tasks. Add one first.</p>`;
+
+  focusDeskDuration.querySelectorAll("[data-focus-min]").forEach(button => {
+    const on = Number(button.dataset.focusMin) === focusDeskMin;
+    button.classList.toggle("on", on);
+    button.setAttribute("aria-pressed", String(on));
+  });
+
+  focusDeskNote.textContent = `${focusDeskMin} min focus · ${focusState.settings.breakMin} min break`;
+  focusDeskStartButton.disabled = !focusDeskTaskId;
+  focusDeskStartButton.title = focusDeskTaskId ? "" : "No open tasks";
+}
+
+function setFocusDeskOpen(open, returnFocus = true) {
+  const next = Boolean(open);
+  if (next === focusDeskOpen) {
+    if (next) renderFocusDesk();
+    return;
+  }
+
+  focusDeskOpen = next;
+  focusDesk.hidden = !next;
+  focusStartButton.setAttribute("aria-expanded", String(next));
+  focusRow.setAttribute("aria-expanded", String(next));
+
+  if (next) {
+    if (focusSettingsOpen) setFocusSettingsOpen(false);
+    focusDeskMin = focusState.settings.focusMin;
+    renderFocusDesk();
+    requestAnimationFrame(() => {
+      const selected = focusDesk.querySelector('.focus-desk-task[aria-pressed="true"]') || focusDesk.querySelector(".focus-desk-task");
+      if (selected) selected.focus({ preventScroll: true });
+    });
+    return;
+  }
+
+  if (!returnFocus) return;
+  const target = focusRow.getClientRects().length ? focusRow : focusStartButton;
+  if (target && target.getClientRects().length) target.focus({ preventScroll: true });
+}
+
+function closeFocusDesk(returnFocus = true) {
+  if (!focusDeskOpen) return;
+  setFocusDeskOpen(false, returnFocus);
+}
+
+function startFocusDeskSession() {
+  const task = items.find(item => item.id === focusDeskTaskId && !item.deletedAt);
+  if (!task || task.done) {
+    showToast("Pick an open task first.");
+    announce("Pick an open task first.");
+    return;
+  }
+
+  // The chosen sprint is the new default, so the next desk opens on it too.
+  focusState.settings.focusMin = focusDeskMin;
+  saveFocusState();
+  closeFocusDesk(false);
+  beginFocus(task.id);
+  requestAnimationFrame(() => {
+    if (focusPauseButton.getClientRects().length) focusPauseButton.focus({ preventScroll: true });
+  });
+}
+
+function renderFocusRow() {
+  if (!focusRow || !focusRowState) return;
+  const session = focusState.session;
+  const phase = session.phase;
+  const idle = phase === "idle";
+  const isOffer = phase === "offer";
+
+  let state;
+  if (phase === "focus") state = session.running ? formatFocusTimer(focusRemainingMs()) : "Paused";
+  else if (phase === "break") state = "Break";
+  else if (isOffer) state = "Break";
+  else state = focusState.dayMin > 0 ? `${focusState.dayMin} / ${focusState.settings.goalMin}` : "Off";
+
+  focusRowState.textContent = state;
+  focusRow.classList.toggle("is-live", !idle);
+  focusRow.classList.toggle("is-break", phase === "break" || (isOffer && session.offer === "break"));
+  focusRow.title = `${state} · ${focusState.dayMin} of ${focusState.settings.goalMin} min today`;
+  focusRow.setAttribute("aria-label", `Focus, ${state}`);
 }
 
 function revealFocusDock() {
@@ -3515,11 +3673,15 @@ function restoreFocusOnTaskButton(id) {
 function renderFocusUi() {
   if (!focusDock) return;
   const calendarMode = isCalendarView(activeView);
+  // The dock is the live session surface; on wide windows the sidebar row is
+  // the way in, so an idle dock is hidden by CSS (see .focus-dock.is-idle).
+  focusDock.classList.toggle("is-idle", focusState.session.phase === "idle");
   focusDock.hidden = calendarMode;
   if (!calendarMode) {
     renderFocusPanel();
     renderFocusSettings();
   }
+  if (focusDeskOpen) renderFocusDesk();
   renderFocusClock();
   renderFocusPill();
 }
@@ -3625,6 +3787,7 @@ function renderFocusClock() {
         ? (session.running ? `back at ${formatFocusClock(session.endsAt)}` : "paused")
         : "nothing running";
 
+  renderFocusRow();
   renderFocusPill();
 }
 
@@ -3668,7 +3831,37 @@ function renderFocusSettings() {
 }
 
 /* Focus controls */
-focusStartButton.addEventListener("click", () => beginFocus());
+focusStartButton.addEventListener("click", () => setFocusDeskOpen(!focusDeskOpen));
+focusRow.addEventListener("click", () => {
+  // The row toggles its panel; a live session is already in the dock.
+  if (focusDeskOpen) {
+    closeFocusDesk();
+    return;
+  }
+  if (focusState.session.phase !== "idle") {
+    revealFocusDock();
+    return;
+  }
+  if (activeView !== "today") setPlannerView("today");
+  setFocusDeskOpen(true);
+});
+focusDeskCloseButton.addEventListener("click", () => closeFocusDesk());
+focusDeskTasks.addEventListener("click", event => {
+  const button = event.target.closest("[data-focus-task]");
+  if (!button) return;
+  focusDeskTaskId = button.dataset.focusTask;
+  renderFocusDesk();
+  const selected = focusDeskTasks.querySelector('.focus-desk-task[aria-pressed="true"]');
+  if (selected) selected.focus({ preventScroll: true });
+});
+focusDeskDuration.addEventListener("click", event => {
+  const button = event.target.closest("[data-focus-min]");
+  if (!button) return;
+  focusDeskMin = Number(button.dataset.focusMin);
+  renderFocusDesk();
+  button.focus({ preventScroll: true });
+});
+focusDeskStartButton.addEventListener("click", startFocusDeskSession);
 focusPauseButton.addEventListener("click", () => {
   if (focusState.session.running) pauseFocus();
   else resumeFocus();
@@ -3697,6 +3890,15 @@ document.addEventListener("click", event => {
   if (!focusSettingsOpen) return;
   if (event.target.closest("#focus-settings") || event.target.closest("#focus-settings-btn")) return;
   setFocusSettingsOpen(false);
+});
+
+document.addEventListener("click", event => {
+  if (!focusDeskOpen) return;
+  // Use the dispatch path: picking a task re-renders the list, so the clicked
+  // button is already detached from the document by the time this runs.
+  const path = event.composedPath ? event.composedPath() : [];
+  if (path.includes(focusDesk) || path.includes(focusRow) || path.includes(focusStartButton)) return;
+  closeFocusDesk(false);
 });
 
 document.addEventListener("keydown", event => {

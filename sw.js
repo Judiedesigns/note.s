@@ -2,7 +2,7 @@
 // Network-first keeps normal browsing fresh; the cache is the fallback when
 // the network is slow or unavailable.
 
-const CACHE_NAME = "random-notes-shell-v10";
+const CACHE_NAME = "random-notes-shell-v11";
 const SHELL_ASSETS = [
   "./",
   "./index.html",

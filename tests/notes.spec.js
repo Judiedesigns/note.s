@@ -104,17 +104,81 @@ test("planner UI fits the viewport", async ({ page }) => {
   expect(horizontalOverflow).toBe(false);
 });
 
-test("an empty planner hides the focus dock until there is a task", async ({ page }) => {
+test("focus starts from the sidebar desk and the dock only shows a live session", async ({ page }) => {
   await openPlannerSurface(page);
   const dock = page.locator("#focus-dock");
-  // No task, no minutes: an inert timer would only add chrome.
+  const row = page.locator("#focus-row");
+  const desk = page.locator("#focus-desk");
+  // Wide windows keep Focus in the sidebar, so the idle dock is not a second
+  // start button. Phones lose the sidebar, so the dock remains their entry.
+  const wide = page.viewportSize().width > 780;
+
+  // No task, no minutes: an inert timer would only add chrome anywhere.
   await expect(dock).toBeHidden();
+  await expect(page.locator("#focus-row-state")).toHaveText("Off");
 
   await page.locator("#task-quick-input").fill("Draft Q4 report");
   await page.locator("#task-quick-input").press("Enter");
+  await page.locator("#task-quick-input").fill("Reply to Anita about the deck");
+  await page.locator("#task-quick-input").press("Enter");
+
+  if (wide) {
+    await expect(row).toBeVisible();
+    await expect(dock).toBeHidden();
+    await row.click();
+  } else {
+    await expect(dock).toBeVisible();
+    await page.locator("#focus-start").click();
+  }
+
+  // The desk returns: task choice, sprint length, then an explicit start.
+  await expect(desk).toBeVisible();
+  await expect(desk.locator(".focus-desk-task")).toHaveCount(2);
+  await desk.getByRole("button", { name: /Reply to Anita about the deck/ }).click();
+  await expect(desk.locator('[data-focus-task][aria-pressed="true"]')).toContainText("Reply to Anita about the deck");
+
+  await desk.locator('[data-focus-min="15"]').click();
+  await expect(page.locator("#focus-desk-note")).toHaveText("15 min focus · 5 min break");
+  await page.locator("#focus-desk-start").click();
+
+  await expect(desk).toBeHidden();
+  await expect(page.locator("#focus-phase")).toHaveText("Focus");
+  await expect(page.locator("#focus-task")).toContainText("Reply to Anita about the deck");
+  await expect(page.locator("#focus-time")).toHaveText("15:00");
   await expect(dock).toBeVisible();
-  await expect(page.locator("#focus-task")).toContainText("Up next: Draft Q4 report");
-  await expect(page.locator("#focus-start")).toHaveText("Start 25 min");
+  await expect(page.locator("#focus-row-state")).toHaveText(/^\d+:\d{2}$/);
+});
+
+test("the focus desk is dismissible without starting anything", async ({ page }) => {
+  await page.evaluate(() => {
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "focus-a", type: "task", title: "Draft Q4 report", body: "", dueDate: "", done: false, focusedMin: 0, createdAt: Date.now(), updatedAt: Date.now() }
+    ]));
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+
+  const desk = page.locator("#focus-desk");
+  const row = page.locator("#focus-row");
+  const wide = page.viewportSize().width > 780;
+  const openDesk = async () => {
+    if (wide) await row.click();
+    else await page.locator("#focus-start").click();
+    await expect(desk).toBeVisible();
+  };
+
+  await openDesk();
+  await page.keyboard.press("Escape");
+  await expect(desk).toBeHidden();
+  if (wide) await expect(row).toBeFocused();
+
+  await openDesk();
+  await page.locator("#view-title").click();
+  await expect(desk).toBeHidden();
+
+  // Nothing started behind the panel.
+  await expect(page.locator("#focus-pill")).toBeHidden();
+  await expect(page.locator("#focus-phase")).toHaveText("Ready");
 });
 
 test("focus starts from a task and never starts on its own", async ({ page }) => {
@@ -135,7 +199,10 @@ test("focus starts from a task and never starts on its own", async ({ page }) =>
   const cardA = page.locator("#task-list .task-card", { hasText: "Draft Q4 report" });
   const cardB = page.locator("#task-list .task-card", { hasText: "Reply to Anita about the deck" });
 
-  await expect(dock).toBeVisible();
+  // Wide windows hide the idle dock; the sidebar row carries the state. The
+  // dock itself is still populated, ready for the moment a sprint starts.
+  if (page.viewportSize().width > 780) await expect(dock).toBeHidden();
+  else await expect(dock).toBeVisible();
   // Nothing starts by itself: the dock just names the agenda's first open task.
   await expect(start).toBeEnabled();
   await expect(page.locator("#focus-task")).toContainText("Up next: Draft Q4 report");
@@ -151,6 +218,7 @@ test("focus starts from a task and never starts on its own", async ({ page }) =>
   await expect(page.locator("#focus-pause")).toHaveText("Pause");
   await expect(pill).toBeVisible();
   await expect(page.locator("#focus-pill-label")).toHaveText("Focus");
+  await expect(page.locator("#focus-row-state")).toHaveText(/^\d+:\d{2}$/);
   await expect(cardA.getByRole("button", { name: "Switch focus to Draft Q4 report" })).toBeVisible();
 
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("random_notes_focus_v1")));
@@ -158,6 +226,7 @@ test("focus starts from a task and never starts on its own", async ({ page }) =>
 
   await page.locator("#focus-pause").click();
   await expect(page.locator("#focus-pause")).toHaveText("Resume");
+  await expect(page.locator("#focus-row-state")).toHaveText("Paused");
   await page.locator("#focus-pause").click();
   await expect(page.locator("#focus-pause")).toHaveText("Pause");
 
@@ -634,6 +703,26 @@ test("adding from a calendar day presets the event date", async ({ page }) => {
   await page.getByRole("textbox", { name: "Event", exact: true }).fill("Plan the offsite");
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.locator("#calendar-view").getByRole("button", { name: "Plan the offsite" })).toBeVisible();
+});
+
+test("the calendar header keeps range, navigation, and actions on one line", async ({ page }) => {
+  const viewport = page.viewportSize();
+  if (viewport && viewport.width <= 780) test.skip();
+  await openPlannerSurface(page);
+  await openCalendarView(page, "month");
+
+  const head = await page.locator(".todo-board > .panel-head").boundingBox();
+  const nav = await page.locator("#calendar-nav").boundingBox();
+  const tools = await page.locator(".planner-tools").boundingBox();
+  const calendar = await page.locator("#calendar-view").boundingBox();
+
+  // The nav and the actions sit on the title's line, not on a row beneath it.
+  expect(Math.abs(nav.y - tools.y)).toBeLessThanOrEqual(2);
+  expect(nav.x + nav.width).toBeLessThanOrEqual(tools.x + 1);
+  // The range keeps the whole left side of that line.
+  expect(nav.x).toBeGreaterThan(head.x + head.width * 0.5);
+  // Nothing overlaps the grid below.
+  expect(Math.max(nav.y + nav.height, tools.y + tools.height)).toBeLessThanOrEqual(calendar.y + 1);
 });
 
 test("create button and quick capture follow Today or Calendar", async ({ page }) => {
