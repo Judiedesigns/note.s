@@ -3012,6 +3012,33 @@ body {
   text-align: center;
 }
 
+.focus-toggle {
+  min-width: 46px;
+  height: 22px;
+  padding: 0 9px;
+  border: 1px solid rgba(71, 64, 85, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--ns-secondary);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.focus-toggle:hover { background: rgba(109, 107, 198, 0.1); color: var(--accent-press); }
+
+.focus-toggle[aria-checked="true"] {
+  border-color: rgba(109, 107, 198, 0.34);
+  background: rgba(109, 107, 198, 0.12);
+  color: var(--accent-press);
+}
+
+.focus-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 .focus-settings-note {
   margin: 2px 0 0;
   color: var(--muted);
@@ -3276,6 +3303,10 @@ body {
 
 .group-title span { color: var(--ns-secondary); font-size: 11px; font-weight: 400; }
 
+/* The heading already groups the overdue rows; tint only its count so the
+   danger reads once per section instead of once per row. */
+.group-title.is-overdue span { color: var(--danger); font-weight: 600; }
+
 .item-card {
   border-bottom: 1px solid rgba(74, 66, 84, 0.12);
   background: rgba(255, 255, 255, 0.54);
@@ -3370,6 +3401,42 @@ body {
   font-size: 11px;
   line-height: 1.3;
   white-space: nowrap;
+}
+
+/* Today rows put the date and age under the title instead of in a column
+   beside it. Overdue titles tend to be long, and a max-content date column
+   was squeezing them into four lines while the date floated mid-row. The
+   title now gets the whole width, and its metadata reads as one quiet line
+   underneath, the same way the phone layout already worked. */
+@media (min-width: 561px) {
+  #task-list .task-card {
+    grid-template-columns: 22px minmax(0, 1fr) auto;
+    row-gap: 1px;
+  }
+
+  #task-list .task-card .task-main {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  #task-list .task-card .task-meta {
+    display: flex;
+    grid-column: 2;
+    grid-row: 2;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-self: start;
+    justify-content: flex-start;
+    gap: 1px 8px;
+    min-width: 0;
+    margin-top: 2px;
+    white-space: normal;
+  }
+
+  #task-list .task-card .actions {
+    grid-column: 3;
+    grid-row: 1;
+  }
 }
 
 .actions {
@@ -4043,9 +4110,14 @@ body {
   }
 
   .task-meta {
+    display: flex;
     grid-column: 2;
     grid-row: 2;
+    flex-wrap: wrap;
+    align-items: baseline;
     justify-self: start;
+    justify-content: flex-start;
+    gap: 1px 8px;
     justify-items: start;
     min-width: 0;
     white-space: normal;
@@ -4174,6 +4246,7 @@ body {
   }
 
   .side-row { min-height: 44px; }
+  .focus-toggle { min-height: 34px; }
   .calendar-add-day { min-height: 40px; }
   .new-item-btn { min-height: var(--icon-hit-touch); }
   .focus-action,
@@ -4200,9 +4273,15 @@ body {
   }
 }
 
-/* Overdue tasks: the date turns red and gains a leading dot, so a missed
-   due date is visible in the list instead of only in the README summary. */
+/* Overdue tasks: a red dot and a plain-language age, so how late a task is
+   reads at a glance without repeating "Overdue" on a row that already sits
+   under that heading. */
 .task-card.is-overdue .task-date {
+  color: var(--ns-secondary);
+  font-weight: 400;
+}
+
+.task-card.is-overdue .task-late {
   color: var(--danger);
   font-weight: 600;
 }
@@ -4270,6 +4349,14 @@ body {
 
 .calendar-view.is-week { overflow-x: auto; }
 
+/* A wide pane should not stretch seven month columns until every cell reads as
+   a billboard. The grid keeps a compact reading width and centers once the pane
+   has room to spare; on the default window it still fills the pane. */
+.calendar-view.is-month .calendar-month {
+  max-width: 600px;
+  margin-inline: auto;
+}
+
 /* Month */
 .calendar-month {
   border: 1px solid var(--calendar-line);
@@ -4285,24 +4372,27 @@ body {
 }
 
 .calendar-month-head-cell {
-  padding: 6px 7px;
+  padding: 5px 6px;
   border-bottom: 1px solid var(--calendar-line);
   background: rgba(243, 238, 244, 0.86);
   color: var(--ns-secondary);
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 
+/* Month cells stay as short as an empty day allows and grow only when a day
+   actually holds chips, so a quiet month reads as a compact grid instead of a
+   page of tall empty boxes. */
 .calendar-day {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   min-width: 0;
-  min-height: 88px;
-  padding: 5px 5px 4px;
+  min-height: 64px;
+  padding: 4px 5px 3px;
   border-right: 1px solid var(--calendar-line);
   border-bottom: 1px solid var(--calendar-line);
   background: transparent;
@@ -4744,8 +4834,8 @@ body {
     max-height: 46vh;
   }
 
-  .calendar-day { min-height: 72px; }
-  .calendar-month-head-cell { padding: 5px 4px; font-size: 9px; }
+  .calendar-day { min-height: 56px; }
+  .calendar-month-head-cell { padding: 4px 4px; font-size: 8.5px; }
   .calendar-add-mini { opacity: 1; }
   .calendar-week { min-width: 640px; }
 }
@@ -4757,8 +4847,8 @@ body {
     align-content: start;
     justify-content: start;
     gap: 4px;
-    min-height: 60px;
-    padding: 5px 4px;
+    min-height: 48px;
+    padding: 4px 4px;
   }
 
   .calendar-view.is-month .calendar-day-num {
@@ -4939,7 +5029,8 @@ body {
   }
 
   .calendar-chip.is-overdue,
-  .task-card.is-overdue .task-date {
+  .task-card.is-overdue .task-date,
+  .task-card.is-overdue .task-late {
     color: LinkText;
   }
 

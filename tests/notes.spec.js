@@ -339,6 +339,89 @@ test("focus break is optional and returns to the same task", async ({ page }) =>
   await expect(page.locator("#focus-time")).toHaveText("25:00");
 });
 
+test("focus timer chimes when a sprint or a break ends and can be muted", async ({ page }) => {
+  await page.clock.install({ time: new Date(2026, 10, 12, 10, 0, 0) });
+  // Record the scheduled notes instead of making sound: the motif, not the
+  // audio pipeline, is what this test is about.
+  await page.addInitScript(() => {
+    window.__chimes = [];
+    class FakeAudioContext {
+      constructor() {
+        this.currentTime = 0;
+        this.state = "running";
+        this.destination = {};
+      }
+      resume() {
+        this.state = "running";
+        return Promise.resolve();
+      }
+      createGain() {
+        return { connect() {}, gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} } };
+      }
+      createOscillator() {
+        const osc = {
+          type: "sine",
+          frequency: {
+            value: 0,
+            setValueAtTime(value) { osc.frequency.value = value; }
+          },
+          connect() {},
+          disconnect() {},
+          start(at) { window.__chimes.push({ at, freq: osc.frequency.value }); },
+          stop() {}
+        };
+        return osc;
+      }
+    }
+    window.AudioContext = FakeAudioContext;
+    window.webkitAudioContext = FakeAudioContext;
+  });
+  await page.evaluate(() => {
+    localStorage.setItem("random_notes_v1", JSON.stringify([
+      { id: "focus-a", type: "task", title: "Draft Q4 report", body: "", dueDate: "2026-11-12", done: false, focusedMin: 0, createdAt: Date.now(), updatedAt: Date.now() }
+    ]));
+  });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await openPlannerSurface(page);
+
+  const chimes = () => page.evaluate(() => window.__chimes.map(entry => entry.freq));
+  await page.getByRole("button", { name: "Start focus on Draft Q4 report" }).click();
+
+  // A finished sprint rises through a C major arpeggio.
+  await page.clock.fastForward(25 * 60 * 1000 + 1000);
+  await expect(page.locator("#focus-offer")).toBeVisible();
+  expect(await chimes()).toEqual([523.25, 659.25, 783.99, 1046.5]);
+
+  // A finished break is a shorter two-note knock, so the ear can tell them apart.
+  await page.getByRole("button", { name: "5 min break" }).click();
+  await page.clock.fastForward(5 * 60 * 1000 + 1000);
+  await expect(page.locator("#focus-pill-label")).toHaveText("Break over");
+  expect(await chimes()).toEqual([523.25, 659.25, 783.99, 1046.5, 880, 659.25]);
+
+  // Muting is remembered and silences the next finished sprint.
+  await page.getByRole("button", { name: "Back to work" }).click();
+  await page.locator("#focus-settings-btn").click();
+  const toggle = page.locator("#focus-sound-toggle");
+  await expect(toggle).toHaveAttribute("aria-checked", "true");
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-checked", "false");
+  await expect(toggle).toHaveText("Off");
+
+  await page.keyboard.press("Escape");
+  await page.clock.fastForward(25 * 60 * 1000 + 1000);
+  await expect(page.locator("#focus-offer")).toBeVisible();
+  expect(await chimes()).toHaveLength(6);
+
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem("random_notes_focus_v1")));
+  expect(stored.settings.sound).toBe(false);
+
+  // Turning it back on is itself a gesture, so it previews the chime.
+  await page.locator("#focus-settings-btn").click();
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-checked", "true");
+  expect(await chimes()).toHaveLength(8);
+});
+
 test("focus session resumes after reload from its absolute end time", async ({ page }) => {
   await page.clock.install({ time: new Date(2026, 10, 12, 10, 0, 0) });
   await page.evaluate(() => {
@@ -493,7 +576,16 @@ test("overdue tasks are labelled in the list", async ({ page }) => {
 
   const card = page.getByLabel("Planner app").locator(".task-card", { hasText: "Send the invoice" });
   await expect(card).toHaveClass(/is-overdue/);
-  await expect(card).toContainText("Overdue ·");
+  await expect(card.locator(".task-date")).toBeVisible();
+  await expect(card.locator(".task-late")).toHaveText("1 day late");
+
+  // The date sits under the title, so a long title owns the full row width.
+  const metaIsUnderTitle = await card.evaluate(element => {
+    const title = element.querySelector(".item-title").getBoundingClientRect();
+    const meta = element.querySelector(".task-meta").getBoundingClientRect();
+    return meta.top >= title.bottom - 1;
+  });
+  expect(metaIsUnderTitle).toBe(true);
 });
 
 test("opening notes focuses the composer and Cmd+Enter saves", async ({ page }) => {

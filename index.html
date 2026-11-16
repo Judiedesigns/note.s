@@ -21,7 +21,7 @@
 <meta name="twitter:image" content="bg-2.jpg">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <!-- Bump ?v= whenever styles.css changes so cached copies refresh. -->
-<link rel="stylesheet" href="styles.css?v=ui-20261115b">
+<link rel="stylesheet" href="styles.css?v=ui-20261115d">
 </head>
 <body>
 <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -216,6 +216,10 @@
                       <output id="focus-goal-value">1 hour</output>
                       <button type="button" data-focus-step="goal" data-delta="15" aria-label="Raise daily goal">+</button>
                     </span>
+                  </div>
+                  <div class="focus-setting">
+                    <span class="focus-setting-label">Sound<span>sprint and break</span></span>
+                    <button class="focus-toggle" id="focus-sound-toggle" type="button" role="switch" aria-checked="true">On</button>
                   </div>
                   <p class="focus-settings-note">Sprint length starts with the next sprint. The 5 min break is part of the Pomodoro rhythm.</p>
                 </div>
@@ -477,7 +481,13 @@ const WINDOW_POSITIONS_KEY = "random_notes_window_positions_v1";
 const ICON_POSITIONS_KEY = "random_notes_icon_positions_v1";
 const PLANNER_VIEW_KEY = "random_notes_planner_view_v1";
 const FOCUS_KEY = "random_notes_focus_v1";
-const FOCUS_DEFAULT_SETTINGS = { focusMin: 25, breakMin: 5, goalMin: 60 };
+const FOCUS_DEFAULT_SETTINGS = { focusMin: 25, breakMin: 5, goalMin: 60, sound: true };
+// Two short motifs, so the ear knows which timer finished without reading the
+// screen: a rising arpeggio for a sprint, a two-note knock for a break.
+const FOCUS_CHIMES = {
+  sprint: { notes: [523.25, 659.25, 783.99, 1046.5], gap: 0.15, hold: 0.55, gain: 0.06 },
+  break: { notes: [880, 659.25], gap: 0.26, hold: 0.4, gain: 0.06 }
+};
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyCBt6sNfoVpKvAjjvdFt1JLAfHQ6_UNjSQ",
   authDomain: "notes-planner-5e410.firebaseapp.com",
@@ -641,6 +651,7 @@ const focusRow = document.getElementById("focus-row");
 const focusRowState = document.getElementById("focus-row-state");
 const focusValue = document.getElementById("focus-value");
 const focusGoalValue = document.getElementById("focus-goal-value");
+const focusSoundToggle = document.getElementById("focus-sound-toggle");
 const focusPill = document.getElementById("focus-pill");
 const focusPillTime = document.getElementById("focus-pill-time");
 const focusPillLabel = document.getElementById("focus-pill-label");
@@ -1983,7 +1994,7 @@ function renderAgenda(tasks) {
     group.className = "group";
     if (showGroupTitles) {
       const title = document.createElement("h3");
-      title.className = "group-title";
+      title.className = label === "Overdue" ? "group-title is-overdue" : "group-title";
       title.textContent = label;
       const count = document.createElement("span");
       count.textContent = sorted.length;
@@ -2786,9 +2797,13 @@ function createCard(item) {
   const dateLabel = item.dueDate === todayStamp && !isCalendarView(activeView)
     ? ""
     : formatDateLabel(item.dueDate);
-  const dateText = overdue ? `Overdue · ${dateLabel}` : dateLabel;
+  // The Overdue group heading already says "Overdue", so repeating it on
+  // every row only stole width from the title. The date stays, plus how late
+  // the task is, which is the part worth acting on.
+  const lateText = overdue ? formatOverdueAge(item.dueDate, todayStamp) : "";
   const metaHtml = [
-    dateText ? `<span class="task-date">${escapeHtml(dateText)}</span>` : "",
+    dateLabel ? `<span class="task-date">${escapeHtml(dateLabel)}</span>` : "",
+    lateText ? `<span class="task-late">${escapeHtml(lateText)}</span>` : "",
     focusedMin ? `<span class="task-focused">${focusedMin} min focused</span>` : ""
   ].join("");
   if (overdue) card.classList.add("is-overdue");
@@ -3164,6 +3179,7 @@ function loadFocusState() {
   focusState.settings.focusMin = clampFocusNumber(settings.focusMin, FOCUS_DEFAULT_SETTINGS.focusMin, 5, 90);
   focusState.settings.breakMin = clampFocusNumber(settings.breakMin, FOCUS_DEFAULT_SETTINGS.breakMin, 1, 30);
   focusState.settings.goalMin = clampFocusNumber(settings.goalMin, FOCUS_DEFAULT_SETTINGS.goalMin, 15, 180);
+  focusState.settings.sound = settings.sound !== false;
 
   const savedDay = /^\d{4}-\d{2}-\d{2}$/.test(String(data.day || "")) ? String(data.day) : today;
   focusState.day = today;
@@ -3254,6 +3270,64 @@ function formatFocusClock(ms) {
   return new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(new Date(ms));
 }
 
+/* Timer chimes. Web Audio keeps the shell asset-free and works offline; the
+   context is created from a focus click, because browsers only allow audio
+   after a gesture. Sound is a courtesy, so every call fails quietly. */
+let focusAudio = null;
+
+function getFocusAudioContext() {
+  if (focusAudio) return focusAudio;
+  const AudioCtor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioCtor) return null;
+  try {
+    focusAudio = new AudioCtor();
+  } catch (error) {
+    focusAudio = null;
+  }
+  return focusAudio;
+}
+
+function keepFocusAudioAwake() {
+  if (!focusState.settings.sound) return;
+  const context = getFocusAudioContext();
+  if (!context || context.state !== "suspended") return;
+  try {
+    const resumed = context.resume();
+    if (resumed && typeof resumed.catch === "function") resumed.catch(() => {});
+  } catch (error) {
+    // A blocked context just means this timer stays quiet.
+  }
+}
+
+function playFocusChime(kind) {
+  if (!focusState.settings.sound) return;
+  const context = getFocusAudioContext();
+  if (!context) return;
+  const chime = FOCUS_CHIMES[kind];
+  if (!chime) return;
+
+  try {
+    if (context.state === "suspended") keepFocusAudioAwake();
+    const start = context.currentTime + 0.03;
+    chime.notes.forEach((frequency, index) => {
+      const at = start + index * chime.gap;
+      const gain = context.createGain();
+      const osc = context.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(frequency, at);
+      gain.gain.setValueAtTime(0.0001, at);
+      gain.gain.exponentialRampToValueAtTime(chime.gain, at + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, at + chime.hold);
+      osc.connect(gain);
+      gain.connect(context.destination);
+      osc.start(at);
+      osc.stop(at + chime.hold + 0.05);
+    });
+  } catch (error) {
+    // Audio is a courtesy; a blocked context never blocks the timer.
+  }
+}
+
 function logFocusedMinutes(minutes) {
   const amount = Math.max(0, Math.round(minutes));
   if (!amount) return 0;
@@ -3278,6 +3352,10 @@ function beginFocus(taskId = null) {
     showToast(message);
     return;
   }
+
+  // The click that starts a sprint is where browsers allow audio; unlock the
+  // chime now so it can ring when the timer ends later.
+  keepFocusAudioAwake();
 
   const session = focusState.session;
   session.phase = "focus";
@@ -3311,6 +3389,7 @@ function pauseFocus() {
 function resumeFocus() {
   const session = focusState.session;
   if (session.running || (session.phase !== "focus" && session.phase !== "break")) return;
+  keepFocusAudioAwake();
   if (!session.remainingMs) session.remainingMs = session.totalMs;
   session.endsAt = Date.now() + session.remainingMs;
   session.running = true;
@@ -3346,6 +3425,7 @@ function openFocusOffer(reason, minutes = null) {
 }
 
 function takeFocusBreak() {
+  keepFocusAudioAwake();
   const session = focusState.session;
   session.phase = "break";
   session.offer = null;
@@ -3391,11 +3471,16 @@ function stopFocusForTask(id) {
 function settleFocus(now) {
   const session = focusState.session;
   if (!session.running || !session.endsAt || now < session.endsAt) return;
+  // A tab that slept through the end should not chime long after the fact; the
+  // offer and toast still explain what happened when the user comes back.
+  const fresh = now - session.endsAt < 90000;
 
   if (session.phase === "focus") {
     finishFocus();
+    if (fresh) playFocusChime("sprint");
   } else if (session.phase === "break") {
     openFocusOffer("break");
+    if (fresh) playFocusChime("break");
     announce("Break over.");
     showToast("Break over.");
   }
@@ -3818,6 +3903,9 @@ function renderFocusPill() {
 function renderFocusSettings() {
   focusValue.textContent = `${focusState.settings.focusMin} min`;
   focusGoalValue.textContent = formatFocusMinutes(focusState.settings.goalMin);
+  const sound = Boolean(focusState.settings.sound);
+  focusSoundToggle.setAttribute("aria-checked", String(sound));
+  focusSoundToggle.textContent = sound ? "On" : "Off";
   document.querySelectorAll("[data-focus-step]").forEach(button => {
     const kind = button.dataset.focusStep;
     const delta = Number(button.dataset.delta);
@@ -3884,6 +3972,22 @@ focusSettingsButton.addEventListener("click", () => setFocusSettingsOpen(!focusS
 
 document.querySelectorAll("[data-focus-step]").forEach(button => {
   button.addEventListener("click", () => stepFocusSetting(button.dataset.focusStep, Number(button.dataset.delta)));
+});
+
+focusSoundToggle.addEventListener("click", () => {
+  const sound = !focusState.settings.sound;
+  focusState.settings.sound = sound;
+  saveFocusState();
+  renderFocusSettings();
+  if (sound) {
+    // Clicking On is a gesture, so this doubles as the audio unlock and a
+    // short preview of what will ring when the timer ends.
+    keepFocusAudioAwake();
+    playFocusChime("break");
+  }
+  const message = sound ? "Focus chimes on." : "Focus chimes off.";
+  announce(message);
+  showToast(message);
 });
 
 document.addEventListener("click", event => {
@@ -4932,6 +5036,20 @@ function formatMonthDay(value) {
 function formatDateLabel(value) {
   if (!value) return "No date";
   return new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric" }).format(parseLocalDate(value));
+}
+
+// "8 weeks late" is easier to act on than a bare date when a task has been
+// sitting in the Overdue group for a while. Days up to a week, then weeks,
+// then months keep the label short at every age.
+function formatOverdueAge(dueDate, todayValue) {
+  const days = Math.round((parseLocalDate(todayValue) - parseLocalDate(dueDate)) / 86400000);
+  if (!Number.isFinite(days) || days < 1) return "";
+  if (days === 1) return "1 day late";
+  if (days < 7) return `${days} days late`;
+  const weeks = Math.round(days / 7);
+  if (weeks < 9) return `${weeks} weeks late`;
+  const months = Math.round(days / 30);
+  return months <= 1 ? "1 month late" : `${months} months late`;
 }
 
 function formatCreated(ts) {
