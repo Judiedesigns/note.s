@@ -34,7 +34,7 @@ Everything is saved in `localStorage` first, so it still works in the same brows
 - Quick event capture includes clickable time and duration chips; the full form exposes both fields
 - If a new task belongs to a future date, the toast explains where it went
 - Quick capture in Week or Month defaults to the selected day
-- Click a Month day (or press Enter on it) to open a day popover listing that day's tasks and events
+- Click a Month day (or press Enter on it) to open a day panel beside the planner window listing that day's tasks and events; the calendar stays visible and clickable behind it
 - Week and Month support arrow-key day navigation, Home/End, and PageUp/PageDown
 - On mobile, Month view collapses tasks to dots; tap a day to see its tasks
 - Notes can be edited in place; Cancel keeps the original note untouched

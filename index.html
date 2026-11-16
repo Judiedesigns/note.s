@@ -21,7 +21,7 @@
 <meta name="twitter:image" content="bg-2.jpg">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <!-- Bump ?v= whenever styles.css changes so cached copies refresh. -->
-<link rel="stylesheet" href="styles.css?v=ui-20261115d">
+<link rel="stylesheet" href="styles.css?v=ui-20261115k">
 </head>
 <body>
 <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -450,23 +450,24 @@
   </section>
 </div>
 
-<div class="day-popup-backdrop" id="day-popup" hidden>
-  <section class="day-popup-window" role="dialog" aria-modal="true" aria-labelledby="day-popup-title">
-    <div class="window-titlebar day-popup-titlebar">
-      <button class="window-control close-control" id="day-popup-close" type="button" aria-label="Close day"></button>
-      <span class="window-title"><span class="title-icon" aria-hidden="true"></span><span id="day-popup-title">Day</span></span>
-    </div>
-    <div class="day-popup-body">
-      <div class="day-popup-list" id="day-popup-list"></div>
-      <div class="day-popup-actions">
-        <button class="secondary-btn" id="day-popup-add" type="button">+ Add event</button>
-        <button class="add-btn" id="day-popup-done" type="button">Done</button>
-      </div>
-    </div>
-  </section>
-</div>
-
 <div class="toast" id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+<!-- Day panel: a companion card beside the planner window, not a centered
+     modal. It keeps the month grid visible and clickable while you read or
+     edit a day, and falls back to a bottom sheet when there is no room. -->
+<aside class="day-popup" id="day-popup" role="dialog" tabindex="-1" aria-labelledby="day-popup-title" hidden>
+  <div class="day-popup-head">
+    <button class="window-control close-control" id="day-popup-close" type="button" aria-label="Close day"></button>
+    <span class="window-title" id="day-popup-title">Day</span>
+  </div>
+  <div class="day-popup-body">
+    <div class="day-popup-list" id="day-popup-list"></div>
+    <div class="day-popup-actions">
+      <button class="secondary-btn" id="day-popup-add" type="button">+ Add event</button>
+      <button class="add-btn" id="day-popup-done" type="button">Done</button>
+    </div>
+  </div>
+</aside>
 
 <script>
 const STORAGE_KEY = "random_notes_v1";
@@ -896,13 +897,42 @@ calendarTodayButton.addEventListener("click", () => {
 
 calendarView.addEventListener("keydown", handleCalendarKeydown);
 
-dayPopup.addEventListener("click", event => {
-  if (event.target === dayPopup) closeDayPopup();
+// The day panel is a companion card, not a modal: there is no scrim to click,
+// so a click anywhere outside it dismisses it. Clicks inside the calendar are left
+// alone because picking another day already retargets the open panel.
+let dayPopupPressPoint = null;
+document.addEventListener("pointerdown", event => {
+  dayPopupPressPoint = { x: event.clientX, y: event.clientY };
+}, true);
+document.addEventListener("click", event => {
+  if (dayPopup.hidden) return;
+  if (event.target.closest("#day-popup")) return;
+  // Clicking a day retargets the panel, so that click must not dismiss it.
+  if (event.target.closest(".calendar-day, .calendar-week-head")) return;
+  // Dragging or double-clicking the planner's title bar is a window action,
+  // not an invitation to dismiss the card that is following the window.
+  if (event.target.closest(".planner-window .window-titlebar")) return;
+  // A click that ends a drag is not a click on the desktop.
+  const moved = dayPopupPressPoint
+    ? Math.hypot(event.clientX - dayPopupPressPoint.x, event.clientY - dayPopupPressPoint.y)
+    : 0;
+  dayPopupPressPoint = null;
+  if (moved > 6) return;
+  closeDayPopup(false);
 });
-dayPopup.addEventListener("keydown", event => trapDialogFocus(event, dayPopup));
+dayPopup.addEventListener("keydown", event => {
+  if (event.key === "Escape") {
+    event.stopPropagation();
+    closeDayPopup();
+  }
+});
+// Keep the day card beside the window while it is dragged, resized, or the
+// viewport changes.
+window.addEventListener("resize", scheduleDayPopupPlacement);
+document.addEventListener("pointermove", scheduleDayPopupPlacement, { passive: true });
 notePopup.addEventListener("keydown", event => trapDialogFocus(event, notePopup));
-dayPopupCloseButton.addEventListener("click", closeDayPopup);
-dayPopupDoneButton.addEventListener("click", closeDayPopup);
+dayPopupCloseButton.addEventListener("click", () => closeDayPopup());
+dayPopupDoneButton.addEventListener("click", () => closeDayPopup());
 dayPopupAddButton.addEventListener("click", () => {
   const date = dayPopupDate;
   closeDayPopup();
@@ -996,7 +1026,9 @@ document.addEventListener("keydown", event => {
     }
   }
 
-  // Never let page shortcuts open windows behind an open modal dialog.
+  // Never let page shortcuts move focus out of an open note dialog or the day
+  // card. The card is not modal, but a stray "n" should not yank focus off the
+  // day someone is reading.
   if (!notePopup.hidden || !dayPopup.hidden) return;
 
   // Global keyboard shortcuts — only when not focused in an input
@@ -2156,6 +2188,9 @@ function setPlannerView(view) {
   const requested = view === "calendar" ? lastCalendarMode : view;
   if (requested !== "today" && !isCalendarView(requested)) return;
   if (focusDeskOpen) closeFocusDesk(false);
+  // The day card belongs to the calendar it was opened from; leaving that
+  // view (Today, or the other calendar) leaves nothing for it to describe.
+  if (!dayPopup.hidden) closeDayPopup(false);
   const wasCalendar = isCalendarView(activeView);
   activeView = requested;
   if (isCalendarView(activeView)) {
@@ -2564,26 +2599,76 @@ function renderDayPopup(dateKey) {
   });
 }
 
+const DAY_PANEL_WIDTH = 304;
+const DAY_PANEL_GAP = 10;
+
+// The day card rides beside the planner window rather than inside it, so it can
+// sit outside the frame without being clipped by the window's rounded corners.
+// Its spot is viewport-based, so it is re-measured whenever the window moves,
+// resizes, or the viewport changes.
+function placeDayPopup() {
+  if (dayPopup.hidden) return;
+  const planner = document.querySelector("#planner-window");
+  if (!planner) return;
+  const win = planner.getBoundingClientRect();
+  const margin = 12;
+  const hasRoom = window.innerWidth - win.right >= DAY_PANEL_WIDTH + DAY_PANEL_GAP + margin;
+  dayPopup.classList.toggle("is-floating", hasRoom);
+  if (!hasRoom) {
+    // Bottom sheet when there is no room beside the window: keep it clear of
+    // the dock so the calendar header and window switcher stay reachable.
+    const dock = document.querySelector(".taskbar");
+    const dockTop = dock ? dock.getBoundingClientRect().top : window.innerHeight;
+    dayPopup.style.top = "";
+    dayPopup.style.left = "";
+    dayPopup.style.right = "";
+    dayPopup.style.maxHeight = "";
+    dayPopup.style.bottom = `${Math.max(12, Math.round(window.innerHeight - Math.min(dockTop, window.innerHeight)) + 8)}px`;
+    return;
+  }
+  dayPopup.style.bottom = "";
+  dayPopup.style.right = "";
+  const top = clamp(Math.round(win.top), margin, Math.max(margin, window.innerHeight - 240));
+  dayPopup.style.top = `${top}px`;
+  dayPopup.style.left = `${Math.round(win.right + DAY_PANEL_GAP)}px`;
+  dayPopup.style.maxHeight = `${Math.max(240, window.innerHeight - top - margin)}px`;
+}
+
+let dayPopupPlacementFrame = 0;
+function scheduleDayPopupPlacement() {
+  if (dayPopup.hidden || dayPopupPlacementFrame) return;
+  dayPopupPlacementFrame = requestAnimationFrame(() => {
+    dayPopupPlacementFrame = 0;
+    placeDayPopup();
+  });
+}
+
 function openDayPopup(dateKey) {
   if (!dateKey) return;
   dayPopupDate = dateKey;
   dayPopupReturnFocus = document.activeElement;
   renderDayPopup(dateKey);
   dayPopup.hidden = false;
-  setBackgroundInert(true);
-  dayPopupCloseButton.focus();
+  placeDayPopup();
+  // Non-modal, so the calendar stays live behind it; focus still moves into
+  // the card so keyboard users land on the day they opened, with Tab reaching
+  // its controls from here.
+  dayPopup.focus();
 }
 
-function closeDayPopup() {
+function closeDayPopup(restoreFocus = true) {
   if (dayPopup.hidden) return;
   dayPopup.hidden = true;
   dayPopupDate = "";
-  if (notePopup.hidden) setBackgroundInert(false);
+  if (!restoreFocus) {
+    dayPopupReturnFocus = null;
+    return;
+  }
   const returnFocus = dayPopupReturnFocus;
   dayPopupReturnFocus = null;
   if (returnFocus && returnFocus.isConnected && typeof returnFocus.focus === "function") {
     returnFocus.focus();
-  } else if (activeView === "month") {
+  } else if (isCalendarView(activeView)) {
     focusDay(focusedDate);
   }
 }
@@ -2961,6 +3046,8 @@ function restoreFocusAfterToggle(id) {
 function editItem(id) {
   const item = items.find(entry => entry.id === id);
   if (!item) return;
+  // The day card would cover the form it is opening, so step aside first.
+  if (!dayPopup.hidden) closeDayPopup(false);
   if (item.type === "note") {
     openWindow("notes");
     setNoteEditMode(item);
@@ -3020,6 +3107,9 @@ function restoreFocusAfterDelete() {
 }
 
 function openNotePopup(text, createdLabel, returnFocusElement) {
+  // A modal note takes the whole screen; the day card would otherwise sit
+  // visibly above its scrim because both live outside the inert app shell.
+  if (!dayPopup.hidden) closeDayPopup(false);
   activePopupNoteText = text;
   notePopupReturnFocus = returnFocusElement || document.activeElement;
   notePopupTitle.textContent = `Note | ${createdLabel}`;
@@ -4796,6 +4886,7 @@ function handleWindowAction(name, action) {
   if (action === "minimize") {
     state.minimized = true;
     state.fullscreen = false;
+    if (name === "planner") closeDayPopup(false);
     showToast(`${capitalize(name)} minimized.`);
   }
 
@@ -4803,6 +4894,7 @@ function handleWindowAction(name, action) {
     state.open = false;
     state.minimized = false;
     state.fullscreen = false;
+    if (name === "planner") closeDayPopup(false);
     showToast(`${capitalize(name)} closed.`);
   }
 

@@ -1831,7 +1831,7 @@ test("right edge grip stays reachable on short screens", async ({ page }) => {
   expect(after.width).toBeGreaterThan(before.width + 80);
 });
 
-test("day popup traps focus and restores it on close", async ({ page }) => {
+test("day panel docks beside the calendar instead of over it", async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 10, 4, 12, 0, 0));
   await openPlannerSurface(page);
   await openCalendarView(page, "month");
@@ -1840,22 +1840,63 @@ test("day popup traps focus and restores it on close", async ({ page }) => {
   await day.focus();
   await page.keyboard.press("Enter");
 
-  const popup = page.locator("#day-popup");
-  await expect(popup).toBeVisible();
-  await expect(page.locator("#main-content")).toHaveAttribute("inert", "");
-  await expect(page.locator(".taskbar")).toHaveAttribute("inert", "");
+  const panel = page.locator("#day-popup");
+  await expect(panel).toBeVisible();
+  // Let the slide-in finish so the measured box is the settled one.
+  await panel.evaluate(element => Promise.all(element.getAnimations().map(animation => animation.finished)));
+  // Non-modal: the app behind the panel stays usable, so no inert background.
+  await expect(page.locator("#main-content")).not.toHaveAttribute("inert", "");
+  await expect(page.locator(".taskbar")).not.toHaveAttribute("inert", "");
 
-  for (let index = 0; index < 14; index += 1) {
-    await page.keyboard.press("Tab");
+  const geometry = await page.evaluate(() => {
+    const box = element => {
+      const rect = element.getBoundingClientRect();
+      return {
+        left: Math.round(rect.left),
+        top: Math.round(rect.top),
+        right: Math.round(rect.right),
+        bottom: Math.round(rect.bottom),
+        width: Math.round(rect.width)
+      };
+    };
+    return {
+      panel: box(document.getElementById("day-popup")),
+      win: box(document.querySelector(".planner-window")),
+      viewport: { width: window.innerWidth, height: window.innerHeight }
+    };
+  });
+  // There is no scrim left behind: the card is either a companion beside the
+  // window or a bottom sheet over its lower half.
+  await expect(page.locator(".day-popup-backdrop")).toHaveCount(0);
+  expect(geometry.panel.top).toBeGreaterThanOrEqual(0);
+  expect(geometry.panel.right).toBeLessThanOrEqual(geometry.viewport.width);
+  if (geometry.panel.left >= geometry.win.right) {
+    expect(geometry.panel.width).toBeLessThan(geometry.win.width * 0.6);
+  } else {
+    expect(geometry.panel.width).toBeGreaterThan(geometry.win.width * 0.6);
+    expect(geometry.panel.width).toBeLessThanOrEqual(geometry.win.width);
+    expect(geometry.panel.bottom).toBeLessThanOrEqual(geometry.viewport.height);
   }
-  const stayedInside = await page.evaluate(() => document.getElementById("day-popup").contains(document.activeElement));
-  expect(stayedInside).toBe(true);
+
+  // Where the panel is a companion card, the calendar stays reachable beside
+  // it, so clicking another day retargets the open panel instead of stacking a
+  // second one or dismissing it. The sheet covers the grid, so there is nothing
+  // visible to click there.
+  let expectedDay = "2026-11-04";
+  if (geometry.panel.width < geometry.win.width - 8) {
+    await page.locator('.calendar-day[data-date="2026-11-02"] .calendar-day-num').click();
+    await expect(page.locator("#day-popup-title")).toHaveText(/ 2$/);
+    await expect(panel).toHaveCount(1);
+    expectedDay = "2026-11-02";
+  }
 
   await page.keyboard.press("Escape");
-  await expect(popup).toBeHidden();
-  await expect(page.locator("#main-content")).not.toHaveAttribute("inert", "");
-  const restoredFocus = await page.evaluate(() => document.activeElement?.dataset?.date);
-  expect(restoredFocus).toBe("2026-11-04");
+  await expect(panel).toBeHidden();
+  const restoredFocus = await page.evaluate(() => {
+    const active = document.activeElement;
+    return active?.dataset?.date || active?.closest?.(".calendar-day")?.dataset?.date || "";
+  });
+  expect(restoredFocus).toBe(expectedDay);
 });
 
 test("invalid stored dates fall back to today instead of rolling over", async ({ page }) => {
@@ -1947,7 +1988,7 @@ test("malformed backup dates are repaired or treated as undated", async ({ page 
   await expect(page.locator(".calendar-tray")).toContainText("No-date fallback task");
 });
 
-test("global shortcuts do not open windows behind a modal", async ({ page }) => {
+test("global shortcuts do not move focus out of the open day panel", async ({ page }) => {
   await page.clock.setFixedTime(new Date(2026, 10, 4, 12, 0, 0));
   await openPlannerSurface(page);
   await openCalendarView(page, "month");
