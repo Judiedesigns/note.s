@@ -483,11 +483,13 @@ const ICON_POSITIONS_KEY = "random_notes_icon_positions_v1";
 const PLANNER_VIEW_KEY = "random_notes_planner_view_v1";
 const FOCUS_KEY = "random_notes_focus_v1";
 const FOCUS_DEFAULT_SETTINGS = { focusMin: 25, breakMin: 5, goalMin: 60, sound: true };
-// Two short motifs, so the ear knows which timer finished without reading the
-// screen: a rising arpeggio for a sprint, a two-note knock for a break.
+// Three short motifs, so the ear knows what happened without reading the
+// screen: a rising arpeggio for a sprint, a two-note knock for a break, and a
+// small upward tick when a task is checked off.
 const FOCUS_CHIMES = {
   sprint: { notes: [523.25, 659.25, 783.99, 1046.5], gap: 0.15, hold: 0.55, gain: 0.06 },
-  break: { notes: [880, 659.25], gap: 0.26, hold: 0.4, gain: 0.06 }
+  break: { notes: [880, 659.25], gap: 0.26, hold: 0.4, gain: 0.06 },
+  done: { notes: [880, 1174.66], gap: 0.09, hold: 0.26, gain: 0.045 }
 };
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyCBt6sNfoVpKvAjjvdFt1JLAfHQ6_UNjSQ",
@@ -531,6 +533,8 @@ let focusDeskOpen = false;
 let focusDeskTaskId = null;
 let focusDeskMin = 25;
 let focusLastTickSecond = null;
+let focusAudio = null;
+let scheduledChime = null; // { kind, endsAt, nodes } for the running timer
 let syncDb = null;
 let syncUser = null;
 let syncReady = false;
@@ -3024,6 +3028,7 @@ function toggleDone(id, done) {
   items = items.map(item => item.id === id ? { ...item, done, updatedAt: Date.now() } : item);
   saveItems();
   render();
+  if (done) playFocusChime("done");
   restoreFocusAfterToggle(id);
   announce(done ? "Task completed." : "Task reopened.");
   showToast(done ? "Task completed." : "Task reopened.");
@@ -3362,8 +3367,13 @@ function formatFocusClock(ms) {
 
 /* Timer chimes. Web Audio keeps the shell asset-free and works offline; the
    context is created from a focus click, because browsers only allow audio
-   after a gesture. Sound is a courtesy, so every call fails quietly. */
-let focusAudio = null;
+   after a gesture.
+   The end-of-session note is scheduled onto the audio clock the moment the
+   timer starts, not when a JavaScript timer notices the end. Background tabs
+   throttle (or freeze) timers, and a chime that only fires from an interval
+   arrives late or not at all; audio the browser is already playing runs on the
+   hardware clock, so the ping still lands on the exact second while the user
+   is in another app. Sound is a courtesy, so every call fails quietly. */
 
 function getFocusAudioContext() {
   if (focusAudio) return focusAudio;
@@ -3377,15 +3387,100 @@ function getFocusAudioContext() {
   return focusAudio;
 }
 
+function ensureFocusChimeScheduled() {
+  const session = focusState.session;
+  if (!session.running || !session.endsAt) return;
+  if (session.phase !== "focus" && session.phase !== "break") return;
+  if (scheduledChime && scheduledChime.endsAt === session.endsAt) return;
+  if (!focusAudio || focusAudio.state !== "running") return;
+  scheduleFocusChime(session.phase === "focus" ? "sprint" : "break", session.endsAt);
+}
+
+function cancelScheduledChime() {
+  const entry = scheduledChime;
+  scheduledChime = null;
+  if (!entry) return;
+  entry.nodes.forEach(node => {
+    try {
+      node.stop();
+    } catch (error) {
+      // A node that already finished cannot be stopped; that is fine.
+    }
+  });
+}
+
+// True when the ping for this exact end time is already on the audio clock, so
+// the visible-tab tick must not play a second copy.
+function consumeScheduledChime(kind, endsAt) {
+  const entry = scheduledChime;
+  if (!entry || entry.kind !== kind || entry.endsAt !== endsAt) {
+    cancelScheduledChime();
+    return false;
+  }
+  scheduledChime = null;
+  if (focusAudio && focusAudio.state === "running") return true;
+  // The context was suspended, so the notes never started; fall back to a live
+  // chime once the page is back in front of the user.
+  entry.nodes.forEach(node => {
+    try {
+      node.stop();
+    } catch (error) {}
+  });
+  return false;
+}
+
 function keepFocusAudioAwake() {
   if (!focusState.settings.sound) return;
   const context = getFocusAudioContext();
-  if (!context || context.state !== "suspended") return;
+  if (!context) return;
+  if (context.state === "running") {
+    ensureFocusChimeScheduled();
+    return;
+  }
   try {
     const resumed = context.resume();
-    if (resumed && typeof resumed.catch === "function") resumed.catch(() => {});
+    if (resumed && typeof resumed.then === "function") {
+      resumed.then(ensureFocusChimeScheduled).catch(() => {});
+    }
   } catch (error) {
     // A blocked context just means this timer stays quiet.
+  }
+}
+
+function scheduleChimeNotes(context, chime, delaySeconds) {
+  const start = context.currentTime + Math.max(0, delaySeconds) + 0.03;
+  const nodes = [];
+  chime.notes.forEach((frequency, index) => {
+    const at = start + index * chime.gap;
+    const gain = context.createGain();
+    const osc = context.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(frequency, at);
+    gain.gain.setValueAtTime(0.0001, at);
+    gain.gain.exponentialRampToValueAtTime(chime.gain, at + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + chime.hold);
+    osc.connect(gain);
+    gain.connect(context.destination);
+    osc.start(at);
+    osc.stop(at + chime.hold + 0.05);
+    nodes.push(osc);
+  });
+  return nodes;
+}
+
+function scheduleFocusChime(kind, endsAt) {
+  cancelScheduledChime();
+  if (!focusState.settings.sound || !endsAt) return;
+  const chime = FOCUS_CHIMES[kind];
+  if (!chime) return;
+  const context = getFocusAudioContext();
+  if (!context) return;
+  try {
+    const delay = Math.max(0, endsAt - Date.now()) / 1000;
+    const nodes = scheduleChimeNotes(context, chime, delay);
+    scheduledChime = { kind, endsAt, nodes };
+  } catch (error) {
+    scheduledChime = null;
   }
 }
 
@@ -3398,21 +3493,7 @@ function playFocusChime(kind) {
 
   try {
     if (context.state === "suspended") keepFocusAudioAwake();
-    const start = context.currentTime + 0.03;
-    chime.notes.forEach((frequency, index) => {
-      const at = start + index * chime.gap;
-      const gain = context.createGain();
-      const osc = context.createOscillator();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(frequency, at);
-      gain.gain.setValueAtTime(0.0001, at);
-      gain.gain.exponentialRampToValueAtTime(chime.gain, at + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, at + chime.hold);
-      osc.connect(gain);
-      gain.connect(context.destination);
-      osc.start(at);
-      osc.stop(at + chime.hold + 0.05);
-    });
+    scheduleChimeNotes(context, chime, 0);
   } catch (error) {
     // Audio is a courtesy; a blocked context never blocks the timer.
   }
@@ -3443,10 +3524,6 @@ function beginFocus(taskId = null) {
     return;
   }
 
-  // The click that starts a sprint is where browsers allow audio; unlock the
-  // chime now so it can ring when the timer ends later.
-  keepFocusAudioAwake();
-
   const session = focusState.session;
   session.phase = "focus";
   session.offer = null;
@@ -3457,6 +3534,12 @@ function beginFocus(taskId = null) {
   session.endsAt = Date.now() + session.totalMs;
   session.loggedMin = 0;
   focusLastTickSecond = null;
+
+  // The click that starts a sprint is where browsers allow audio; unlock the
+  // context here and put the end-of-sprint ping on the audio clock, so it rings
+  // at the right second even if the tab is buried behind another app.
+  keepFocusAudioAwake();
+
   saveFocusState();
   render();
   const message = `Focusing on ${task.title}.`;
@@ -3467,6 +3550,7 @@ function beginFocus(taskId = null) {
 function pauseFocus() {
   const session = focusState.session;
   if (!session.running) return;
+  cancelScheduledChime();
   session.remainingMs = focusRemainingMs();
   session.running = false;
   session.endsAt = 0;
@@ -3479,11 +3563,11 @@ function pauseFocus() {
 function resumeFocus() {
   const session = focusState.session;
   if (session.running || (session.phase !== "focus" && session.phase !== "break")) return;
-  keepFocusAudioAwake();
   if (!session.remainingMs) session.remainingMs = session.totalMs;
   session.endsAt = Date.now() + session.remainingMs;
   session.running = true;
   focusLastTickSecond = null;
+  keepFocusAudioAwake();
   saveFocusState();
   render();
   announce("Resumed.");
@@ -3504,6 +3588,7 @@ function finishFocus() {
 
 function openFocusOffer(reason, minutes = null) {
   const session = focusState.session;
+  cancelScheduledChime();
   session.phase = "offer";
   session.offer = reason;
   session.running = false;
@@ -3515,7 +3600,6 @@ function openFocusOffer(reason, minutes = null) {
 }
 
 function takeFocusBreak() {
-  keepFocusAudioAwake();
   const session = focusState.session;
   session.phase = "break";
   session.offer = null;
@@ -3525,6 +3609,7 @@ function takeFocusBreak() {
   session.endsAt = Date.now() + session.totalMs;
   session.loggedMin = 0;
   focusLastTickSecond = null;
+  keepFocusAudioAwake();
   saveFocusState();
   render();
   announce("Break started.");
@@ -3533,6 +3618,7 @@ function takeFocusBreak() {
 
 function endFocus() {
   const session = focusState.session;
+  cancelScheduledChime();
   let logged = 0;
   if (session.phase === "focus") {
     const minutes = Math.max(0, Math.round((session.totalMs - focusRemainingMs()) / 60000));
@@ -3549,6 +3635,7 @@ function endFocus() {
 function stopFocusForTask(id) {
   const session = focusState.session;
   if (session.taskId !== id || session.phase === "idle") return false;
+  cancelScheduledChime();
   if (session.phase === "focus") {
     const minutes = Math.max(0, Math.round((session.totalMs - focusRemainingMs()) / 60000));
     if (minutes > 0) logFocusedMinutes(minutes);
@@ -3564,15 +3651,18 @@ function settleFocus(now) {
   // A tab that slept through the end should not chime long after the fact; the
   // offer and toast still explain what happened when the user comes back.
   const fresh = now - session.endsAt < 90000;
+  const endsAt = session.endsAt;
 
   if (session.phase === "focus") {
+    const alreadyRang = consumeScheduledChime("sprint", endsAt);
     finishFocus();
-    if (fresh) playFocusChime("sprint");
+    if (fresh && !alreadyRang) playFocusChime("sprint");
   } else if (session.phase === "break") {
+    const alreadyRang = consumeScheduledChime("break", endsAt);
     openFocusOffer("break");
-    if (fresh) playFocusChime("break");
-    announce("Break over.");
-    showToast("Break over.");
+    if (fresh && !alreadyRang) playFocusChime("break");
+    announce("Break over. Back to work.");
+    showToast("Break over. Back to work.");
   }
 }
 
@@ -3609,6 +3699,9 @@ function focusTick() {
   settleFocus(Date.now());
   rollFocusDayIfNeeded();
   if (focusState.session.running) {
+    // A context can start suspended, or be interrupted when the page comes
+    // back; retry the resume and the scheduled ping without spamming audio.
+    if (focusAudio) keepFocusAudioAwake();
     const second = Math.ceil(focusRemainingMs() / 1000);
     if (second !== focusLastTickSecond) {
       focusLastTickSecond = second;
@@ -3913,8 +4006,8 @@ function renderFocusPanel() {
   if (isOffer) {
     const reason = session.offer;
     focusOfferCopy.textContent = reason === "break"
-      ? "Break over. Back to it, or stop for now?"
-      : `${session.loggedMin} min logged · what next?`;
+      ? "Break over. Back to work?"
+      : `${session.loggedMin} min logged · take a break?`;
     focusOfferBreakButton.textContent = reason === "break" ? "Back to work" : `${focusState.settings.breakMin} min break`;
     focusOfferKeepButton.hidden = reason === "break";
   } else {
@@ -4068,6 +4161,8 @@ focusSoundToggle.addEventListener("click", () => {
   const sound = !focusState.settings.sound;
   focusState.settings.sound = sound;
   saveFocusState();
+  // A ping already sitting on the audio clock would ignore the new setting.
+  if (!sound) cancelScheduledChime();
   renderFocusSettings();
   if (sound) {
     // Clicking On is a gesture, so this doubles as the audio unlock and a
@@ -4079,6 +4174,15 @@ focusSoundToggle.addEventListener("click", () => {
   announce(message);
   showToast(message);
 });
+
+// Reloading mid-session leaves no gesture to unlock audio, so the first touch
+// or keypress arms the chime for the timer that is already running.
+function unlockRunningFocusAudio() {
+  if (!focusState.session.running) return;
+  keepFocusAudioAwake();
+}
+document.addEventListener("pointerdown", unlockRunningFocusAudio, { capture: true, passive: true });
+document.addEventListener("keydown", unlockRunningFocusAudio, { capture: true });
 
 document.addEventListener("click", event => {
   if (!focusSettingsOpen) return;

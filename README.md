@@ -20,7 +20,8 @@ Everything is saved in `localStorage` first, so it still works in the same brows
 - The sidebar **Focus** row is the home of the timer: it reads Off, the remaining time, or Break, and opens a Start a focus sprint dialog where you pick the task and a 15, 25, or 50 minute sprint
 - Today shows the live session in a dock while a sprint runs or is paused; on phones, where the sidebar is collapsed, the idle dock is the way in
 - Focus sprints stop at the end and offer a short break, keeping going, or stopping; nothing starts, advances, or checks off on its own
-- A short chime marks the end of a sprint and a different one marks the end of a break; both can be muted in Focus settings
+- A short chime marks the end of a sprint, a different one marks the end of a break, and a quiet tick confirms a finished task; all can be muted in Focus settings
+- The end-of-timer chime is scheduled on the audio clock when the timer starts, so it still rings on time while the tab sits in the background or another app is in front
 - A daily focus goal is the main progress bar, and the menu-bar pill keeps the running timer visible from any view
 - Focus sessions resume after a reload using an absolute end time; the session and daily minutes stay on this device
 - Week shows day columns, Month shows a calendar grid with `+N more` expansion

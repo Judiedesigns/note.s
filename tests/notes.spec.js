@@ -285,7 +285,7 @@ test("focus sprint logs minutes and asks what to do next", async ({ page }) => {
 
   await page.clock.fastForward(25 * 60 * 1000 + 1000);
   await expect(page.locator("#focus-offer")).toBeVisible();
-  await expect(page.locator("#focus-offer-copy")).toHaveText("25 min logged · what next?");
+  await expect(page.locator("#focus-offer-copy")).toHaveText("25 min logged · take a break?");
   await expect(page.locator("#focus-goal")).toHaveText("25 / 60 min today");
   await expect(page.locator("#focus-pill-label")).toHaveText("Sprint done");
   await expect(page.locator("#focus-pill-time")).toBeHidden();
@@ -328,7 +328,7 @@ test("focus break is optional and returns to the same task", async ({ page }) =>
   await expect(page.locator("#focus-pill-label")).toHaveText("Break");
 
   await page.clock.fastForward(5 * 60 * 1000 + 1000);
-  await expect(page.locator("#focus-offer-copy")).toHaveText("Break over. Back to it, or stop for now?");
+  await expect(page.locator("#focus-offer-copy")).toHaveText("Break over. Back to work?");
   await expect(page.locator("#focus-offer-break")).toHaveText("Back to work");
   await expect(page.locator("#focus-offer-keep")).toBeHidden();
   await expect(page.locator("#focus-pill-label")).toHaveText("Break over");
@@ -367,8 +367,15 @@ test("focus timer chimes when a sprint or a break ends and can be muted", async 
           },
           connect() {},
           disconnect() {},
-          start(at) { window.__chimes.push({ at, freq: osc.frequency.value }); },
-          stop() {}
+          start(at) {
+            // Notes go onto the audio clock; they ring at `at` unless a pause,
+            // mute, or early finish stops them first.
+            osc.entry = { at, freq: osc.frequency.value, cancelled: false };
+            window.__chimes.push(osc.entry);
+          },
+          // The app stops a note's own tail at a scheduled time; only a bare
+          // stop() (pause, mute, early finish) cancels a pending note.
+          stop(when) { if (when === undefined && osc.entry) osc.entry.cancelled = true; }
         };
         return osc;
       }
@@ -384,7 +391,7 @@ test("focus timer chimes when a sprint or a break ends and can be muted", async 
   await page.reload({ waitUntil: "domcontentloaded" });
   await openPlannerSurface(page);
 
-  const chimes = () => page.evaluate(() => window.__chimes.map(entry => entry.freq));
+  const chimes = () => page.evaluate(() => window.__chimes.filter(entry => !entry.cancelled).map(entry => entry.freq));
   await page.getByRole("button", { name: "Start focus on Draft Q4 report" }).click();
 
   // A finished sprint rises through a C major arpeggio.
@@ -420,6 +427,10 @@ test("focus timer chimes when a sprint or a break ends and can be muted", async 
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-checked", "true");
   expect(await chimes()).toHaveLength(8);
+
+  // Checking a task off gets its own short tick, so a win is audible too.
+  await page.evaluate(() => toggleDone("focus-a", true));
+  expect((await chimes()).slice(-2)).toEqual([880, 1174.66]);
 });
 
 test("focus session resumes after reload from its absolute end time", async ({ page }) => {
@@ -452,7 +463,7 @@ test("focus session resumes after reload from its absolute end time", async ({ p
   await page.reload({ waitUntil: "domcontentloaded" });
   await openPlannerSurface(page);
   await expect(page.locator("#focus-offer")).toBeVisible();
-  await expect(page.locator("#focus-offer-copy")).toHaveText("25 min logged · what next?");
+  await expect(page.locator("#focus-offer-copy")).toHaveText("25 min logged · take a break?");
   await expect(page.locator("#focus-goal")).toHaveText("25 / 60 min today");
   await expect(page.locator("#focus-pill-label")).toHaveText("Sprint done");
 });
