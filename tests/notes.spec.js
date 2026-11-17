@@ -394,6 +394,10 @@ test("focus timer chimes when a sprint or a break ends and can be muted", async 
   const chimes = () => page.evaluate(() => window.__chimes.filter(entry => !entry.cancelled).map(entry => entry.freq));
   await page.getByRole("button", { name: "Start focus on Draft Q4 report" }).click();
 
+  // Safari suspends a silent AudioContext in the background, so a quiet tone
+  // keeps the graph "producing audio" for as long as the sprint runs.
+  expect(await chimes()).toContain(60);
+
   // A finished sprint rises through a C major arpeggio.
   await page.clock.fastForward(25 * 60 * 1000 + 1000);
   await expect(page.locator("#focus-offer")).toBeVisible();

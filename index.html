@@ -535,6 +535,7 @@ let focusDeskMin = 25;
 let focusLastTickSecond = null;
 let focusAudio = null;
 let scheduledChime = null; // { kind, endsAt, nodes } for the running timer
+let focusAudioKeepAlive = null; // { oscillator, gain } so Safari keeps the graph live
 let syncDb = null;
 let syncUser = null;
 let syncReady = false;
@@ -1188,6 +1189,12 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 window.addEventListener("focus", () => {
+  refreshDayIfNeeded();
+  focusTick();
+});
+// Safari restores a backgrounded page from its page cache without a fresh
+// focus event; the timer and its audio graph still have to catch up.
+window.addEventListener("pageshow", () => {
   refreshDayIfNeeded();
   focusTick();
 });
@@ -3435,16 +3442,63 @@ function keepFocusAudioAwake() {
   if (!context) return;
   if (context.state === "running") {
     ensureFocusChimeScheduled();
+    startFocusAudioKeepAlive();
     return;
   }
   try {
     const resumed = context.resume();
     if (resumed && typeof resumed.then === "function") {
-      resumed.then(ensureFocusChimeScheduled).catch(() => {});
+      resumed.then(() => {
+        ensureFocusChimeScheduled();
+        startFocusAudioKeepAlive();
+      }).catch(() => {});
     }
   } catch (error) {
     // A blocked context just means this timer stays quiet.
   }
+}
+
+/* Safari suspends an AudioContext when the page is backgrounded and the
+   context is not producing audio. A ping scheduled twenty minutes ahead is
+   silence until it rings, so Safari would suspend the graph before the ping
+   ever fired. A continuous, inaudible tone keeps the context producing sound
+   for the whole session, so the scheduled chime survives the background. */
+function startFocusAudioKeepAlive() {
+  if (focusAudioKeepAlive) return;
+  const session = focusState.session;
+  if (!session.running) return;
+  if (session.phase !== "focus" && session.phase !== "break") return;
+  if (!focusState.settings.sound) return;
+  const context = getFocusAudioContext();
+  if (!context || context.state !== "running") return;
+  try {
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(60, context.currentTime);
+    gain.gain.setValueAtTime(0.0004, context.currentTime);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start();
+    focusAudioKeepAlive = { oscillator, gain };
+  } catch (error) {
+    focusAudioKeepAlive = null;
+  }
+}
+
+function stopFocusAudioKeepAlive() {
+  const alive = focusAudioKeepAlive;
+  focusAudioKeepAlive = null;
+  if (!alive) return;
+  try {
+    alive.oscillator.stop();
+  } catch (error) {
+    // It may have been stopped with the session already.
+  }
+  try {
+    alive.oscillator.disconnect();
+    alive.gain.disconnect();
+  } catch (error) {}
 }
 
 function scheduleChimeNotes(context, chime, delaySeconds) {
@@ -3551,6 +3605,7 @@ function pauseFocus() {
   const session = focusState.session;
   if (!session.running) return;
   cancelScheduledChime();
+  stopFocusAudioKeepAlive();
   session.remainingMs = focusRemainingMs();
   session.running = false;
   session.endsAt = 0;
@@ -3589,6 +3644,7 @@ function finishFocus() {
 function openFocusOffer(reason, minutes = null) {
   const session = focusState.session;
   cancelScheduledChime();
+  stopFocusAudioKeepAlive();
   session.phase = "offer";
   session.offer = reason;
   session.running = false;
@@ -3619,6 +3675,7 @@ function takeFocusBreak() {
 function endFocus() {
   const session = focusState.session;
   cancelScheduledChime();
+  stopFocusAudioKeepAlive();
   let logged = 0;
   if (session.phase === "focus") {
     const minutes = Math.max(0, Math.round((session.totalMs - focusRemainingMs()) / 60000));
@@ -3636,6 +3693,7 @@ function stopFocusForTask(id) {
   const session = focusState.session;
   if (session.taskId !== id || session.phase === "idle") return false;
   cancelScheduledChime();
+  stopFocusAudioKeepAlive();
   if (session.phase === "focus") {
     const minutes = Math.max(0, Math.round((session.totalMs - focusRemainingMs()) / 60000));
     if (minutes > 0) logFocusedMinutes(minutes);
@@ -4162,7 +4220,10 @@ focusSoundToggle.addEventListener("click", () => {
   focusState.settings.sound = sound;
   saveFocusState();
   // A ping already sitting on the audio clock would ignore the new setting.
-  if (!sound) cancelScheduledChime();
+  if (!sound) {
+    cancelScheduledChime();
+    stopFocusAudioKeepAlive();
+  }
   renderFocusSettings();
   if (sound) {
     // Clicking On is a gesture, so this doubles as the audio unlock and a
