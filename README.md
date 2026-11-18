@@ -30,9 +30,9 @@ Everything is saved in `localStorage` first, so it still works in the same brows
 - Tab lists and the Notes filter menu support arrow keys, Home/End, and Escape
 - Tasks without a date are allowed and collect in the No date tray
 - Quick-capture task bar: one quiet rounded row; type a title, then press Enter or click the visible **Save** button (pointer devices also see a `↵ save` hint)
-- The create button follows the view: **New task** in Today, **New event** in Week or Month
+- Week and Month capture a plain task by default; a small **Task / Event** switch on the capture row opts into an event
 - Events are real calendar items with a start time and duration; they do not have a Done checkbox or a focus sprint
-- Quick event capture includes clickable time and duration chips; the full form exposes both fields
+- Choosing **Event** reveals clickable time and duration chips where the pane has room; on narrow panes the options button opens the full form, which always exposes both fields
 - If a new task belongs to a future date, the toast explains where it went
 - Quick capture in Week or Month defaults to the selected day
 - Click a Month day (or press Enter on it) to open a day panel beside the planner window listing that day's tasks and events; the calendar stays visible and clickable behind it

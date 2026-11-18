@@ -2638,6 +2638,9 @@ body {
   width: 100%;
   min-width: 0;
   margin: 0 0 10px;
+  /* The running bar changes shape by panel width, not viewport width: a
+     docked window at 1024 is as narrow as a phone. */
+  container-type: inline-size;
 }
 
 /* Above the sidebar breakpoint, Focus lives in the sidebar: the dock is only
@@ -2650,9 +2653,9 @@ body {
 .focus-panel {
   position: relative;
   display: grid;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
-  padding: 9px 10px 10px;
+  padding: 8px 9px 9px;
   border: 1px solid rgba(109, 107, 198, 0.26);
   border-radius: 10px;
   background: linear-gradient(rgba(246, 243, 252, 0.92), rgba(250, 248, 253, 0.9));
@@ -2761,12 +2764,12 @@ body {
 }
 
 .focus-clock {
-  min-width: 4.4rem;
+  min-width: 3.5rem;
   color: var(--ink);
-  font-size: 36px;
+  font-size: 30px;
   font-weight: 300;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
   line-height: 1;
 }
 
@@ -2774,12 +2777,12 @@ body {
 
 .focus-copy {
   display: grid;
-  gap: 5px;
+  gap: 4px;
   min-width: 0;
 }
 
 .focus-task {
-  min-height: 16px;
+  min-height: 15px;
   margin: 0;
   overflow: hidden;
   color: #51505a;
@@ -2791,7 +2794,7 @@ body {
 .focus-task strong { color: var(--ink); font-weight: 600; }
 
 .focus-bar {
-  height: 4px;
+  height: 3px;
   border-radius: 999px;
   background: rgba(116, 104, 124, 0.14);
   overflow: hidden;
@@ -2826,6 +2829,10 @@ body {
   flex-wrap: wrap;
   gap: 5px;
 }
+
+/* In the offer state every timer control is hidden, and an empty flex row
+   would still add a gap above the decision. */
+.focus-actions:empty { display: none; }
 
 .focus-action {
   display: inline-flex;
@@ -2929,7 +2936,6 @@ body {
 .focus-panel.is-offer .focus-next { display: none; }
 
 .focus-panel.is-offer .focus-body { grid-template-columns: minmax(0, 1fr); }
-.focus-panel.is-offer .focus-settings-btn { margin-left: auto; }
 
 /* A narrow planner window (resized or squeezed by the desktop grid) drops the
    decorative "Up next:" prefix so the task name stays on one line. */
@@ -2937,19 +2943,100 @@ body {
   .focus-panel.is-idle .focus-upnext { display: none; }
 }
 
+/* The gear parks in the card's top corner so the state line is a single row
+   of text at every width. --focus-gear-space is the room the actions, the
+   copy, and the popover keep clear of it. */
+.focus-panel:not(.is-idle) { --focus-gear-space: calc(var(--icon-hit) + 6px); }
+
+.focus-panel:not(.is-idle) .focus-settings-btn {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+}
+
+.focus-panel:not(.is-idle) .focus-head { padding-right: var(--focus-gear-space); }
+.focus-panel:not(.is-idle) .focus-task { padding-right: var(--focus-gear-space); }
+.focus-panel:not(.is-idle) .focus-settings { top: calc(var(--focus-gear-space) + 6px); }
+
+/* Running, paused, and break are a bar, not a card: the transport controls
+   ride on the state line, so the clock and the task only ever need two rows.
+   The offer keeps the stacked layout because it is a decision, not a timer. */
+@container (min-width: 350px) {
+  .focus-panel:not(.is-idle):not(.is-offer) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "head actions"
+      "body body";
+    column-gap: 10px;
+  }
+
+  /* The gear now sits beside the buttons, so the text row reclaims its width
+     and only the button row stops short of the corner. */
+  .focus-panel:not(.is-idle):not(.is-offer) .focus-head {
+    grid-area: head;
+    padding-right: 0;
+  }
+
+  .focus-panel:not(.is-idle):not(.is-offer) .focus-body {
+    grid-area: body;
+  }
+
+  .focus-panel:not(.is-idle):not(.is-offer) .focus-copy { padding-right: 0; }
+
+  .focus-panel:not(.is-idle):not(.is-offer) .focus-task { padding-right: 0; }
+
+  .focus-panel:not(.is-idle):not(.is-offer) .focus-actions {
+    grid-area: actions;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    padding-right: var(--focus-gear-space);
+  }
+}
+
+/* Without room for the end time, the phase pill and the buttons still fit;
+   the clock is the primary readout anyway. */
+@container (min-width: 350px) and (max-width: 455px) {
+  .focus-panel:not(.is-idle):not(.is-offer) .focus-next { display: none; }
+}
+
+@media (hover: none) and (pointer: coarse) {
+  /* Touch buttons are 44px, so the parked gear needs the wider gutter. */
+  .focus-panel:not(.is-idle) { --focus-gear-space: calc(var(--icon-hit-touch) + 6px); }
+
+  /* Stacked only: there the corner gear is tall enough to reach the progress
+     bar, so the bar stops where the gear does. The toolbar layout has its
+     body on a row of its own. */
+  .focus-panel:not(.is-idle):not(.is-offer) .focus-bar { margin-right: var(--focus-gear-space); }
+}
+
+@container (min-width: 350px) {
+  .focus-panel:not(.is-idle):not(.is-offer) .focus-bar { margin-right: 0; }
+}
+
+/* The offer is part of the session card, not a card inside a card: a hairline
+   separates the decision from the summary, and the buttons sit on the same
+   surface, like the player footer in the mockup. */
 .focus-offer {
-  padding: 9px 10px;
-  border: 1px solid rgba(109, 107, 198, 0.3);
-  border-radius: 8px;
-  background: rgba(109, 107, 198, 0.08);
+  display: grid;
+  gap: 8px;
+  padding-top: 9px;
+  border-top: 1px solid var(--hairline);
 }
 
 .focus-offer-copy {
-  margin: 0 0 7px;
+  margin: 0;
   color: var(--accent-press);
   font-size: 11px;
   font-weight: 500;
   line-height: 1.4;
+}
+
+/* Equal-width actions on the card surface: two for a finished break, three
+   for a finished sprint. They wrap only when the card is genuinely narrow. */
+.focus-offer .focus-action,
+.focus-offer .focus-action.primary {
+  flex: 1 1 88px;
+  min-width: 0;
 }
 
 /* Settings popover: the tall inline block stays out of the Today flow. */
@@ -3545,6 +3632,58 @@ body {
 .task-quick-row:focus-within .task-quick-opts-btn { opacity: 1; }
 .task-quick-opts-btn:hover { color: var(--accent); }
 .task-quick-opts-btn:active { color: var(--accent-press); }
+
+/* Week and Month capture: a quiet two-word switch so a plain task stays the
+   default and the time/duration chips only appear when Event is chosen. */
+.quick-kind {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  margin-right: 4px;
+  padding: 2px;
+  border-radius: 999px;
+  background: rgba(109, 107, 198, 0.08);
+}
+
+.quick-kind[hidden] { display: none; }
+
+.quick-kind-btn {
+  padding: 2px 7px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ns-secondary);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  line-height: 1.5;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.quick-kind-btn:hover { color: var(--accent-press); }
+
+.quick-kind-btn.is-active {
+  background: #fff;
+  color: var(--accent-press);
+  box-shadow: 0 1px 2px rgba(44, 35, 70, 0.14);
+}
+
+.quick-kind-btn:focus-visible {
+  outline: 2px solid var(--accent-press);
+  outline-offset: 1px;
+}
+
+/* Narrow panes cannot hold the Event switch, the time and duration chips, the
+   options button, and Save on one line. Keep the bar one row so it still
+   clears the bottom dock: the chips step aside below this width, and the
+   options button opens the full form where both fields live. */
+@container (max-width: 660px) {
+  .task-quick-form.is-calendar .quick-time-chip,
+  .task-quick-form.is-calendar .quick-duration-chip { display: none; }
+}
 
 /* Visible save affordance: not everyone knows Enter submits. */
 .task-quick-save {
@@ -4200,7 +4339,7 @@ body {
   .menu-meta { gap: 0; overflow: visible; }
   .menu-bar .surface-switch { justify-self: center; }
 
-  .focus-clock { min-width: 3.8rem; font-size: 32px; }
+  .focus-clock { min-width: 3.2rem; font-size: 27px; }
   .focus-meta { flex-wrap: wrap; }
 
   /* Let the tools sit beside the view tabs instead of taking a row of their
