@@ -236,8 +236,11 @@
                   <button class="quick-kind-btn is-active" type="button" data-capture-kind="task" aria-pressed="true">Task</button>
                   <button class="quick-kind-btn" type="button" data-capture-kind="event" aria-pressed="false">Event</button>
                 </div>
-                <button class="quick-chip quick-time-chip" id="quick-time-chip" type="button" aria-label="Event start time" title="Change start time" hidden>9:00 AM</button>
-                <button class="quick-chip quick-duration-chip" id="quick-duration-chip" type="button" aria-label="Event duration" title="Change duration" hidden>1 hour</button>
+                <span class="quick-when" id="quick-when" hidden>
+                  <button class="quick-when-btn quick-when-time" id="quick-time-chip" type="button" aria-label="Event start time" title="Change start time">9:00 AM</button>
+                  <span class="quick-when-dot" aria-hidden="true">·</span>
+                  <button class="quick-when-btn quick-when-duration" id="quick-duration-chip" type="button" aria-label="Event duration" title="Change duration">1 hour</button>
+                </span>
                 <button class="task-quick-opts-btn" id="task-quick-opts-btn" type="button" aria-label="More options: set date" title="Set date / more options">⋯</button>
                 <button class="task-quick-save" id="task-quick-save" type="submit" aria-label="Save task" title="Save task" disabled>Save</button>
               </div>
@@ -575,6 +578,7 @@ const taskQuickOptsBtn = document.getElementById("task-quick-opts-btn");
 const taskQuickSave = document.getElementById("task-quick-save");
 const newItemButton = document.getElementById("new-item-btn");
 const newItemLabel = document.getElementById("new-item-label");
+const quickWhen = document.getElementById("quick-when");
 const quickTimeChip = document.getElementById("quick-time-chip");
 const quickDurationChip = document.getElementById("quick-duration-chip");
 const quickKind = document.getElementById("quick-kind");
@@ -856,15 +860,15 @@ function updateCaptureContext() {
   taskQuickOptsBtn.title = isEvent
     ? (usesTouchInput ? "Set date, time, and duration" : `Set date, time, and duration (${dateShortcutLabel})`)
     : (usesTouchInput ? "Set date" : `Set date (${dateShortcutLabel})`);
-  // The shortcut hint lives in the tooltip and the screen-reader hint; the
-  // The hint rides in the placeholder; the Save pill carries it on touch
-  // devices, where a Return key would be a lie.
-  const addHint = usesTouchInput ? "" : " (↵ save)";
-  taskQuickInput.placeholder = `${isEvent ? "Add an event…" : "Add a task…"}${addHint}`;
+  // The shortcut hint lives in the tooltip and the screen-reader hint. The
+  // Save pill is right there, so the placeholder does not repeat it: at the
+  // default window that parenthetical cost the input ~65px.
+  taskQuickInput.placeholder = isEvent ? "Add an event…" : "Add a task…";
 
   // Today captures tasks only. Week and Month show the choice, defaulting to
   // a plain task so an event's time and duration stay opt-in.
   taskQuickForm.classList.toggle("is-calendar", calendarMode);
+  taskQuickForm.classList.toggle("is-event", isEvent);
   quickKind.hidden = !calendarMode || Boolean(editingTaskId);
   quickKindButtons.forEach(button => {
     const active = button.dataset.captureKind === (isEvent ? "event" : "task");
@@ -872,8 +876,7 @@ function updateCaptureContext() {
     button.setAttribute("aria-pressed", String(active));
   });
 
-  quickTimeChip.hidden = !isEvent;
-  quickDurationChip.hidden = !isEvent;
+  quickWhen.hidden = !isEvent;
 
   if (isEvent) {
     const start = getDefaultEventStart(dateKey);

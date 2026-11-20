@@ -3595,6 +3595,10 @@ body {
   width: 100%;
   min-width: 0;
   margin: 2px 0 4px;
+  /* The bar makes its own room decisions: the window body can be wide while
+     the pane it sits in is narrow, so measuring the window hid the chips at
+     the wrong time. */
+  container-type: inline-size;
 }
 
 /* One quiet rounded row, like the Focus iteration: the whole bar is the
@@ -3671,23 +3675,22 @@ body {
 .task-quick-opts-btn:active { color: var(--accent-press); }
 
 /* Week and Month capture: a quiet two-word switch so a plain task stays the
-   default and the time/duration chips only appear when Event is chosen. */
+   default and the time/duration chips only appear when Event is chosen. It
+   shares the hairline treatment of the time pill instead of carrying a grey
+   track, so the row has one filled thing in it: Save. */
 .quick-kind {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 1px;
+  gap: 2px;
   margin-right: 4px;
-  padding: 2px;
-  border-radius: 999px;
-  background: rgba(109, 107, 198, 0.08);
 }
 
 .quick-kind[hidden] { display: none; }
 
 .quick-kind-btn {
-  padding: 2px 7px;
-  border: 0;
+  padding: 3px 7px;
+  border: 1px solid transparent;
   border-radius: 999px;
   background: transparent;
   color: var(--ns-secondary);
@@ -3703,9 +3706,9 @@ body {
 .quick-kind-btn:hover { color: var(--accent-press); }
 
 .quick-kind-btn.is-active {
-  background: #fff;
+  border-color: rgba(109, 107, 198, 0.28);
+  background: rgba(255, 255, 255, 0.72);
   color: var(--accent-press);
-  box-shadow: 0 1px 2px rgba(44, 35, 70, 0.14);
 }
 
 .quick-kind-btn:focus-visible {
@@ -3717,9 +3720,26 @@ body {
    options button, and Save on one line. Keep the bar one row so it still
    clears the bottom dock: the chips step aside below this width, and the
    options button opens the full form where both fields live. */
-@container (max-width: 660px) {
-  .task-quick-form.is-calendar .quick-time-chip,
-  .task-quick-form.is-calendar .quick-duration-chip { display: none; }
+/* Narrow panes cannot hold the Event switch, the time pill, the options
+   button, and Save on one line and still leave room to type. The chips step
+   aside below this width and the options button opens the full form where
+   both fields live. The width measured is the bar's own, not the window's. */
+@container (max-width: 480px) {
+  /* The start time is the event's one necessary fact, so it stays; duration
+     keeps its 1 hour default and lives in the options form. */
+  .task-quick-form.is-calendar .quick-when {
+    border-color: transparent;
+    background: none;
+  }
+  .task-quick-form.is-calendar .quick-when-dot,
+  .task-quick-form.is-calendar .quick-when-duration { display: none; }
+  .task-quick-form.is-calendar .quick-when-btn {
+    border: 1px solid rgba(109, 107, 198, 0.28);
+    background: rgba(255, 255, 255, 0.72);
+  }
+  /* The options button is now the only route to the duration, so it stops
+     waiting for focus. */
+  .task-quick-form.is-event .task-quick-opts-btn { opacity: 1; }
 }
 
 /* Visible save affordance: not everyone knows Enter submits. */
@@ -5170,30 +5190,42 @@ body {
 .new-item-btn:active { transform: translateY(0.5px); }
 .new-item-plus { font-size: 14px; font-weight: 400; line-height: 1; }
 
-.quick-chip {
+/* Start time and duration are one fact — when the event is — so they share a
+   single pill with two hit zones instead of reading as two unrelated buttons. */
+.quick-when {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
   align-self: center;
-  padding: 3px 8px;
+  margin-right: 3px;
+  border: 1px solid rgba(109, 107, 198, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.quick-when[hidden] { display: none; }
+
+.quick-when-btn {
+  padding: 3px 7px;
   border: 0;
   border-radius: 999px;
-  background: rgba(109, 107, 198, 0.14);
+  background: transparent;
   color: var(--accent-press);
   font: inherit;
   font-size: 10.5px;
   line-height: 1.4;
   white-space: nowrap;
-}
-
-.quick-time-chip,
-.quick-duration-chip {
-  border: 1px solid rgba(109, 107, 198, 0.28);
-  background: rgba(255, 255, 255, 0.72);
   cursor: pointer;
 }
 
-.quick-time-chip:hover,
-.quick-duration-chip:hover { background: #fff; }
-.quick-duration-chip { margin-right: 3px; }
+.quick-when-btn:hover { background: #fff; }
+
+.quick-when-dot {
+  color: rgba(109, 107, 198, 0.45);
+  font-size: 10px;
+  line-height: 1;
+  user-select: none;
+}
 
 .task-entry-row.is-event {
   grid-template-columns: minmax(11rem, 1fr) minmax(8rem, 0.3fr) minmax(6.5rem, 0.22fr) minmax(7.5rem, 0.28fr) auto;
