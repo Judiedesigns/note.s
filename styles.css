@@ -2930,12 +2930,35 @@ body {
   padding: 0 14px;
 }
 
-/* The offer is a decision, not a timer: the pill and the offer copy already
-   say the sprint is over, so the duplicate "Done" clock and status go. */
-.focus-panel.is-offer .focus-clock,
+/* The offer is a decision, not a timer: the clock goes, the pill stops being a
+   badge, and the gear waits until there is nothing left to decide. */
+.focus-panel.is-offer .focus-clock { display: none; }
+
 .focus-panel.is-offer .focus-next { display: none; }
 
 .focus-panel.is-offer .focus-body { grid-template-columns: minmax(0, 1fr); }
+
+/* Specificity ties with the parked-gear rules below, and an offer is never
+   idle, so :not(.is-idle) lets these win without reordering the file. */
+.focus-panel.is-offer:not(.is-idle) .focus-head { padding-right: 0; }
+.focus-panel.is-offer:not(.is-idle) .focus-task { padding-right: 0; }
+.focus-panel.is-offer:not(.is-idle) .focus-settings-btn { display: none; }
+
+/* The task is the subject of the card; "Sprint done" is a label, not a
+   headline, so it loses its tinted pill and drops behind the title. */
+.focus-panel.is-offer .focus-phase {
+  height: auto;
+  padding: 0;
+  background: none;
+  color: var(--ns-secondary);
+}
+
+.focus-panel.is-offer .focus-task {
+  font-size: 13.5px;
+  line-height: 1.3;
+}
+
+.focus-panel.is-offer .focus-goal { margin-left: auto; }
 
 /* A narrow planner window (resized or squeezed by the desktop grid) drops the
    decorative "Up next:" prefix so the task name stays on one line. */
@@ -3023,20 +3046,34 @@ body {
   border-top: 1px solid var(--hairline);
 }
 
-.focus-offer-copy {
-  margin: 0;
-  color: var(--accent-press);
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 1.4;
+/* One primary, one alternative, one quiet exit. Three equal buttons made a
+   five-second choice look like a form, and "Done" looked as costly as the
+   break. The exit keeps its hit area but drops its weight. */
+.focus-offer .focus-actions { align-items: center; }
+
+.focus-offer .focus-action.primary {
+  flex: 0 1 auto;
+  min-width: 132px;
 }
 
-/* Equal-width actions on the card surface: two for a finished break, three
-   for a finished sprint. They wrap only when the card is genuinely narrow. */
-.focus-offer .focus-action,
-.focus-offer .focus-action.primary {
-  flex: 1 1 88px;
-  min-width: 0;
+.focus-offer .focus-action:not(.primary):not(.quiet) {
+  flex: 0 1 auto;
+  min-width: 104px;
+}
+
+.focus-offer .focus-action.quiet {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding-inline: 8px;
+  border-color: transparent;
+  background: none;
+  color: var(--ns-secondary);
+}
+
+.focus-offer .focus-action.quiet:hover {
+  border-color: transparent;
+  background: var(--fill);
+  color: var(--ink);
 }
 
 /* Settings popover: the tall inline block stays out of the Today flow. */

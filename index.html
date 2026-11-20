@@ -193,11 +193,10 @@
                   <button class="focus-action" id="focus-end" type="button" hidden>End</button>
                 </div>
                 <div class="focus-offer" id="focus-offer" hidden>
-                  <p class="focus-offer-copy" id="focus-offer-copy"></p>
                   <div class="focus-actions">
                     <button class="focus-action primary" id="focus-offer-break" type="button">5 min break</button>
                     <button class="focus-action" id="focus-offer-keep" type="button">Keep going</button>
-                    <button class="focus-action" id="focus-offer-done" type="button">Done for now</button>
+                    <button class="focus-action quiet" id="focus-offer-done" type="button">Done</button>
                   </div>
                 </div>
                 <div class="focus-settings" id="focus-settings" role="dialog" aria-label="Focus settings" hidden>
@@ -221,7 +220,7 @@
                     <span class="focus-setting-label">Sound<span>sprint and break</span></span>
                     <button class="focus-toggle" id="focus-sound-toggle" type="button" role="switch" aria-checked="true">On</button>
                   </div>
-                  <p class="focus-settings-note">Sprint length starts with the next sprint. The 5 min break is part of the Pomodoro rhythm.</p>
+                  <p class="focus-settings-note" id="focus-settings-note">Sprint length starts with the next sprint. The break follows it: 5 min for 25.</p>
                 </div>
               </div>
             </section>
@@ -534,6 +533,9 @@ let windowZIndex = 10;
 let activePopupNoteText = "";
 let notePopupReturnFocus = null;
 let focusState = createDefaultFocusState();
+// Set when a restored session had an unanswered offer; flushed once the app
+// is on screen so the minutes are acknowledged without re-asking the question.
+let pendingFocusNotice = "";
 let focusSettingsOpen = false;
 let focusDeskOpen = false;
 let focusDeskTaskId = null;
@@ -649,10 +651,10 @@ const focusFinishButton = document.getElementById("focus-finish");
 const focusSkipButton = document.getElementById("focus-skip");
 const focusEndButton = document.getElementById("focus-end");
 const focusOffer = document.getElementById("focus-offer");
-const focusOfferCopy = document.getElementById("focus-offer-copy");
 const focusOfferBreakButton = document.getElementById("focus-offer-break");
 const focusOfferKeepButton = document.getElementById("focus-offer-keep");
 const focusOfferDoneButton = document.getElementById("focus-offer-done");
+const focusSettingsNote = document.getElementById("focus-settings-note");
 const focusSettingsButton = document.getElementById("focus-settings-btn");
 const focusSettings = document.getElementById("focus-settings");
 const focusDesk = document.getElementById("focus-desk");
@@ -3333,6 +3335,21 @@ function clampFocusNumber(value, fallback, min, max) {
   return Math.min(max, Math.max(min, Math.round(number)));
 }
 
+// A break scales with the block it follows — roughly 5 min per 25 — so a
+// 50 min sprint earns 10, not the same 5 as a short one. Capped at 15 so a
+// long block still comes back to work.
+function focusBreakFor(focusMin) {
+  const sprint = clampFocusNumber(focusMin, FOCUS_DEFAULT_SETTINGS.focusMin, 5, 90);
+  return Math.min(15, Math.max(5, Math.round(sprint / 5)));
+}
+
+// Read the break off the session, not the setting: a 50 min sprint keeps its
+// 10 min break even if the default is changed while it runs.
+function sessionBreakMin() {
+  const total = Number(focusState.session.totalMs) || 0;
+  return focusBreakFor(total > 0 ? total / 60000 : focusState.settings.focusMin);
+}
+
 function loadFocusState() {
   const today = toDateInputValue(new Date());
   focusState = createDefaultFocusState();
@@ -3350,7 +3367,9 @@ function loadFocusState() {
 
   const settings = data.settings && typeof data.settings === "object" ? data.settings : {};
   focusState.settings.focusMin = clampFocusNumber(settings.focusMin, FOCUS_DEFAULT_SETTINGS.focusMin, 5, 90);
-  focusState.settings.breakMin = clampFocusNumber(settings.breakMin, FOCUS_DEFAULT_SETTINGS.breakMin, 1, 30);
+  // The break is derived, never stored independently: an old saved 5 would
+  // otherwise outlive the sprint length it was written for.
+  focusState.settings.breakMin = focusBreakFor(focusState.settings.focusMin);
   focusState.settings.goalMin = clampFocusNumber(settings.goalMin, FOCUS_DEFAULT_SETTINGS.goalMin, 15, 180);
   focusState.settings.sound = settings.sound !== false;
 
@@ -3378,12 +3397,20 @@ function loadFocusState() {
       loggedMin: Math.max(0, Math.round(Number(saved.loggedMin) || 0))
     };
 
-    if (session.phase === "idle" || !session.totalMs) {
+    if (session.phase === "offer") {
+      // An offer is a moment, not a mode. Its minutes were banked when it
+      // opened, so a prompt restored from an earlier page load — or from
+      // yesterday, after the daily total reset — would re-ask about work that
+      // is already counted. Acknowledge it only if it is still today; a
+      // prompt from a past day is dropped quietly, because today's total
+      // never included it.
+      if (session.loggedMin && savedDay === today) pendingFocusNotice = `${session.loggedMin} min logged.`;
+      focusState.session = freshFocusSession();
+    } else if (session.phase === "idle" || !session.totalMs) {
       focusState.session = freshFocusSession();
     } else if ((session.phase === "focus" || session.phase === "break") && !session.taskId) {
       focusState.session = freshFocusSession();
     } else {
-      if (session.phase === "offer" && !session.offer) session.offer = "sprint";
       if (session.running && !session.endsAt) session.running = false;
       focusState.session = session;
     }
@@ -3731,7 +3758,7 @@ function takeFocusBreak() {
   session.phase = "break";
   session.offer = null;
   session.running = true;
-  session.totalMs = Math.max(60000, Math.round(focusState.settings.breakMin * 60000));
+  session.totalMs = Math.max(60000, Math.round(sessionBreakMin() * 60000));
   session.remainingMs = session.totalMs;
   session.endsAt = Date.now() + session.totalMs;
   session.loggedMin = 0;
@@ -3800,11 +3827,20 @@ function rollFocusDayIfNeeded() {
   if (focusState.day === today) return false;
   focusState.day = today;
   focusState.dayMin = 0;
+  // A prompt that outlived its day has nothing left to ask: the total it was
+  // talking about has already reset. A running sprint or break is untouched.
+  if (focusState.session.phase === "offer") focusState.session = freshFocusSession();
   saveFocusState();
   return true;
 }
 
 function resumeFocusSession() {
+  if (pendingFocusNotice) {
+    const message = pendingFocusNotice;
+    pendingFocusNotice = "";
+    showToast(message);
+    announce(message);
+  }
   const session = focusState.session;
   if (session.phase === "idle") return;
 
@@ -3900,6 +3936,7 @@ function stepFocusSetting(kind, delta) {
   const settings = focusState.settings;
   if (kind === "focus") {
     settings.focusMin = clampFocusNumber(settings.focusMin + delta, settings.focusMin, 5, 90);
+    settings.breakMin = focusBreakFor(settings.focusMin);
   } else if (kind === "goal") {
     settings.goalMin = clampFocusNumber(settings.goalMin + delta, settings.goalMin, 15, 180);
   }
@@ -3965,7 +4002,7 @@ function renderFocusDesk() {
     button.setAttribute("aria-pressed", String(on));
   });
 
-  focusDeskNote.textContent = `${focusDeskMin} min focus · ${focusState.settings.breakMin} min break`;
+  focusDeskNote.textContent = `${focusDeskMin} min focus · ${focusBreakFor(focusDeskMin)} min break`;
   focusDeskStartButton.disabled = !focusDeskTaskId;
   focusDeskStartButton.title = focusDeskTaskId ? "" : "No open tasks";
 }
@@ -4013,6 +4050,7 @@ function startFocusDeskSession() {
 
   // The chosen sprint is the new default, so the next desk opens on it too.
   focusState.settings.focusMin = focusDeskMin;
+  focusState.settings.breakMin = focusBreakFor(focusDeskMin);
   saveFocusState();
   closeFocusDesk(false);
   beginFocus(task.id);
@@ -4134,13 +4172,8 @@ function renderFocusPanel() {
   focusOffer.hidden = !isOffer;
   if (isOffer) {
     const reason = session.offer;
-    focusOfferCopy.textContent = reason === "break"
-      ? "Break over. Back to work?"
-      : `${session.loggedMin} min logged · take a break?`;
-    focusOfferBreakButton.textContent = reason === "break" ? "Back to work" : `${focusState.settings.breakMin} min break`;
+    focusOfferBreakButton.textContent = reason === "break" ? "Back to work" : `${sessionBreakMin()} min break`;
     focusOfferKeepButton.hidden = reason === "break";
-  } else {
-    focusOfferCopy.textContent = "";
   }
 }
 
@@ -4170,7 +4203,9 @@ function renderFocusClock() {
   focusPanel.classList.toggle("has-progress", dayMin > 0);
   // The header already reports the open count; this line is only about the
   // task in front of you.
-  focusMins.textContent = task
+  // The lifetime number belongs to the timer states. In the offer it would sit
+  // beside today's total and read as a contradiction (141 min vs 0 today).
+  focusMins.textContent = task && !isOffer
     ? `${Math.max(0, Math.round(Number(task.focusedMin) || 0)) + sprintMin} min on this task`
     : "";
   focusGoal.textContent = `${dayMin} / ${focusState.settings.goalMin} min today`;
@@ -4182,7 +4217,9 @@ function renderFocusClock() {
       ? (session.running ? `ends ${formatFocusClock(session.endsAt)}` : "paused")
       : phase === "break"
         ? (session.running ? `back at ${formatFocusClock(session.endsAt)}` : "paused")
-        : "nothing running";
+        // The offer names its next step on the button; repeating it in the
+        // head would say "10 min break" twice in one card.
+        : "";
 
   renderFocusRow();
   renderFocusPill();
@@ -4215,6 +4252,7 @@ function renderFocusPill() {
 function renderFocusSettings() {
   focusValue.textContent = `${focusState.settings.focusMin} min`;
   focusGoalValue.textContent = formatFocusMinutes(focusState.settings.goalMin);
+  focusSettingsNote.textContent = `Sprint length starts with the next sprint. The break follows it: ${focusBreakFor(focusState.settings.focusMin)} min for ${focusState.settings.focusMin}.`;
   const sound = Boolean(focusState.settings.sound);
   focusSoundToggle.setAttribute("aria-checked", String(sound));
   focusSoundToggle.textContent = sound ? "On" : "Off";
